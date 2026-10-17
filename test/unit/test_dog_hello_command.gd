@@ -2,6 +2,7 @@ extends GutTest
 
 var _lines := []
 
+
 func _run_hello(args: PackedStringArray) -> Error:
 	_lines = []
 	var command := DogHelloCommand.new()

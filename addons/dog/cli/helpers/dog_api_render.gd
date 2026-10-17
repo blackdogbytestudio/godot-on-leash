@@ -44,7 +44,7 @@ static func ref_block(var_name: String, component_class: String, node_name: Stri
 	var text := "@onready var %s = %s" % [var_name, path]
 	if not component_class.is_empty():
 		text = "@onready var %s: %s = %s" % [var_name, component_class, path]
-	return {"kind": "var", "name": var_name, "text": text}
+	return { "kind": "var", "name": var_name, "text": text }
 
 
 static func func_block(var_name: String, method: Dictionary) -> Dictionary:
@@ -80,7 +80,7 @@ static func signal_block(info: Dictionary) -> Dictionary:
 		for arg in args:
 			params.append("%s: %s" % [arg["name"], _arg_type(arg)])
 		text += "(%s)" % ", ".join(params)
-	return {"kind": "signal", "name": signal_name, "text": text}
+	return { "kind": "signal", "name": signal_name, "text": text }
 
 
 ## The line, inside `_ready`, that forwards a component signal through the host's.

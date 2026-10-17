@@ -18,42 +18,20 @@ extends RefCounted
 
 const ROOT := "res://scenes/characters"
 const STATES_DIR := "states"
-
 const TEMPLATE_ROOTS: PackedStringArray = [
 	"res://script_templates",
 	"res://addons/dog/script_templates",
 ]
-
 const ACTOR_TEMPLATE := "class.gd"
 const NODE_TEMPLATE := "state.gd"
-
 ## The only supported machines: one row per `type`. `machine` is the class_name
 ## of the machine node the host must have as a direct child.
 const FAMILIES := {
-	"fsm": {"dir": "DogFSMState", "base": "DogFSMState", "machine": "DogFSM"},
-	"pda": {"dir": "DogPDAState", "base": "DogPDAState", "machine": "DogPDA"},
-	"hfsm": {"dir": "DogHState", "base": "DogHFSMState", "machine": "DogHFSM"},
-	"hpda": {"dir": "DogHPDAState", "base": "DogHPDAState", "machine": "DogHPDA"},
+	"fsm": { "dir": "DogFSMState", "base": "DogFSMState", "machine": "DogFSM" },
+	"pda": { "dir": "DogPDAState", "base": "DogPDAState", "machine": "DogPDA" },
+	"hfsm": { "dir": "DogHState", "base": "DogHFSMState", "machine": "DogHFSM" },
+	"hpda": { "dir": "DogHPDAState", "base": "DogHPDAState", "machine": "DogHPDA" },
 }
-
-
-class Result:
-	var written: Array[String] = []
-	var skipped: Array[String] = []
-	var warnings: Array[String] = []
-	## What the merge did to the host script ("add var alive_state", ...).
-	var report: Array[String] = []
-	var error := ""
-	var scene := ""
-	var host_path := ""
-	var machine_node := ""
-	var initial := ""
-	## Filled by build: path -> text of every state file to write.
-	var files := {}
-	## Filled by build with FORCE: the states folder to delete first ("" = none).
-	var delete_dir := ""
-	var host_original := ""
-	var host_source := ""
 
 
 ## build + write. Nothing is written when build fails.
@@ -125,7 +103,10 @@ static func build(
 	for node in tree.nodes:
 		state_names.append(node.name)
 	if result.initial not in state_names:
-		result.error = "--initial '%s' is not in the tree. states: %s." % [result.initial, ", ".join(state_names)]
+		result.error = "--initial '%s' is not in the tree. states: %s." % [
+			result.initial,
+			", ".join(state_names),
+		]
 		return result
 
 	var template_dir := _find_template_dir(family["dir"])
@@ -142,7 +123,10 @@ static func build(
 	var dropped_files: Array[String] = []
 	if force and DirAccess.dir_exists_absolute(dir):
 		if not is_safe_states_dir(dir, root):
-			result.error = "refusing to delete '%s': not an actor states folder inside %s." % [dir, root]
+			result.error = "refusing to delete '%s': not an actor states folder inside %s." % [
+				dir,
+				root,
+			]
 			return result
 		result.delete_dir = dir
 		for file in _files_below(dir):
@@ -310,7 +294,11 @@ static func _inspect_scene(
 			result.error += " found %s: use --folder %s." % [elsewhere, actor_dir]
 		return
 
-	var packed := ResourceLoader.load(path, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
+	var packed := ResourceLoader.load(
+		path,
+		"PackedScene",
+		ResourceLoader.CACHE_MODE_IGNORE,
+	) as PackedScene
 	var host := packed.instantiate() if packed != null else null
 	if host == null:
 		result.error = "could not load %s." % path
@@ -337,10 +325,14 @@ static func _inspect_scene(
 		result.error = "the script of %s is built into the scene: save it as a .gd file first." % scene_file
 	elif nodes.is_empty():
 		result.error = "no %s child in %s. children with a class: %s." % [
-			machine_class, scene_file, ", ".join(with_class) if not with_class.is_empty() else "none"
+			machine_class, scene_file, ", ".join(with_class) if not with_class.is_empty() else "none",
 		]
 	elif nodes.size() > 1:
-		result.error = "more than one %s child in %s: %s." % [machine_class, scene_file, ", ".join(nodes)]
+		result.error = "more than one %s child in %s: %s." % [
+			machine_class,
+			scene_file,
+			", ".join(nodes),
+		]
 	if not result.error.is_empty():
 		return
 
@@ -349,7 +341,11 @@ static func _inspect_scene(
 	result.machine_node = nodes[0]
 	var found_class := _declared_class_name(_read_text(host_path))
 	if found_class != host_class:
-		var warning := "states cast host as %s, but %s has no class_name %s" % [host_class, host_path.get_file(), host_class]
+		var warning := "states cast host as %s, but %s has no class_name %s" % [
+			host_class,
+			host_path.get_file(),
+			host_class,
+		]
 		if not found_class.is_empty():
 			warning += " (found: %s)" % found_class
 		result.warnings.append(warning)
@@ -450,3 +446,22 @@ static func _scan() -> void:
 	var fs := EditorInterface.get_resource_filesystem()
 	if fs != null and not fs.is_scanning():
 		fs.scan()
+
+
+class Result:
+	var written: Array[String] = []
+	var skipped: Array[String] = []
+	var warnings: Array[String] = []
+	## What the merge did to the host script ("add var alive_state", ...).
+	var report: Array[String] = []
+	var error := ""
+	var scene := ""
+	var host_path := ""
+	var machine_node := ""
+	var initial := ""
+	## Filled by build: path -> text of every state file to write.
+	var files := {}
+	## Filled by build with FORCE: the states folder to delete first ("" = none).
+	var delete_dir := ""
+	var host_original := ""
+	var host_source := ""

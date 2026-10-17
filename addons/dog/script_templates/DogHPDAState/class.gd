@@ -3,6 +3,7 @@ extends _BASE_
 
 # Replace 'CUSTOM_HOST' with the specific class name of your host script (e.g., Player).
 
+
 func enter(host: Node) -> void:
 	_enter(host as CUSTOM_HOST)
 

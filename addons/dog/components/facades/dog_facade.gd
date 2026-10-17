@@ -24,6 +24,7 @@ extends DogComponent
 ## exist before the @export setter runs, and @onready only resolves
 ## after _ready():
 
+
 func _enter_tree() -> void:
 	dog_leash()
 

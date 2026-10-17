@@ -26,6 +26,7 @@ extends DogMachine
 
 var _stack: Array[DogPDAState] = []
 
+
 ## Push the initial state onto the stack.
 func init(state: DogState) -> void:
 	push(state as DogPDAState)

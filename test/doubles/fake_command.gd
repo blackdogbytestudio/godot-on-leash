@@ -4,7 +4,6 @@ extends DogCommand
 
 var ran := false
 var received := PackedStringArray()
-
 var _name: String
 
 

@@ -4,23 +4,11 @@ extends DogCommand
 ## state <type> <actor> <tree...> [--folder f] [--extends State] [--initial state] [-f | -u]
 ## The states' host is always the actor's class (actor in PascalCase).
 
-
 const FLAT_TYPES: PackedStringArray = ["fsm", "pda"]
 const TREE_TYPES: PackedStringArray = ["hfsm", "hpda"]
 
 # Overridable so tests never write into res://.
 var root: String = DogStateGenerator.ROOT
-
-
-class Request:
-	var type: String = ""
-	var actor: String = ""
-	var folder: String = ""
-	var extends_state: String = ""
-	var initial: String = ""
-	var mode: DogApiMerge.Mode = DogApiMerge.Mode.ADD
-	var tree: DogStateTree
-	var error: String = ""
 
 
 func command_name() -> String:
@@ -77,11 +65,27 @@ static func parse_request(args: PackedStringArray) -> Request:
 	var parser := DogOptParse.new()
 	parser.add_positional_required("type", "", "type: fsm | pda | hfsm | hpda")
 	parser.add_positional_required("actor", "", "actor name (snake_case)")
-	parser.add("--folder", "", "category folder, e.g. enemies/slime -> scenes/characters/enemies/slime/states")
+	parser.add(
+		"--folder",
+		"",
+		"category folder, e.g. enemies/slime -> scenes/characters/enemies/slime/states",
+	)
 	parser.add("--extends", "", "state class the root states inherit from")
-	parser.add("--initial", "", "state the machine starts in (default: the deepest, first on a tie)")
-	parser.add(["--force", "-f"], false, "back to factory: delete states/, recreate it, rewrite the script below its header")
-	parser.add(["--update", "-u"], false, "update the host script (e.g. the init line); state files are left alone")
+	parser.add(
+		"--initial",
+		"",
+		"state the machine starts in (default: the deepest, first on a tie)",
+	)
+	parser.add(
+		["--force", "-f"],
+		false,
+		"back to factory: delete states/, recreate it, rewrite the script below its header",
+	)
+	parser.add(
+		["--update", "-u"],
+		false,
+		"update the host script (e.g. the init line); state files are left alone",
+	)
 	parser.parse(args)  # always pass args: null would read the editor's cmdline
 
 	var missing: Array = parser.get_missing_required_options()
@@ -137,3 +141,14 @@ static func parse_request(args: PackedStringArray) -> Request:
 
 	request.tree = tree
 	return request
+
+
+class Request:
+	var type: String = ""
+	var actor: String = ""
+	var folder: String = ""
+	var extends_state: String = ""
+	var initial: String = ""
+	var mode: DogApiMerge.Mode = DogApiMerge.Mode.ADD
+	var tree: DogStateTree
+	var error: String = ""

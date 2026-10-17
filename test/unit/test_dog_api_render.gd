@@ -3,7 +3,14 @@ extends GutTest
 ## get_script_method_list / get_script_signal_list) into merge blocks.
 
 
-func _info(type: int, klass := "", usage := 0, hint := 0, hint_string := "", arg_name := "") -> Dictionary:
+func _info(
+	type: int,
+	klass := "",
+	usage := 0,
+	hint := 0,
+	hint_string := "",
+	arg_name := "",
+) -> Dictionary:
 	var info := {
 		"type": type,
 		"class_name": StringName(klass),
@@ -16,7 +23,12 @@ func _info(type: int, klass := "", usage := 0, hint := 0, hint_string := "", arg
 	return info
 
 
-func _method(method_name: String, args: Array = [], return_info := _info(TYPE_NIL), defaults: Array = []) -> Dictionary:
+func _method(
+	method_name: String,
+	args: Array = [],
+	return_info := _info(TYPE_NIL),
+	defaults: Array = [],
+) -> Dictionary:
 	return {
 		"name": method_name,
 		"args": args,
@@ -27,6 +39,7 @@ func _method(method_name: String, args: Array = [], return_info := _info(TYPE_NI
 
 
 # --- is_public / var_name --------------------------------------------------
+
 
 func test_underscore_members_are_not_public():
 	assert_true(DogApiRender.is_public("jump"))
@@ -48,6 +61,7 @@ func test_var_name_falls_back_to_the_node_name_without_a_class():
 
 # --- type_text -------------------------------------------------------------
 
+
 func test_type_text_for_builtin_types():
 	assert_eq(DogApiRender.type_text(_info(TYPE_FLOAT)), "float")
 	assert_eq(DogApiRender.type_text(_info(TYPE_VECTOR2)), "Vector2")
@@ -68,11 +82,15 @@ func test_type_text_nil_is_void_unless_flagged_as_variant():
 
 
 func test_type_text_typed_and_plain_arrays():
-	assert_eq(DogApiRender.type_text(_info(TYPE_ARRAY, "", 0, PROPERTY_HINT_ARRAY_TYPE, "int")), "Array[int]")
+	assert_eq(
+		DogApiRender.type_text(_info(TYPE_ARRAY, "", 0, PROPERTY_HINT_ARRAY_TYPE, "int")),
+		"Array[int]",
+	)
 	assert_eq(DogApiRender.type_text(_info(TYPE_ARRAY)), "Array")
 
 
 # --- ref_block -------------------------------------------------------------
+
 
 func test_ref_block_with_a_class_is_typed():
 	var b := DogApiRender.ref_block("_dog_jump_2d", "DogJump2D", "Jump")
@@ -93,6 +111,7 @@ func test_ref_block_quotes_node_names_that_are_not_identifiers():
 
 # --- func_block ------------------------------------------------------------
 
+
 func test_func_block_without_args_returning_void():
 	var b := DogApiRender.func_block("_dog_jump_2d", _method("jump"))
 	assert_eq(b.kind, "func")
@@ -112,7 +131,10 @@ func test_func_block_with_args_and_default_values():
 		_info(TYPE_STRING, "", 0, 0, "", "label"),
 		_info(TYPE_VECTOR2, "", 0, 0, "", "v"),
 	]
-	var b := DogApiRender.func_block("_x", _method("jump_with", args, _info(TYPE_NIL), [2, "x", Vector2(1, 2)]))
+	var b := DogApiRender.func_block(
+		"_x",
+		_method("jump_with", args, _info(TYPE_NIL), [2, "x", Vector2(1, 2)]),
+	)
 	assert_eq(
 		b.text,
 		"func jump_with(power: float, times: int = 2, label: String = \"x\", v: Vector2 = Vector2(1, 2)) -> void:\n\t_x.jump_with(power, times, label, v)"
@@ -126,7 +148,10 @@ func test_func_block_untyped_args_and_return_become_variant():
 		_info(TYPE_NIL, "", PROPERTY_USAGE_NIL_IS_VARIANT, 0, "", "b"),
 	]
 	var b := DogApiRender.func_block("_x", _method("untyped", args, variant_info, [3]))
-	assert_eq(b.text, "func untyped(a: Variant, b: Variant = 3) -> Variant:\n\treturn _x.untyped(a, b)")
+	assert_eq(
+		b.text,
+		"func untyped(a: Variant, b: Variant = 3) -> Variant:\n\treturn _x.untyped(a, b)",
+	)
 
 
 func test_func_block_with_class_and_typed_array_types():
@@ -138,8 +163,15 @@ func test_func_block_with_class_and_typed_array_types():
 
 # --- signal_block / connect_block ------------------------------------------
 
+
 func test_signal_block_with_args():
-	var info := {"name": "landed", "args": [_info(TYPE_FLOAT, "", 0, 0, "", "speed"), _info(TYPE_OBJECT, "Node", 0, 0, "", "who")]}
+	var info := {
+		"name": "landed",
+		"args": [
+			_info(TYPE_FLOAT, "", 0, 0, "", "speed"),
+			_info(TYPE_OBJECT, "Node", 0, 0, "", "who"),
+		],
+	}
 	var b := DogApiRender.signal_block(info)
 	assert_eq(b.kind, "signal")
 	assert_eq(b.name, "landed")
@@ -147,12 +179,12 @@ func test_signal_block_with_args():
 
 
 func test_signal_block_without_args_has_no_parentheses():
-	var b := DogApiRender.signal_block({"name": "plain", "args": []})
+	var b := DogApiRender.signal_block({ "name": "plain", "args": [] })
 	assert_eq(b.text, "signal plain")
 
 
 func test_signal_block_untyped_arg_is_variant():
-	var info := {"name": "changed", "args": [_info(TYPE_NIL, "", 0, 0, "", "value")]}
+	var info := { "name": "changed", "args": [_info(TYPE_NIL, "", 0, 0, "", "value")] }
 	assert_eq(DogApiRender.signal_block(info).text, "signal changed(value: Variant)")
 
 

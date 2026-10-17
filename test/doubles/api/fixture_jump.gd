@@ -5,6 +5,13 @@ extends FixtureBase
 signal landed(speed: float)
 signal _hidden
 
+# Property accessors show up as `@power_setter` / `@power_getter` methods.
+var power := 1.0:
+	set(value):
+		power = value
+	get:
+		return power
+
 
 func jump() -> void:
 	pass
@@ -24,11 +31,3 @@ func _internal() -> void:
 
 static func util() -> int:
 	return 1
-
-
-# Property accessors show up as `@power_setter` / `@power_getter` methods.
-var power := 1.0:
-	set(value):
-		power = value
-	get:
-		return power

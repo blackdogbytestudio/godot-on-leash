@@ -9,7 +9,6 @@ const VAR_LINE := "@onready var _jump: Node = $Jump"
 const CONNECT_LINE := "\t_jump.ready.connect(landed.emit)"
 const UPDATE_LINE := "\tmove_and_slide()"
 const JUMP := "func jump() -> void:\n\t_jump.jump()"
-
 const GODOT_TEMPLATE := """extends CharacterBody2D
 
 
@@ -25,23 +24,36 @@ func _process(delta: float) -> void:
 
 
 func _signal(signal_name := "landed") -> Dictionary:
-	return {"kind": "signal", "name": signal_name, "text": "signal %s(speed: float)" % signal_name}
+	return {
+		"kind": "signal",
+		"name": signal_name,
+		"text": "signal %s(speed: float)" % signal_name,
+	}
 
 
 func _var() -> Dictionary:
-	return {"kind": "var", "name": "_jump", "text": VAR_LINE}
+	return { "kind": "var", "name": "_jump", "text": VAR_LINE }
 
 
 func _connect() -> Dictionary:
-	return {"kind": "ready_line", "name": "_jump.landed", "text": CONNECT_LINE}
+	return { "kind": "ready_line", "name": "_jump.landed", "text": CONNECT_LINE }
 
 
 func _update_line() -> Dictionary:
-	return {"kind": "func_line", "func": "_physics_process", "name": "move_and_slide", "text": UPDATE_LINE}
+	return {
+		"kind": "func_line",
+		"func": "_physics_process",
+		"name": "move_and_slide",
+		"text": UPDATE_LINE,
+	}
 
 
 func _func(func_name := "jump") -> Dictionary:
-	return {"kind": "func", "name": func_name, "text": "func %s() -> void:\n\t_jump.%s()" % [func_name, func_name]}
+	return {
+		"kind": "func",
+		"name": func_name,
+		"text": "func %s() -> void:\n\t_jump.%s()" % [func_name, func_name],
+	}
 
 
 func _all() -> Array:
@@ -55,6 +67,7 @@ func _compile(source: String) -> int:
 
 
 # --- where things go -------------------------------------------------------
+
 
 func test_empty_file_gets_no_leading_blank_lines():
 	var r := DogApiMerge.merge("", [_func(), _signal()])
@@ -155,9 +168,13 @@ func jump() -> void:
 func test_out_of_order_file_is_not_reordered():
 	var source := "extends CharacterBody2D\n\nvar speed := 200\nsignal died\n\n\nfunc _ready() -> void:\n\tpass\n"
 	var blocks := [
-		{"kind": "signal", "name": "landed", "text": "signal landed"},
-		{"kind": "var", "name": "_dog_hpda", "text": "@onready var _dog_hpda: DogHPDA = $DogHPDA"},
-		{"kind": "func", "name": "jump", "text": "func jump() -> void:\n\t_dog_hpda.jump()"},
+		{ "kind": "signal", "name": "landed", "text": "signal landed" },
+		{
+			"kind": "var",
+			"name": "_dog_hpda",
+			"text": "@onready var _dog_hpda: DogHPDA = $DogHPDA",
+		},
+		{ "kind": "func", "name": "jump", "text": "func jump() -> void:\n\t_dog_hpda.jump()" },
 	]
 	var r := DogApiMerge.merge(source, blocks)
 	assert_eq(r.source, """extends CharacterBody2D
@@ -191,8 +208,8 @@ func test_created_physics_process_goes_after_ready_and_before_custom_funcs():
 func test_multiline_enum_and_annotation_on_its_own_line_stay_whole():
 	var source := "extends Node\n\nenum State {\n\tIDLE,\n\tRUN,\n}\n@export\nvar hp := 3\n"
 	var blocks := [
-		{"kind": "signal", "name": "landed", "text": "signal landed"},
-		{"kind": "var", "name": "_x", "text": "@onready var _x: Node = $X"},
+		{ "kind": "signal", "name": "landed", "text": "signal landed" },
+		{ "kind": "var", "name": "_x", "text": "@onready var _x: Node = $X" },
 	]
 	var r := DogApiMerge.merge(source, blocks)
 	assert_eq(
@@ -203,13 +220,20 @@ func test_multiline_enum_and_annotation_on_its_own_line_stay_whole():
 
 # --- running again, FORCE and compiling --------------------------------------
 
+
 func test_running_twice_on_the_template_only_skips():
 	var first := DogApiMerge.merge(GODOT_TEMPLATE, _all())
 	var second := DogApiMerge.merge(first.source, _all())
 	assert_eq(second.source, first.source)
 	assert_eq(
 		second.report,
-		["skip func jump", "skip line move_and_slide", "skip connect _jump.landed", "skip var _jump", "skip signal landed"]
+		[
+			"skip func jump",
+			"skip line move_and_slide",
+			"skip connect _jump.landed",
+			"skip var _jump",
+			"skip signal landed",
+		]
 	)
 
 
@@ -222,5 +246,9 @@ func test_force_rebuilds_in_style_guide_order():
 func test_generated_text_compiles():
 	for source in [HEAD, GODOT_TEMPLATE, HEAD + "\nvar speed := 200\nsignal died\n\n\nfunc _ready() -> void:\n\tpass\n"]:
 		for mode in [DogApiMerge.Mode.ADD, DogApiMerge.Mode.FORCE]:
-			var r := DogApiMerge.merge(source, [_signal(), _var(), _connect(), _update_line()], mode)
+			var r := DogApiMerge.merge(
+				source,
+				[_signal(), _var(), _connect(), _update_line()],
+				mode,
+			)
 			assert_eq(_compile(r.source), OK, "mode %d:\n%s" % [mode, r.source])

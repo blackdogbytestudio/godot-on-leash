@@ -17,6 +17,7 @@ var _jumps_remaining: int = max_jumps
 var _coyote_timer: float = 0.0
 var _jump_buffer_timer: float = 0.0
 
+
 func _physics_process(delta: float) -> void:
 	_coyote_timer = maxf(_coyote_timer - delta, 0.0)
 	_jump_buffer_timer = maxf(_jump_buffer_timer - delta, 0.0)

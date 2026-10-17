@@ -7,7 +7,6 @@ const JUMP_SCRIPT := "res://test/doubles/api/fixture_jump.gd"
 const DASH_SCRIPT := "res://test/doubles/api/fixture_dash.gd"
 const BASE_SCRIPT := "res://test/doubles/api/fixture_base.gd"
 const BOTH := ["fixture_jump_2d", "fixture_dash"]
-
 const TMP := "user://api_test"
 const ACTOR_GD := "extends CharacterBody2D\n\n\nfunc _ready() -> void:\n\tpass\n"
 const ACTOR_TSCN := """[gd_scene load_steps=4 format=3]
@@ -98,6 +97,7 @@ func _block(blocks: Array, kind: String, block_name: String) -> Dictionary:
 
 # --- normalize_root --------------------------------------------------------
 
+
 func test_normalize_root_adds_res_and_drops_the_trailing_slash():
 	assert_eq(DogApiGenerator.normalize_root("scenes"), "res://scenes")
 	assert_eq(DogApiGenerator.normalize_root("res://scenes/"), "res://scenes")
@@ -111,6 +111,7 @@ func test_normalize_root_rejects_parent_traversal_and_empty():
 
 
 # --- find_scene ------------------------------------------------------------
+
 
 func test_find_scene_exact_path():
 	var r := DogApiGenerator.find_scene("actor", "", ROOT)
@@ -168,8 +169,9 @@ func test_find_scene_rejects_invalid_root():
 
 # --- plan ------------------------------------------------------------------
 
+
 func test_plan_makes_a_typed_var_per_scripted_child():
-	var host := _host({"Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
 	var p := _plan(host)
 	assert_eq(_names(p.blocks, "var"), ["_fixture_dash", "_fixture_jump_2d"])
 	assert_eq(
@@ -179,20 +181,20 @@ func test_plan_makes_a_typed_var_per_scripted_child():
 
 
 func test_plan_ignores_children_without_a_script():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	host.add_child(Sprite2D.new())
 	var p := _plan(host)
 	assert_eq(_names(p.blocks, "var"), ["_fixture_jump_2d"])
 
 
 func test_plan_forwards_public_methods_including_inherited_ones():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host)
 	assert_eq(_names(p.blocks, "func"), ["disable", "enable", "get_power", "jump", "jump_with"])
 
 
 func test_plan_skips_internal_and_static_members():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host)
 	assert_does_not_have(_names(p.blocks, "func"), "_internal")
 	assert_does_not_have(_names(p.blocks, "func"), "util")
@@ -200,9 +202,12 @@ func test_plan_skips_internal_and_static_members():
 
 
 func test_plan_renders_the_forwarding_funcs():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host)
-	assert_eq(_block(p.blocks, "func", "jump").text, "func jump() -> void:\n\t_fixture_jump_2d.jump()")
+	assert_eq(
+		_block(p.blocks, "func", "jump").text,
+		"func jump() -> void:\n\t_fixture_jump_2d.jump()",
+	)
 	assert_eq(
 		_block(p.blocks, "func", "jump_with").text,
 		"func jump_with(power: float, times: int = 2) -> void:\n\t_fixture_jump_2d.jump_with(power, times)"
@@ -214,7 +219,7 @@ func test_plan_renders_the_forwarding_funcs():
 
 
 func test_plan_redeclares_and_connects_public_signals():
-	var host := _host({"Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
 	var p := _plan(host)
 	assert_eq(_names(p.blocks, "signal"), ["dashed", "landed"])
 	assert_eq(_block(p.blocks, "signal", "landed").text, "signal landed(speed: float)")
@@ -222,7 +227,7 @@ func test_plan_redeclares_and_connects_public_signals():
 
 
 func test_plan_two_children_of_the_same_class_is_an_error():
-	var host := _host({"Jump": JUMP_SCRIPT, "Jump2": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT, "Jump2": JUMP_SCRIPT })
 	var p := _plan(host)
 	assert_string_contains(p.error, "more than one")
 	assert_string_contains(p.error, "Jump2")
@@ -230,7 +235,7 @@ func test_plan_two_children_of_the_same_class_is_an_error():
 
 
 func test_plan_only_takes_the_listed_components():
-	var host := _host({"Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
 	var p := _plan(host, ["fixture_dash"])
 	assert_eq(p.error, "")
 	assert_eq(_names(p.blocks, "var"), ["_fixture_dash"])
@@ -238,7 +243,7 @@ func test_plan_only_takes_the_listed_components():
 
 
 func test_plan_follows_the_order_of_the_list_not_of_the_scene():
-	var host := _host({"Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
 	var p := _plan(host, ["fixture_dash", "fixture_jump_2d"])
 	var vars: Array = []
 	for block in p.blocks:
@@ -248,14 +253,14 @@ func test_plan_follows_the_order_of_the_list_not_of_the_scene():
 
 
 func test_plan_a_repeated_component_is_taken_once():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host, ["fixture_jump_2d", "fixture_jump_2d"])
 	assert_eq(p.error, "")
 	assert_eq(_names(p.blocks, "var"), ["_fixture_jump_2d"])
 
 
 func test_plan_a_class_that_is_not_a_child_is_an_error_listing_the_children():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host, ["fixture_dash"])
 	assert_string_contains(p.error, "fixture_dash")
 	assert_string_contains(p.error, "not a child")
@@ -263,21 +268,21 @@ func test_plan_a_class_that_is_not_a_child_is_an_error_listing_the_children():
 
 
 func test_plan_a_name_that_matches_no_class_is_an_error():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host, ["fixture_nothing"])
 	assert_string_contains(p.error, "fixture_nothing")
 	assert_string_contains(p.error, "no class")
 
 
 func test_plan_a_failing_component_stops_everything():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host, ["fixture_jump_2d", "fixture_dash"])
 	assert_ne(p.error, "")
 	assert_eq(p.blocks, [])
 
 
 func test_plan_skips_members_another_component_already_provides():
-	var host := _host({"Jump": JUMP_SCRIPT, "Base": BASE_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT, "Base": BASE_SCRIPT })
 	var p := _plan(host)
 	assert_eq(_names(p.blocks, "func").count("enable"), 1)
 	assert_eq(_names(p.blocks, "func").count("jump"), 1)
@@ -285,6 +290,7 @@ func test_plan_skips_members_another_component_already_provides():
 
 
 # --- build (reads the real fixture scene, writes nothing) -------------------
+
 
 func test_build_fills_the_root_script_of_the_scene():
 	var r := DogApiGenerator.build("actor", BOTH, "", ROOT)
@@ -348,6 +354,7 @@ func test_build_error_when_the_scene_is_missing():
 
 # --- generate (writes, on a copy in user://) -------------------------------
 
+
 func test_generate_writes_the_merged_source():
 	var r := DogApiGenerator.generate("actor", BOTH, "", TMP)
 	assert_eq(r.error, "")
@@ -383,7 +390,10 @@ func test_generate_update_restores_an_edited_forwarding_func():
 
 
 func test_generate_force_drops_what_was_written_below_the_header():
-	_write(TMP + "/actor/actor.gd", "extends CharacterBody2D\n\nvar my_counter := 1\n\n\nfunc mine() -> void:\n\tpass\n")
+	_write(
+		TMP + "/actor/actor.gd",
+		"extends CharacterBody2D\n\nvar my_counter := 1\n\n\nfunc mine() -> void:\n\tpass\n",
+	)
 	DogApiGenerator.generate("actor", BOTH, "", TMP, DogApiMerge.Mode.FORCE)
 	var text := _read(TMP + "/actor/actor.gd")
 	assert_true(text.begins_with("extends CharacterBody2D\n"))
@@ -400,7 +410,7 @@ func test_generate_does_not_write_on_error():
 
 
 func test_plan_never_forwards_property_accessors():
-	var host := _host({"Jump": JUMP_SCRIPT})
+	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host)
 	host.free()
 	for name in _names(p.blocks, "func"):

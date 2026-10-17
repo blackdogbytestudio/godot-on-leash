@@ -1,7 +1,7 @@
 # Godot On Leash: follows official style guide of GDScript.
 max_line_length = 100
 
-exclude = [".godot", "addons"]
+exclude = [".godot", "addons", "addons/dog/cli/third_party"]
 include = ["addons/dog"]
 
 [rules]

@@ -34,7 +34,6 @@ extends DogCharacterFacade2D
 	set(value):
 		wall_slide_speed = value
 		_jump.wall_slide_speed = value
-
 @export_group("Move")
 @export var speed: float = 200.0:
 	set(value):
@@ -48,7 +47,6 @@ extends DogCharacterFacade2D
 	set(value):
 		friction = value
 		_move.friction = value
-
 @export_group("Gravity")
 @export var gravity: float = 980.0:
 	set(value):
@@ -58,6 +56,7 @@ extends DogCharacterFacade2D
 var _jump: DogJump2D = DogJump2D.new()
 var _move: DogMove2D = DogMove2D.new()
 var _gravity: DogGravity2D = DogGravity2D.new()
+
 
 func dog_leash(...components: Array) -> void:
 	super.dog_leash(_jump, _move, _gravity)

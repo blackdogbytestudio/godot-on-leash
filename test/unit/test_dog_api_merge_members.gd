@@ -8,14 +8,26 @@ const HEAD := "extends CharacterBody2D\n\n\n"
 const VAR_LINE := "@onready var _jump: FixtureJump2D = $Jump"
 const SIGNAL_LINE := "signal landed(speed: float)"
 const CONNECT_LINE := "\t_jump.landed.connect(landed.emit)"
+# --- func_line (a line that must exist at the top of a given func) ---------
+const UPDATE_LINE := "\t_dog_hpda.update(delta)"
+# --- func_line with "match": one line per prefix, -u replaces it ------------
+const INIT_PREFIX := "_dog_hpda.init("
 
 
 func _var(var_name := "_jump") -> Dictionary:
-	return {"kind": "var", "name": var_name, "text": "@onready var %s: FixtureJump2D = $Jump" % var_name}
+	return {
+		"kind": "var",
+		"name": var_name,
+		"text": "@onready var %s: FixtureJump2D = $Jump" % var_name,
+	}
 
 
 func _signal(signal_name := "landed") -> Dictionary:
-	return {"kind": "signal", "name": signal_name, "text": "signal %s(speed: float)" % signal_name}
+	return {
+		"kind": "signal",
+		"name": signal_name,
+		"text": "signal %s(speed: float)" % signal_name,
+	}
 
 
 func _connect(var_name := "_jump", signal_name := "landed") -> Dictionary:
@@ -27,7 +39,11 @@ func _connect(var_name := "_jump", signal_name := "landed") -> Dictionary:
 
 
 func _func(func_name := "jump") -> Dictionary:
-	return {"kind": "func", "name": func_name, "text": "func %s() -> void:\n\t_jump.%s()" % [func_name, func_name]}
+	return {
+		"kind": "func",
+		"name": func_name,
+		"text": "func %s() -> void:\n\t_jump.%s()" % [func_name, func_name],
+	}
 
 
 func _update(source: String, blocks: Array) -> Dictionary:
@@ -40,6 +56,7 @@ func _force(source: String, blocks: Array) -> Dictionary:
 
 # --- var -------------------------------------------------------------------
 
+
 func test_adds_var_after_header_with_one_blank_line():
 	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_var()])
 	assert_eq(r.source, "extends CharacterBody2D\n\n" + VAR_LINE + "\n")
@@ -49,7 +66,10 @@ func test_adds_var_after_header_with_one_blank_line():
 func test_added_onready_var_goes_before_existing_funcs():
 	var source := HEAD + "func a() -> void:\n\tpass\n"
 	var r := DogApiMerge.merge(source, [_var()])
-	assert_eq(r.source, "extends CharacterBody2D\n\n" + VAR_LINE + "\n\n\nfunc a() -> void:\n\tpass\n")
+	assert_eq(
+		r.source,
+		"extends CharacterBody2D\n\n" + VAR_LINE + "\n\n\nfunc a() -> void:\n\tpass\n",
+	)
 
 
 func test_skips_existing_var_even_if_it_differs():
@@ -74,11 +94,15 @@ func test_var_matches_without_onready():
 func test_update_replaces_a_var_line_that_differs():
 	var source := "extends CharacterBody2D\n\n@onready var _jump = $Other\n\n\nfunc a() -> void:\n\tpass\n"
 	var r := _update(source, [_var()])
-	assert_eq(r.source, "extends CharacterBody2D\n\n" + VAR_LINE + "\n\n\nfunc a() -> void:\n\tpass\n")
+	assert_eq(
+		r.source,
+		"extends CharacterBody2D\n\n" + VAR_LINE + "\n\n\nfunc a() -> void:\n\tpass\n",
+	)
 	assert_eq(r.report, ["update var _jump"])
 
 
 # --- signal ----------------------------------------------------------------
+
 
 func test_adds_signal_after_header():
 	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_signal()])
@@ -108,6 +132,7 @@ func test_update_replaces_a_signal_line_that_differs():
 
 # --- ordering and spacing --------------------------------------------------
 
+
 func test_signals_come_before_vars_regardless_of_block_order():
 	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_var(), _signal()])
 	assert_eq(r.source, "extends CharacterBody2D\n\n" + SIGNAL_LINE + "\n\n" + VAR_LINE + "\n")
@@ -131,6 +156,7 @@ func test_func_after_a_var_gets_two_blank_lines():
 
 # --- ready_line ------------------------------------------------------------
 
+
 func test_creates_ready_when_it_is_missing():
 	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_connect()])
 	assert_eq(r.source, HEAD + "func _ready() -> void:\n" + CONNECT_LINE + "\n")
@@ -143,7 +169,10 @@ func test_created_ready_goes_after_vars_and_before_funcs():
 		r.source,
 		"extends CharacterBody2D\n\n" + VAR_LINE + "\n\n\nfunc _ready() -> void:\n" + CONNECT_LINE + "\n\n\nfunc jump() -> void:\n\t_jump.jump()\n"
 	)
-	assert_eq(r.report, ["add func jump", "add func _ready", "add connect _jump.landed", "add var _jump"])
+	assert_eq(
+		r.report,
+		["add func jump", "add func _ready", "add connect _jump.landed", "add var _jump"],
+	)
 
 
 func test_inserts_connect_under_the_signature_of_an_existing_ready():
@@ -187,6 +216,7 @@ func test_ready_with_body_on_the_same_line_is_an_error():
 
 # --- everything together ---------------------------------------------------
 
+
 func test_running_twice_with_every_kind_changes_nothing():
 	var blocks := [_signal(), _var(), _connect(), _func()]
 	var first := DogApiMerge.merge("extends CharacterBody2D\n", blocks)
@@ -208,13 +238,8 @@ func test_force_orders_signals_vars_ready_then_funcs_below_the_header():
 	assert_false(r.source.contains("old"))
 
 
-# --- func_line (a line that must exist at the top of a given func) ---------
-
-const UPDATE_LINE := "\t_dog_hpda.update(delta)"
-
-
 func _func_line(func_name: String, line_name: String, text: String) -> Dictionary:
-	return {"kind": "func_line", "func": func_name, "name": line_name, "text": text}
+	return { "kind": "func_line", "func": func_name, "name": line_name, "text": text }
 
 
 func _update_line() -> Dictionary:
@@ -223,7 +248,10 @@ func _update_line() -> Dictionary:
 
 func test_func_line_creates_physics_process_with_delta_when_missing():
 	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_update_line()])
-	assert_eq(r.source, HEAD + "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n")
+	assert_eq(
+		r.source,
+		HEAD + "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n",
+	)
 	assert_eq(r.report, ["add func _physics_process", "add line _dog_hpda.update"])
 	assert_eq(r.error, "")
 
@@ -231,7 +259,10 @@ func test_func_line_creates_physics_process_with_delta_when_missing():
 func test_func_line_goes_to_the_top_of_an_existing_body():
 	var source := HEAD + "func _physics_process(delta: float) -> void:\n\tmove_and_slide()\n"
 	var r := DogApiMerge.merge(source, [_update_line()])
-	assert_eq(r.source, HEAD + "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\tmove_and_slide()\n")
+	assert_eq(
+		r.source,
+		HEAD + "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\tmove_and_slide()\n",
+	)
 	assert_eq(r.report, ["add line _dog_hpda.update"])
 
 
@@ -262,17 +293,15 @@ func test_func_line_on_ready_matches_ready_line():
 
 func test_func_lines_for_two_funcs_go_to_their_own_funcs():
 	var source := HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc _physics_process(delta: float) -> void:\n\tpass\n"
-	var r := DogApiMerge.merge(source, [_update_line(), _func_line("_ready", "_dog_hpda.init", "\t_dog_hpda.init(idle_state)")])
+	var r := DogApiMerge.merge(
+		source,
+		[_update_line(), _func_line("_ready", "_dog_hpda.init", "\t_dog_hpda.init(idle_state)")],
+	)
 	assert_eq(
 		r.source,
 		HEAD + "func _ready() -> void:\n\t_dog_hpda.init(idle_state)\n\tpass\n\n\nfunc _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\tpass\n"
 	)
 	assert_eq(r.report, ["add line _dog_hpda.update", "add line _dog_hpda.init"])
-
-
-# --- func_line with "match": one line per prefix, -u replaces it ------------
-
-const INIT_PREFIX := "_dog_hpda.init("
 
 
 func _init_line(state: String) -> Dictionary:
@@ -291,7 +320,10 @@ func test_match_keeps_a_differing_line_in_add_mode():
 func test_match_replaces_a_differing_line_in_update_mode():
 	var source := HEAD + "func _ready() -> void:\n\tprint(1)\n\t_dog_hpda.init(idle_state)\n\tprint(2)\n"
 	var r := _update(source, [_init_line("run_state")])
-	assert_eq(r.source, HEAD + "func _ready() -> void:\n\tprint(1)\n\t_dog_hpda.init(run_state)\n\tprint(2)\n")
+	assert_eq(
+		r.source,
+		HEAD + "func _ready() -> void:\n\tprint(1)\n\t_dog_hpda.init(run_state)\n\tprint(2)\n",
+	)
 	assert_eq(r.report, ["update line _dog_hpda.init"])
 
 

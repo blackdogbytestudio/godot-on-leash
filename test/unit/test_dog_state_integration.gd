@@ -49,7 +49,13 @@ func test_add_result_compiles_in_style_guide_order_and_keeps_user_code() -> void
 
 func test_add_twice_only_skips() -> void:
 	var first := _build()
-	var blocks := DogStateGenerator.host_blocks("hero", DogStateTree.parse(PackedStringArray(ARGS.slice(2))), "DogHPDA", "Brain", "grounded")
+	var blocks := DogStateGenerator.host_blocks(
+		"hero",
+		DogStateTree.parse(PackedStringArray(ARGS.slice(2))),
+		"DogHPDA",
+		"Brain",
+		"grounded",
+	)
 	var second := DogApiMerge.merge(first.host_source, blocks)
 	assert_eq(second.source, first.host_source)
 	for line in second.report:

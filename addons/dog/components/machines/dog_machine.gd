@@ -6,8 +6,8 @@ extends DogComponent
 ## Reference to the host/owner. Passed to the state on enter/exit/update.
 var host: Node:
 	get: return host_type()
-
 var _current: DogState
+
 
 ## Initialise the machine with a starting state reference. Call once,
 ## in the host/owner's _ready().

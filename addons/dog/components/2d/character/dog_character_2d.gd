@@ -7,6 +7,7 @@ extends DogComponent
 var host: CharacterBody2D:
 	get: return host_type()
 
+
 ## Overrides [method DogComponent.host_type] with [CharacterBody2D].
 func host_type() -> CharacterBody2D:
 	return owner

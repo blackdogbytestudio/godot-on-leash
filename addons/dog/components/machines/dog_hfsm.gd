@@ -1,7 +1,7 @@
 @tool
 class_name DogHFSM
 extends DogFSM
-## Hierarchical state machine component. 
+## Hierarchical state machine component.
 ##
 ## Works exactly like [DogFSM],
 ## the hierarchy lives inside the states via GDScript inheritance and

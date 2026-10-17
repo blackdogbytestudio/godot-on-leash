@@ -8,18 +8,8 @@ extends DogCommand
 ## script in Godot first. Components are snake_case class names (dog_jump_2d);
 ## --prefix / --suffix are added around each one (--prefix dog --suffix 2d jump).
 
-
 # Overridable so tests never write into res://.
 var root: String = DogApiGenerator.DEFAULT_ROOT
-
-
-class Request:
-	var actor: String = ""
-	var folder: String = ""
-	var root: String = ""
-	var components: Array = []
-	var mode: DogApiMerge.Mode = DogApiMerge.Mode.ADD
-	var error: String = ""
 
 
 func command_name() -> String:
@@ -120,3 +110,12 @@ static func parse_request(args: PackedStringArray) -> Request:
 		request.mode = DogApiMerge.Mode.UPDATE
 
 	return request
+
+
+class Request:
+	var actor: String = ""
+	var folder: String = ""
+	var root: String = ""
+	var components: Array = []
+	var mode: DogApiMerge.Mode = DogApiMerge.Mode.ADD
+	var error: String = ""
