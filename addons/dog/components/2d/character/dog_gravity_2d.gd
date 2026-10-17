@@ -4,5 +4,6 @@ extends DogCharacter2D
 
 @export var gravity: float = 980.0
 
+
 func apply_gravity(delta: float) -> void:
 	host.velocity.y += gravity * delta

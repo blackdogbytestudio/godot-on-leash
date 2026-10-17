@@ -6,6 +6,7 @@ extends DogCharacter2D
 @export var acceleration: float = 1500.0
 @export var friction: float = 1200.0
 
+
 func move(direction: Vector2, delta: float) -> void:
 	move_x(direction.x, delta)
 	move_y(direction.y, delta)

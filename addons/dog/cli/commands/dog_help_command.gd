@@ -2,6 +2,7 @@
 class_name DogHelpCommand
 extends DogCommand
 
+
 func command_name() -> String:
 	return "help"
 

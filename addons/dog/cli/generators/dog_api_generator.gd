@@ -12,6 +12,7 @@ extends RefCounted
 
 const DEFAULT_ROOT := "res://scenes/characters"
 
+
 ## build + write. Nothing is written on error, when `write` is false, or when
 ## the merged source equals the file.
 static func generate(
@@ -68,7 +69,10 @@ static func build(
 		return _failure("the script of %s is built into the scene: save it as a .gd file first" % scene_path)
 
 	if components.is_empty():
-		var message := "no components given. components in %s: %s" % [scene_path, ", ".join(candidates(host))]
+		var message := "no components given. components in %s: %s" % [
+			scene_path,
+			", ".join(candidates(host)),
+		]
 		host.free()
 		return _failure(message)
 
@@ -117,11 +121,11 @@ static func plan(host: Node, components: Array) -> Dictionary:
 
 		if not children.has(component_name):
 			var reason := "%s is not a child of %s: add the node to the scene first (children with a class: %s)." % [
-				component_name, host.name, ", ".join(candidates(host))
+				component_name, host.name, ", ".join(candidates(host)),
 			]
 			if not _class_exists(component_name):
 				reason = "no class in the project matches '%s'." % component_name
-			return {"blocks": [], "warnings": [], "error": reason}
+			return { "blocks": [], "warnings": [], "error": reason }
 		var nodes: Array = children[component_name]
 		if nodes.size() > 1:
 			var node_names := PackedStringArray()
@@ -130,7 +134,11 @@ static func plan(host: Node, components: Array) -> Dictionary:
 			return {
 				"blocks": [],
 				"warnings": [],
-				"error": "more than one %s under %s: %s. A component class must appear once." % [component_name, host.name, ", ".join(node_names)],
+				"error": "more than one %s under %s: %s. A component class must appear once." % [
+					component_name,
+					host.name,
+					", ".join(node_names),
+				],
 			}
 
 		var child: Node = nodes[0]
@@ -155,7 +163,7 @@ static func plan(host: Node, components: Array) -> Dictionary:
 				continue
 			blocks.append(DogApiRender.func_block(var_name, method))
 
-	return {"blocks": blocks, "warnings": warnings, "error": ""}
+	return { "blocks": blocks, "warnings": warnings, "error": "" }
 
 
 ## snake_case class names of the direct children of `host` that have a script with
@@ -173,29 +181,39 @@ static func candidates(host: Node) -> Array:
 ## is an error listing them. Returns {path, error}.
 static func find_scene(actor: String, folder := "", root := DEFAULT_ROOT) -> Dictionary:
 	if not DogNames.is_valid_name(actor):
-		return {"path": "", "error": "'%s' is not a valid actor name (use snake_case)." % actor}
+		return { "path": "", "error": "'%s' is not a valid actor name (use snake_case)." % actor }
 	var base := normalize_root(root)
 	if base.is_empty():
-		return {"path": "", "error": "'%s' is not a valid root." % root}
+		return { "path": "", "error": "'%s' is not a valid root." % root }
 	if not folder.is_empty():
 		for part in folder.split("/"):
 			if not DogNames.is_valid_name(part):
-				return {"path": "", "error": "'%s' is not a valid folder (snake_case names separated by /)." % folder}
+				return {
+					"path": "",
+					"error": "'%s' is not a valid folder (snake_case names separated by /)." % folder,
+				}
 
 	var actor_dir := folder if not folder.is_empty() else actor
 	var exact := "%s/%s/%s.tscn" % [base, actor_dir, actor]
 	if FileAccess.file_exists(exact):
-		return {"path": exact, "error": ""}
+		return { "path": exact, "error": "" }
 
 	var search_in := base if folder.is_empty() else base + "/" + folder
 	var matches: Array = []
 	_find_files(search_in, actor + ".tscn", matches)
 	matches.sort()
 	if matches.is_empty():
-		return {"path": "", "error": "no %s.tscn found under %s." % [actor, search_in]}
+		return { "path": "", "error": "no %s.tscn found under %s." % [actor, search_in] }
 	if matches.size() > 1:
-		return {"path": "", "error": "more than one %s.tscn under %s: %s (use --folder)." % [actor, search_in, ", ".join(matches)]}
-	return {"path": matches[0], "error": ""}
+		return {
+			"path": "",
+			"error": "more than one %s.tscn under %s: %s (use --folder)." % [
+				actor,
+				search_in,
+				", ".join(matches),
+			],
+		}
+	return { "path": matches[0], "error": "" }
 
 
 ## `scenes` -> `res://scenes`; trailing slash dropped; "" when it has `..` or is empty.
@@ -235,7 +253,13 @@ static func _class_exists(snake_name: String) -> bool:
 	return false
 
 
-static func _claim(owners: Dictionary, kind: String, member: String, node_name: String, warnings: Array) -> bool:
+static func _claim(
+	owners: Dictionary,
+	kind: String,
+	member: String,
+	node_name: String,
+	warnings: Array,
+) -> bool:
 	if not DogApiRender.is_public(member):
 		return false
 	var key := "%s %s" % [kind, member]

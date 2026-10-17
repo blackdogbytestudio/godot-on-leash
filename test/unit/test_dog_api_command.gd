@@ -55,6 +55,7 @@ func _args(line: String) -> PackedStringArray:
 
 # --- command metadata ------------------------------------------------------
 
+
 func test_command_name_and_usage():
 	assert_eq(_command.command_name(), "api")
 	assert_ne(_command.description(), "")
@@ -62,6 +63,7 @@ func test_command_name_and_usage():
 
 
 # --- parse_request ---------------------------------------------------------
+
 
 func test_parse_actor_only_defaults_to_add_mode():
 	var r := DogApiCommand.parse_request(_args("player"))
@@ -135,7 +137,10 @@ func test_parse_prefix_and_suffix_wrap_every_component():
 
 
 func test_parse_prefix_alone_and_suffix_alone():
-	assert_eq(DogApiCommand.parse_request(_args("player --prefix dog jump")).components, ["dog_jump"])
+	assert_eq(
+		DogApiCommand.parse_request(_args("player --prefix dog jump")).components,
+		["dog_jump"],
+	)
 	assert_eq(DogApiCommand.parse_request(_args("player --suffix 2d jump")).components, ["jump_2d"])
 
 
@@ -157,6 +162,7 @@ func test_parse_invalid_component_is_an_error():
 
 
 # --- run -------------------------------------------------------------------
+
 
 func test_run_invalid_request_prints_the_error_and_writes_nothing():
 	var code := _command.run(_args("Player"))

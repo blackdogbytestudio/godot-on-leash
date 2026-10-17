@@ -2,7 +2,6 @@ extends GutTest
 
 const FakeCommand := preload("res://test/doubles/fake_command.gd")
 
-
 var _cli: DogCli
 
 

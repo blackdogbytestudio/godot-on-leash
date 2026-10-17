@@ -4,14 +4,6 @@ extends EditorPlugin
 var _cli: DogCli
 var _panel: DogPanel
 
-func _enable_plugin() -> void:
-	DogScaffoldSetup.install()
-	DogTemplateSetup.install()
-
-
-func _disable_plugin() -> void:
-	pass
-
 
 func _enter_tree() -> void:
 	_cli = DogCli.new()
@@ -24,3 +16,12 @@ func _exit_tree() -> void:
 	remove_control_from_bottom_panel(_panel)
 	_panel.free()
 	_cli.dispose()
+
+
+func _enable_plugin() -> void:
+	DogScaffoldSetup.install()
+	DogTemplateSetup.install()
+
+
+func _disable_plugin() -> void:
+	pass

@@ -6,7 +6,7 @@ extends Node
 ## Dog is your best friend. It can encapsulate a specific behavior
 ## for its host. The host has to be of a type other than null.
 ## [br][br]
-## It is expected that subclasses override [method host_type] with a strict type, 
+## It is expected that subclasses override [method host_type] with a strict type,
 ## allowing the framework to validate the host structure automatically.
 ##
 ## [codeblock]
@@ -22,6 +22,7 @@ extends Node
 ## want more functionality, or want to disable one, prefer creating
 ## a new component that extends the previous one.
 
+
 func _get_configuration_warnings() -> PackedStringArray:
 	return _validate_host()
 
@@ -34,7 +35,7 @@ func host_type() -> Node:
 func _validate_host() -> PackedStringArray:
 	if not host_type():
 		var expected_type: String = "Node"
-		
+
 		for method in get_method_list():
 			if method.name == "host_type":
 				var return_info: Dictionary = method["return"]
@@ -42,6 +43,6 @@ func _validate_host() -> PackedStringArray:
 					expected_type = return_info["class_name"]
 				break
 		return [
-			"This component needs a host as %s." % expected_type
+			"This component needs a host as %s." % expected_type,
 		]
 	return []

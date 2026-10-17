@@ -16,7 +16,7 @@ func _block(func_name: String) -> Dictionary:
 
 
 func _block_text(func_name: String, text: String) -> Dictionary:
-	return {"name": func_name, "text": text}
+	return { "name": func_name, "text": text }
 
 
 func _update(source: String, blocks: Array) -> Dictionary:
@@ -29,9 +29,13 @@ func _force(source: String, blocks: Array) -> Dictionary:
 
 # --- ADD (default): add what is missing ------------------------------------
 
+
 func test_adds_missing_func_after_header():
 	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_block("jump")])
-	assert_eq(r.source, "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n")
+	assert_eq(
+		r.source,
+		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
+	)
 	assert_eq(r.report, ["add func jump"])
 	assert_eq(r.error, "")
 
@@ -73,12 +77,18 @@ func test_ignores_func_name_inside_a_comment():
 
 func test_normalizes_trailing_blank_lines_to_two():
 	var r := DogApiMerge.merge("extends CharacterBody2D\n\n\n\n\n", [_block("jump")])
-	assert_eq(r.source, "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n")
+	assert_eq(
+		r.source,
+		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
+	)
 
 
 func test_handles_source_without_final_newline():
 	var r := DogApiMerge.merge("extends CharacterBody2D", [_block("jump")])
-	assert_eq(r.source, "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n")
+	assert_eq(
+		r.source,
+		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
+	)
 
 
 func test_no_blocks_leaves_source_alone():
@@ -104,6 +114,7 @@ func test_add_mode_does_not_validate_bodies():
 
 
 # --- UPDATE (-u): replace funcs whose text differs -------------------------
+
 
 func test_update_replaces_edited_body():
 	var source := HEAD + "func jump() -> void:\n\tprint(\"mine\")\n\t_dog_jump_2d.jump()\n"
@@ -214,6 +225,7 @@ func test_update_twice_skips_everything_the_second_time():
 
 # --- UPDATE (-u): early error, nothing changes -----------------------------
 
+
 func test_update_errors_on_a_column_zero_comment_inside_the_body():
 	var source := HEAD + "func jump() -> void:\n\tfoo()\n# bar()\n\tbaz()\n\n\nfunc b() -> void:\n\tpass\n"
 	var r := _update(source, [_block("jump")])
@@ -243,6 +255,7 @@ func test_update_error_changes_nothing_even_for_the_other_funcs():
 
 # --- FORCE (-f): keep the header, rewrite the rest -------------------------
 
+
 func test_force_on_header_only_file_matches_default_mode():
 	var source := "extends CharacterBody2D\n"
 	var forced := _force(source, [_block("jump")])
@@ -253,14 +266,20 @@ func test_force_on_header_only_file_matches_default_mode():
 func test_force_drops_everything_below_the_header():
 	var source := "extends CharacterBody2D\n\n\nfunc old() -> void:\n\tpass\n"
 	var r := _force(source, [_block("jump")])
-	assert_eq(r.source, "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n")
+	assert_eq(
+		r.source,
+		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
+	)
 	assert_eq(r.error, "")
 
 
 func test_force_rewrites_a_func_that_already_exists():
 	var source := "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\tprint(\"mine\")\n"
 	var r := _force(source, [_block("jump")])
-	assert_eq(r.source, "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n")
+	assert_eq(
+		r.source,
+		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
+	)
 
 
 func test_force_keeps_annotations_class_name_and_doc_comment():
@@ -282,7 +301,10 @@ func test_force_keeps_class_name_written_after_extends():
 func test_force_header_ends_at_the_first_member():
 	var source := "extends CharacterBody2D\n\nvar speed := 1\n\n\nfunc old() -> void:\n\tpass\n"
 	var r := _force(source, [_block("jump")])
-	assert_eq(r.source, "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n")
+	assert_eq(
+		r.source,
+		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
+	)
 
 
 func test_force_does_not_error_on_malformed_funcs_below_the_header():
@@ -294,15 +316,23 @@ func test_force_does_not_error_on_malformed_funcs_below_the_header():
 
 # --- FORCE (-f): report what was dropped -----------------------------------
 
+
 func test_force_reports_each_dropped_member_in_file_order():
 	var source := HEAD + "signal died\nvar speed := 1\n@onready var _x: Node = $X\n\n\nfunc old() -> void:\n\tpass\n"
 	var r := _force(source, [_block("jump")])
-	assert_eq(r.report, ["add func jump", "drop signal died", "drop var speed", "drop var _x", "drop func old"])
+	assert_eq(
+		r.report,
+		["add func jump", "drop signal died", "drop var speed", "drop var _x", "drop func old"],
+	)
 
 
 func test_force_does_not_report_regenerated_members_as_dropped():
 	var source := HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc jump() -> void:\n\tprint(\"mine\")\n"
-	var connect := {"kind": "ready_line", "name": "_x.landed", "text": "\t_x.landed.connect(landed.emit)"}
+	var connect := {
+		"kind": "ready_line",
+		"name": "_x.landed",
+		"text": "\t_x.landed.connect(landed.emit)",
+	}
 	var r := _force(source, [_block("jump"), connect])
 	assert_eq(r.report, ["add func jump", "add func _ready", "add connect _x.landed"])
 

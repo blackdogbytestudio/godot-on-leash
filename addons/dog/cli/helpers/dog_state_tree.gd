@@ -1,14 +1,6 @@
 @tool
 class_name DogStateTree
 extends RefCounted
-## Parses a dot-depth state tree into a flat, ordered list of nodes.
-## Example: alive .grounded ..run ...run_ground ..idle dead
-
-class StateNode:
-	var name: String
-	var parent: String  # Empty for roots.
-	var depth: int
-
 
 # Strict snake_case: every segment starts with a letter, so there are no double,
 # leading or trailing underscores. "\z" (not "$") because "$" also matches before
@@ -45,8 +37,17 @@ static func parse(tokens: PackedStringArray) -> DogStateTree:
 
 		if depth > path.size():
 			if path.is_empty():
-				return _fail(tree, "'%s' can't be nested: the first state must be a root." % state_name)
-			return _fail(tree, "'%s' is nested too deep: previous state is at depth %d." % [state_name, path.size() - 1])
+				return _fail(
+					tree,
+					"'%s' can't be nested: the first state must be a root." % state_name,
+				)
+			return _fail(
+				tree,
+				"'%s' is nested too deep: previous state is at depth %d." % [
+					state_name,
+					path.size() - 1,
+				],
+			)
 
 		if seen.has(state_name):
 			return _fail(tree, "'%s' is declared twice." % state_name)
@@ -71,3 +72,13 @@ static func _fail(tree: DogStateTree, message: String) -> DogStateTree:
 	tree.nodes.clear()
 	tree.error = message
 	return tree
+
+
+## Parses a dot-depth state tree into a flat, ordered list of nodes.
+## Example: alive .grounded ..run ...run_ground ..idle dead
+
+
+class StateNode:
+	var name: String
+	var parent: String  # Empty for roots.
+	var depth: int

@@ -1,5 +1,6 @@
 extends GutTest
 
+
 func _parents(tree: DogStateTree) -> Dictionary:
 	var result := {}
 	for node in tree.nodes:

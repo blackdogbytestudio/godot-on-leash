@@ -19,6 +19,7 @@ extends DogMachine
 
 var _locked: bool = false
 
+
 ## Force an immediate transition, bypassing locked.
 func force(state: DogState) -> void:
 	if state == null:

@@ -26,7 +26,11 @@ extends RefCounted
 ## without one, at the end. What already exists is never reordered.
 ## Returns {"source": String, "report": Array[String], "error": String}.
 
-enum Mode { ADD, UPDATE, FORCE }
+enum Mode {
+	ADD,
+	UPDATE,
+	FORCE,
+}
 
 ## A top-level line that starts a new declaration (so it can't be part of a body).
 const DECLARATION := "^(@|##|(static\\s+func|func|var|const|signal|enum|class_name|class|extends)\\b)"
@@ -106,12 +110,18 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 				report.append("add " + label)
 				continue
 			if not lines[func_start].strip_edges().ends_with(":"):
-				return _error(source, "func %s (line %d) has its body on the same line: can't add lines under it" % [target, func_start + 1])
+				return _error(
+					source,
+					"func %s (line %d) has its body on the same line: can't add lines under it" % [
+						target,
+						func_start + 1,
+					],
+				)
 			var match_prefix: String = block.get("match", "")
 			var matched := -1 if match_prefix.is_empty() else _find_line(lines, func_start, match_prefix)
 			if matched != -1:
 				if mode == Mode.UPDATE and lines[matched].strip_edges() != text.strip_edges():
-					lines_to_update.append({"func": target, "match": match_prefix, "text": text})
+					lines_to_update.append({ "func": target, "match": match_prefix, "text": text })
 					report.append("update " + label)
 				else:
 					report.append("skip " + label)
@@ -134,7 +144,14 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 			var span := _span_for(kind, lines, start)
 			var bad_line: int = span["bad_line"]
 			if bad_line != -1:
-				return _error(source, "func %s (line %d) looks cut in the middle: line %d is neither a declaration nor part of its body" % [block_name, start + 1, bad_line + 1])
+				return _error(
+					source,
+					"func %s (line %d) looks cut in the middle: line %d is neither a declaration nor part of its body" % [
+						block_name,
+						start + 1,
+						bad_line + 1,
+					],
+				)
 			var end: int = span["end"]
 			if "\n".join(lines.slice(start, end + 1)) != text:
 				to_replace.append(block)
@@ -159,14 +176,14 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 
 	for target in funcs_to_create:
 		var signature: String = SIGNATURES.get(target, "func %s() -> void:" % target)
-		to_add.append({"text": signature + "\n" + "\n".join(funcs_to_create[target])})
+		to_add.append({ "text": signature + "\n" + "\n".join(funcs_to_create[target]) })
 
 	for block in to_add:
 		lines = _insert(lines, block["text"].split("\n"))
 
 	for label in dropped:
 		report.append("drop " + label)
-	return {"source": "\n".join(lines), "report": report, "error": ""}
+	return { "source": "\n".join(lines), "report": report, "error": "" }
 
 
 ## "<keyword> <name>" of each member below the header that no block regenerates.
@@ -257,7 +274,7 @@ static func _members(lines: PackedStringArray) -> Array:
 				lead = i
 		elif _matches(DECLARATION, line):
 			var start := i if lead == -1 else lead
-			members.append({"start": start, "decl": i, "rank": _rank(lines, start, i)})
+			members.append({ "start": start, "decl": i, "rank": _rank(lines, start, i) })
 			lead = -1
 		else:
 			lead = -1
@@ -311,7 +328,7 @@ static func _strip_annotations(line: String) -> String:
 
 
 static func _error(source: String, message: String) -> Dictionary:
-	return {"source": source, "report": [], "error": message}
+	return { "source": source, "report": [], "error": message }
 
 
 static func _word(kind: String) -> String:
@@ -349,7 +366,7 @@ static func _find(lines: PackedStringArray, kind: String, block_name: String) ->
 static func _span_for(kind: String, lines: PackedStringArray, start: int) -> Dictionary:
 	if kind == "func":
 		return _span(lines, start)
-	return {"end": start, "bad_line": -1}
+	return { "end": start, "bad_line": -1 }
 
 
 ## Index of the first body line of the func at `start` that begins with `prefix`
@@ -390,7 +407,7 @@ static func _span(lines: PackedStringArray, start: int) -> Dictionary:
 		break
 
 	if i >= lines.size() or _matches(DECLARATION, lines[i]):
-		return {"end": end, "bad_line": -1}
+		return { "end": end, "bad_line": -1 }
 
 	if lines[i].begins_with("#"):
 		# A plain column-0 comment is fine between members, but not in the middle
@@ -399,9 +416,9 @@ static func _span(lines: PackedStringArray, start: int) -> Dictionary:
 		while j < lines.size() and (lines[j].strip_edges().is_empty() or lines[j].begins_with("#")):
 			j += 1
 		if j >= lines.size() or not (lines[j].begins_with("\t") or lines[j].begins_with(" ")):
-			return {"end": end, "bad_line": -1}
+			return { "end": end, "bad_line": -1 }
 
-	return {"end": end, "bad_line": i}
+	return { "end": end, "bad_line": i }
 
 
 ## Number of lines that make up the header: everything before the first member.

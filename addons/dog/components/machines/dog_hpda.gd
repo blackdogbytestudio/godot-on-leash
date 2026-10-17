@@ -1,7 +1,7 @@
 @tool
 class_name DogHPDA
 extends DogPDA
-## Hierarchical pushdown automaton component. 
+## Hierarchical pushdown automaton component.
 ##
 ## Combines the DogHFSM
 ## guard hierarchy with DogPDA stack behavior. Expects DogHPDAState

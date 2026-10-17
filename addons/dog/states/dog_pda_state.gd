@@ -24,6 +24,7 @@ extends DogState
 ##         host.set_physics_process(true)
 ## [/codeblock]
 
+
 ## Called when another state is pushed on top of this state.
 ## Pause the state without cleaning up its resources.
 @abstract
@@ -32,5 +33,7 @@ func pause(host: Node) -> void
 
 ## Called when the state above this one is removed.
 ## Resume the state from where it was paused.
+
+
 @abstract
 func resume(host: Node) -> void
