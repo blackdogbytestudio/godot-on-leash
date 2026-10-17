@@ -18,7 +18,9 @@ data_*/
 mono_crash.*.json
 
 # Dog-specific ignores
+/builds
 /addons/*
 !/addons/dog/
-builds/
 !/addons/gut/
+!/addons/gdstyle
+/addons/gdstyle/settings.json

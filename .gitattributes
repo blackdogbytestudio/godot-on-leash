@@ -3,4 +3,6 @@
 
 # Keep dev-only files out of the Asset Library / git archive.
 /addons/gut export-ignore
+/addons/gdstyle export-ignore
 /test export-ignore
+
