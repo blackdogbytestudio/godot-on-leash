@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
 
 

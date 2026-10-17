@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
 
 const FakeCommand := preload("res://test/doubles/fake_command.gd")

@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
 ## DogStateGenerator.build against a real scene in test/doubles/state: the hero
 ## scene (class_name Hero, a DogHPDA child named Brain) and its states, already
