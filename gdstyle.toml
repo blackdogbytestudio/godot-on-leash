@@ -1,0 +1,8 @@
+# Godot On Leash: follows official style guide of GDScript.
+max_line_length = 100
+
+exclude = [".godot", "addons"]
+include = ["addons/dog"]
+
+[rules]
+"quality/type-hint" = "warn"
