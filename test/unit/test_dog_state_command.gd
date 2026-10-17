@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
 
 const Command := preload("res://addons/dog/cli/commands/dog_state_command.gd")
