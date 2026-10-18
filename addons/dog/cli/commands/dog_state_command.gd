@@ -7,6 +7,16 @@ extends DogCommand
 const FLAT_TYPES: PackedStringArray = ["fsm", "pda"]
 const TREE_TYPES: PackedStringArray = ["hfsm", "hpda"]
 
+# Error messages
+const MISSING_ARGUMENT := "missing <%s>."
+const UNKNOWN_OPTION := "unknown option '%s'."
+const UNKNOWN_TYPE := "unknown type '%s'."
+const INVALID_ACTOR := "'%s' is not a valid actor name (use snake_case)."
+const INVALID_FOLDER := "'%s' is not a valid folder (snake_case names separated by /)."
+const INVALID_INITIAL := "'%s' is not a valid --initial (a state name, no dots)."
+const FORCE_AND_UPDATE := "use either -f or -u, not both."
+const NESTED_IN_FLAT := "'%s' is flat: nested states are not allowed."
+
 # Overridable so tests never write into res://.
 var root: String = DogStateGenerator.ROOT
 
@@ -90,40 +100,40 @@ static func parse_request(args: PackedStringArray) -> Request:
 
 	var missing: Array = parser.get_missing_required_options()
 	if not missing.is_empty():
-		request.error = "missing <%s>." % missing[0].option_name
+		request.error = MISSING_ARGUMENT % missing[0].option_name
 		return request
 
 	for token in parser.unused:
 		if parser.is_option(token):
-			request.error = "unknown option '%s'." % token
+			request.error = UNKNOWN_OPTION % token
 			return request
 
 	request.type = parser.get_value("type")
 	if request.type not in FLAT_TYPES and request.type not in TREE_TYPES:
-		request.error = "unknown type '%s'." % request.type
+		request.error = UNKNOWN_TYPE % request.type
 		return request
 
 	request.actor = parser.get_value("actor")
 	if not DogNames.is_valid_name(request.actor):
-		request.error = "'%s' is not a valid actor name (use snake_case)." % request.actor
+		request.error = INVALID_ACTOR % request.actor
 		return request
 
 	request.folder = parser.get_value("--folder")
 	if not request.folder.is_empty():
 		for part in request.folder.split("/"):
 			if not DogNames.is_valid_name(part):
-				request.error = "'%s' is not a valid folder (snake_case names separated by /)." % request.folder
+				request.error = INVALID_FOLDER % request.folder
 				return request
 	request.extends_state = parser.get_value("--extends")
 	request.initial = parser.get_value("--initial")
 	if not request.initial.is_empty() and not DogStateTree.is_valid_name(request.initial):
-		request.error = "'%s' is not a valid --initial (a state name, no dots)." % request.initial
+		request.error = INVALID_INITIAL % request.initial
 		return request
 
 	var force: bool = parser.get_value("--force")
 	var update: bool = parser.get_value("--update")
 	if force and update:
-		request.error = "use either -f or -u, not both."
+		request.error = FORCE_AND_UPDATE
 		return request
 	if force:
 		request.mode = DogApiMerge.Mode.FORCE
@@ -136,7 +146,7 @@ static func parse_request(args: PackedStringArray) -> Request:
 		return request
 
 	if request.type in FLAT_TYPES and tree.nodes.any(func(n): return n.depth > 0):
-		request.error = "'%s' is flat: nested states are not allowed." % request.type
+		request.error = NESTED_IN_FLAT % request.type
 		return request
 
 	request.tree = tree

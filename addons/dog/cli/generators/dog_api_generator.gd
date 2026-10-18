@@ -12,6 +12,27 @@ extends RefCounted
 
 const DEFAULT_ROOT := "res://scenes/characters"
 
+# Error messages
+const COULD_NOT_WRITE := "could not write %s"
+const COULD_NOT_READ := "could not read %s"
+const COULD_NOT_LOAD := "could not load %s"
+const COULD_NOT_INSTANTIATE := "could not instantiate %s"
+const NO_HOST_SCRIPT := "the root node of %s has no script: attach one in Godot first"
+const BUILT_IN_SCRIPT := "the script of %s is built into the scene: save it as a .gd file first"
+const NO_COMPONENTS := "no components given. components in %s: %s"
+const NOT_A_CHILD := (
+	"%s is not a child of %s: add the node to the scene first"
+	+ " (children with a class: %s)."
+)
+const UNKNOWN_CLASS := "no class in the project matches '%s'."
+const REPEATED_COMPONENT := "more than one %s under %s: %s. A component class must appear once."
+const INVALID_ACTOR := "'%s' is not a valid actor name (use snake_case)."
+const INVALID_ROOT := "'%s' is not a valid root."
+const INVALID_FOLDER := "'%s' is not a valid folder (snake_case names separated by /)."
+const SCENE_NOT_FOUND := "no %s.tscn found under %s."
+const MANY_SCENES := "more than one %s.tscn under %s: %s (use --folder)."
+const MEMBER_SKIPPED := "%s %s of %s was skipped: %s already provides it"
+
 
 ## build + write. Nothing is written on error, when `write` is false, or when
 ## the merged source equals the file.
@@ -29,7 +50,7 @@ static func generate(
 		return result
 	var file := FileAccess.open(result["path"], FileAccess.WRITE)
 	if file == null:
-		result["error"] = "could not write %s" % result["path"]
+		result["error"] = COULD_NOT_WRITE % result["path"]
 		return result
 	file.store_string(result["source"])
 	file.close()
@@ -54,22 +75,22 @@ static func build(
 
 	var packed := load(scene_path) as PackedScene
 	if packed == null:
-		return _failure("could not load %s" % scene_path)
+		return _failure(COULD_NOT_LOAD % scene_path)
 	var host := packed.instantiate()
 	if host == null:
-		return _failure("could not instantiate %s" % scene_path)
+		return _failure(COULD_NOT_INSTANTIATE % scene_path)
 
 	var host_script := host.get_script() as Script
 	if host_script == null:
 		host.free()
-		return _failure("the root node of %s has no script: attach one in Godot first" % scene_path)
+		return _failure(NO_HOST_SCRIPT % scene_path)
 	var host_path := host_script.resource_path
 	if host_path.is_empty() or host_path.contains("::"):
 		host.free()
-		return _failure("the script of %s is built into the scene: save it as a .gd file first" % scene_path)
+		return _failure(BUILT_IN_SCRIPT % scene_path)
 
 	if components.is_empty():
-		var message := "no components given. components in %s: %s" % [
+		var message := NO_COMPONENTS % [
 			scene_path,
 			", ".join(candidates(host)),
 		]
@@ -84,7 +105,7 @@ static func build(
 
 	var file := FileAccess.open(host_path, FileAccess.READ)
 	if file == null:
-		return _failure("could not read %s" % host_path)
+		return _failure(COULD_NOT_READ % host_path)
 	var original := file.get_as_text()
 	file.close()
 
@@ -120,11 +141,11 @@ static func plan(host: Node, components: Array) -> Dictionary:
 		taken[component_name] = true
 
 		if not children.has(component_name):
-			var reason := "%s is not a child of %s: add the node to the scene first (children with a class: %s)." % [
+			var reason := NOT_A_CHILD % [
 				component_name, host.name, ", ".join(candidates(host)),
 			]
 			if not _class_exists(component_name):
-				reason = "no class in the project matches '%s'." % component_name
+				reason = UNKNOWN_CLASS % component_name
 			return { "blocks": [], "warnings": [], "error": reason }
 		var nodes: Array = children[component_name]
 		if nodes.size() > 1:
@@ -134,7 +155,7 @@ static func plan(host: Node, components: Array) -> Dictionary:
 			return {
 				"blocks": [],
 				"warnings": [],
-				"error": "more than one %s under %s: %s. A component class must appear once." % [
+				"error": REPEATED_COMPONENT % [
 					component_name,
 					host.name,
 					", ".join(node_names),
@@ -181,16 +202,16 @@ static func candidates(host: Node) -> Array:
 ## is an error listing them. Returns {path, error}.
 static func find_scene(actor: String, folder := "", root := DEFAULT_ROOT) -> Dictionary:
 	if not DogNames.is_valid_name(actor):
-		return { "path": "", "error": "'%s' is not a valid actor name (use snake_case)." % actor }
+		return { "path": "", "error": INVALID_ACTOR % actor }
 	var base := normalize_root(root)
 	if base.is_empty():
-		return { "path": "", "error": "'%s' is not a valid root." % root }
+		return { "path": "", "error": INVALID_ROOT % root }
 	if not folder.is_empty():
 		for part in folder.split("/"):
 			if not DogNames.is_valid_name(part):
 				return {
 					"path": "",
-					"error": "'%s' is not a valid folder (snake_case names separated by /)." % folder,
+					"error": INVALID_FOLDER % folder,
 				}
 
 	var actor_dir := folder if not folder.is_empty() else actor
@@ -203,11 +224,11 @@ static func find_scene(actor: String, folder := "", root := DEFAULT_ROOT) -> Dic
 	_find_files(search_in, actor + ".tscn", matches)
 	matches.sort()
 	if matches.is_empty():
-		return { "path": "", "error": "no %s.tscn found under %s." % [actor, search_in] }
+		return { "path": "", "error": SCENE_NOT_FOUND % [actor, search_in] }
 	if matches.size() > 1:
 		return {
 			"path": "",
-			"error": "more than one %s.tscn under %s: %s (use --folder)." % [
+			"error": MANY_SCENES % [
 				actor,
 				search_in,
 				", ".join(matches),
@@ -265,7 +286,7 @@ static func _claim(
 	var key := "%s %s" % [kind, member]
 	if owners.has(key):
 		if owners[key] != node_name:
-			warnings.append("%s %s of %s was skipped: %s already provides it" % [kind, member, node_name, owners[key]])
+			warnings.append(MEMBER_SKIPPED % [kind, member, node_name, owners[key]])
 		return false
 	owners[key] = node_name
 	return true

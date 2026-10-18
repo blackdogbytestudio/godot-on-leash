@@ -8,6 +8,13 @@ extends DogCommand
 ## script in Godot first. Components are snake_case class names (dog_jump_2d);
 ## --prefix / --suffix are added around each one (--prefix dog --suffix 2d jump).
 
+# Error messages
+const MISSING_ARGUMENT := "missing <%s>."
+const UNKNOWN_OPTION := "unknown option '%s'."
+const INVALID_ACTOR := "'%s' is not a valid actor name (use snake_case)."
+const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
+const FORCE_AND_UPDATE := "use either -f or -u, not both."
+
 # Overridable so tests never write into res://.
 var root: String = DogApiGenerator.DEFAULT_ROOT
 
@@ -68,19 +75,19 @@ static func parse_request(args: PackedStringArray) -> Request:
 
 	var missing: Array = parser.get_missing_required_options()
 	if not missing.is_empty():
-		request.error = "missing <%s>." % missing[0].option_name
+		request.error = MISSING_ARGUMENT % missing[0].option_name
 		return request
 
 	var tokens: Array = []
 	for token in parser.unused:
 		if parser.is_option(token):
-			request.error = "unknown option '%s'." % token
+			request.error = UNKNOWN_OPTION % token
 			return request
 		tokens.append(token)
 
 	request.actor = parser.get_value("actor")
 	if not DogNames.is_valid_name(request.actor):
-		request.error = "'%s' is not a valid actor name (use snake_case)." % request.actor
+		request.error = INVALID_ACTOR % request.actor
 		return request
 
 	var prefix: String = String(parser.get_value("--prefix")).trim_suffix("_")
@@ -92,7 +99,7 @@ static func parse_request(args: PackedStringArray) -> Request:
 		if not suffix.is_empty():
 			component = component + "_" + suffix
 		if not DogNames.is_valid_name(component):
-			request.error = "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)." % component
+			request.error = INVALID_COMPONENT % component
 			return request
 		request.components.append(component)
 
@@ -102,7 +109,7 @@ static func parse_request(args: PackedStringArray) -> Request:
 	var force: bool = parser.get_value("--force")
 	var update: bool = parser.get_value("--update")
 	if force and update:
-		request.error = "use either -f or -u, not both."
+		request.error = FORCE_AND_UPDATE
 		return request
 	if force:
 		request.mode = DogApiMerge.Mode.FORCE

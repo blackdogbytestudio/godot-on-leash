@@ -33,6 +33,25 @@ const FAMILIES := {
 	"hpda": { "dir": "DogHPDAState", "base": "DogHPDAState", "machine": "DogHPDA" },
 }
 
+# Error messages
+const COULD_NOT_DELETE := "could not delete '%s' (error %d)."
+const COULD_NOT_CREATE := "could not create '%s' (error %d)."
+const COULD_NOT_WRITE := "could not write '%s' (error %d)."
+const COULD_NOT_LOAD := "could not load %s."
+const INITIAL_NOT_IN_TREE := "--initial '%s' is not in the tree. states: %s."
+const TEMPLATE_DIR_NOT_FOUND := "template folder '%s' not found."
+const TEMPLATE_MISSING := "template '%s' is missing or empty."
+const UNSAFE_DELETE := "refusing to delete '%s': not an actor states folder inside %s."
+const HOST_MERGE_FAILED := "%s: %s."
+const SCENE_NOT_FOUND := "no %s.tscn in %s."
+const SCENE_ELSEWHERE := " found %s: use --folder %s."
+const NO_HOST_SCRIPT := "the root node of %s has no script: attach one in Godot first."
+const BUILT_IN_SCRIPT := "the script of %s is built into the scene: save it as a .gd file first."
+const NO_MACHINE := "no %s child in %s. children with a class: %s."
+const MANY_MACHINES := "more than one %s child in %s: %s."
+const HOST_CLASS_MISMATCH := "states cast host as %s, but %s has no class_name %s"
+const HOST_CLASS_FOUND := " (found: %s)"
+
 
 ## build + write. Nothing is written when build fails.
 static func generate(
@@ -52,26 +71,26 @@ static func generate(
 	if not result.delete_dir.is_empty():
 		var remove_error := _remove_dir(result.delete_dir)
 		if remove_error != OK:
-			result.error = "could not delete '%s' (error %d)." % [result.delete_dir, remove_error]
+			result.error = COULD_NOT_DELETE % [result.delete_dir, remove_error]
 			return result
 
 	if not result.files.is_empty():
 		var dir := output_dir(folder, actor, root)
 		var make_error := DirAccess.make_dir_recursive_absolute(dir)
 		if make_error != OK:
-			result.error = "could not create '%s' (error %d)." % [dir, make_error]
+			result.error = COULD_NOT_CREATE % [dir, make_error]
 			return result
 	for path in result.files:
 		var write_error := _write_text(path, result.files[path])
 		if write_error != OK:
-			result.error = "could not write '%s' (error %d)." % [path, write_error]
+			result.error = COULD_NOT_WRITE % [path, write_error]
 			return result
 		result.written.append(path)
 
 	if result.host_source != result.host_original:
 		var host_error := _write_text(result.host_path, result.host_source)
 		if host_error != OK:
-			result.error = "could not write '%s' (error %d)." % [result.host_path, host_error]
+			result.error = COULD_NOT_WRITE % [result.host_path, host_error]
 			return result
 
 	_scan()
@@ -103,15 +122,12 @@ static func build(
 	for node in tree.nodes:
 		state_names.append(node.name)
 	if result.initial not in state_names:
-		result.error = "--initial '%s' is not in the tree. states: %s." % [
-			result.initial,
-			", ".join(state_names),
-		]
+		result.error = INITIAL_NOT_IN_TREE % [result.initial, ", ".join(state_names)]
 		return result
 
 	var template_dir := _find_template_dir(family["dir"])
 	if template_dir.is_empty():
-		result.error = "template folder '%s' not found." % family["dir"]
+		result.error = TEMPLATE_DIR_NOT_FOUND % family["dir"]
 		return result
 
 	_inspect_scene(result, actor, folder, root, family["machine"], host_class)
@@ -123,10 +139,7 @@ static func build(
 	var dropped_files: Array[String] = []
 	if force and DirAccess.dir_exists_absolute(dir):
 		if not is_safe_states_dir(dir, root):
-			result.error = "refusing to delete '%s': not an actor states folder inside %s." % [
-				dir,
-				root,
-			]
+			result.error = UNSAFE_DELETE % [dir, root]
 			return result
 		result.delete_dir = dir
 		for file in _files_below(dir):
@@ -165,7 +178,7 @@ static func build(
 	var merged := DogApiMerge.merge(result.host_original, blocks, mode)
 	var merge_error: String = merged["error"]
 	if not merge_error.is_empty():
-		result.error = "%s: %s." % [result.host_path.get_file(), merge_error]
+		result.error = HOST_MERGE_FAILED % [result.host_path.get_file(), merge_error]
 		result.files.clear()
 		return result
 	result.host_source = merged["source"]
@@ -286,12 +299,12 @@ static func _inspect_scene(
 ) -> void:
 	var path := scene_path(folder, actor, root)
 	if not FileAccess.file_exists(path):
-		result.error = "no %s.tscn in %s." % [actor, path.get_base_dir()]
+		result.error = SCENE_NOT_FOUND % [actor, path.get_base_dir()]
 		var found := DogApiGenerator.find_scene(actor, "", root)
 		var elsewhere: String = found["path"]
 		if not elsewhere.is_empty():
 			var actor_dir := elsewhere.get_base_dir().trim_prefix(root.trim_suffix("/") + "/")
-			result.error += " found %s: use --folder %s." % [elsewhere, actor_dir]
+			result.error += SCENE_ELSEWHERE % [elsewhere, actor_dir]
 		return
 
 	var packed := ResourceLoader.load(
@@ -301,7 +314,7 @@ static func _inspect_scene(
 	) as PackedScene
 	var host := packed.instantiate() if packed != null else null
 	if host == null:
-		result.error = "could not load %s." % path
+		result.error = COULD_NOT_LOAD % path
 		return
 
 	var host_script := host.get_script() as Script
@@ -320,19 +333,14 @@ static func _inspect_scene(
 
 	var scene_file := path.get_file()
 	if host_script == null:
-		result.error = "the root node of %s has no script: attach one in Godot first." % scene_file
+		result.error = NO_HOST_SCRIPT % scene_file
 	elif host_path.is_empty() or host_path.contains("::"):
-		result.error = "the script of %s is built into the scene: save it as a .gd file first." % scene_file
+		result.error = BUILT_IN_SCRIPT % scene_file
 	elif nodes.is_empty():
-		result.error = "no %s child in %s. children with a class: %s." % [
-			machine_class, scene_file, ", ".join(with_class) if not with_class.is_empty() else "none",
-		]
+		var children := ", ".join(with_class) if not with_class.is_empty() else "none"
+		result.error = NO_MACHINE % [machine_class, scene_file, children]
 	elif nodes.size() > 1:
-		result.error = "more than one %s child in %s: %s." % [
-			machine_class,
-			scene_file,
-			", ".join(nodes),
-		]
+		result.error = MANY_MACHINES % [machine_class, scene_file, ", ".join(nodes)]
 	if not result.error.is_empty():
 		return
 
@@ -341,13 +349,9 @@ static func _inspect_scene(
 	result.machine_node = nodes[0]
 	var found_class := _declared_class_name(_read_text(host_path))
 	if found_class != host_class:
-		var warning := "states cast host as %s, but %s has no class_name %s" % [
-			host_class,
-			host_path.get_file(),
-			host_class,
-		]
+		var warning := HOST_CLASS_MISMATCH % [host_class, host_path.get_file(), host_class]
 		if not found_class.is_empty():
-			warning += " (found: %s)" % found_class
+			warning += HOST_CLASS_FOUND % found_class
 		result.warnings.append(warning)
 
 
@@ -385,7 +389,7 @@ static func _plan_file(
 
 	var source := _read_text(template)
 	if source.is_empty():
-		return "template '%s' is missing or empty." % template
+		return TEMPLATE_MISSING % template
 
 	result.files[path] = _substitute(source, cls, host, parent)
 	return ""

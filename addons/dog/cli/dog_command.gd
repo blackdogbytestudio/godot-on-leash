@@ -5,6 +5,9 @@ extends RefCounted
 
 signal printed(text: String)
 
+# Error messages
+const RUN_NOT_IMPLEMENTED := "DOG: '%s' does not implement run()."
+
 var cli: DogCli
 
 
@@ -21,7 +24,7 @@ func usage() -> String:
 
 
 func run(_args: PackedStringArray) -> Error:
-	push_error("DOG: '%s' does not implement run()." % command_name())
+	push_error(RUN_NOT_IMPLEMENTED % command_name())
 	return ERR_UNCONFIGURED
 
 
