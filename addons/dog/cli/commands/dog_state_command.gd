@@ -30,7 +30,11 @@ func description() -> String:
 
 
 func usage() -> String:
-	return "state <fsm|pda|hfsm|hpda> <actor> <tree...> [--folder path] [--extends State] [--initial state] [-f | -u]"
+	return (
+		"state <fsm|pda|hfsm|hpda> <actor> <tree...>"
+		+ " [--folder path] [--extends State]"
+		+ " [--initial state] [-f | -u]"
+	)
 
 
 func run(args: PackedStringArray) -> Error:

@@ -149,8 +149,13 @@ static func build(
 	# Without --extends the actor base is the root of the hierarchy.
 	if base_class.is_empty():
 		var base_error := _plan_file(
-			result, dir.path_join(file_name(actor)), template_dir.path_join(ACTOR_TEMPLATE),
-			state_class(actor), host_class, family["base"], force
+			result,
+			dir.path_join(file_name(actor)),
+			template_dir.path_join(ACTOR_TEMPLATE),
+			state_class(actor),
+			host_class,
+			family["base"],
+			force
 		)
 		if not base_error.is_empty():
 			result.error = base_error
@@ -166,8 +171,13 @@ static func build(
 			parent = state_class(actor)
 
 		var node_error := _plan_file(
-			result, dir.path_join(file_name(actor, node.name)), template_dir.path_join(NODE_TEMPLATE),
-			state_class(actor, node.name), host_class, parent, force
+			result,
+			dir.path_join(file_name(actor, node.name)),
+			template_dir.path_join(NODE_TEMPLATE),
+			state_class(actor, node.name),
+			host_class,
+			parent,
+			force
 		)
 		if not node_error.is_empty():
 			result.error = node_error

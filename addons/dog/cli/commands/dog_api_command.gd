@@ -28,7 +28,12 @@ func description() -> String:
 
 
 func usage() -> String:
-	return "api <actor> <component...> [--prefix p] [--suffix s] [--folder path] [--root path] [-f | -u]"
+	return (
+		"api <actor> <component...>"
+		+ " [--prefix p] [--suffix s]"
+		+ " [--folder path] [--root path]"
+		+ " [-f | -u]"
+	)
 
 
 func run(args: PackedStringArray) -> Error:

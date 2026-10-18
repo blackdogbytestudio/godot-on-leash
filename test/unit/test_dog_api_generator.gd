@@ -211,7 +211,10 @@ func test_plan_renders_the_forwarding_funcs() -> void:
 	)
 	assert_eq(
 		_block(p.blocks, "func", "jump_with").text,
-		"func jump_with(power: float, times: int = 2) -> void:\n\t_fixture_jump_2d.jump_with(power, times)"
+		(
+			"func jump_with(power: float, times: int = 2) -> void:\n"
+			+ "\t_fixture_jump_2d.jump_with(power, times)"
+		)
 	)
 	assert_eq(
 		_block(p.blocks, "func", "get_power").text,
@@ -310,7 +313,12 @@ func test_build_inserts_connect_lines_under_the_existing_ready() -> void:
 	var r := DogApiGenerator.build("actor", BOTH, "", ROOT)
 	assert_string_contains(
 		r.source,
-		"func _ready() -> void:\n\t_fixture_jump_2d.landed.connect(landed.emit)\n\t_fixture_dash.dashed.connect(dashed.emit)\n\tpass\n"
+		(
+			"func _ready() -> void:\n"
+			+ "\t_fixture_jump_2d.landed.connect(landed.emit)\n"
+			+ "\t_fixture_dash.dashed.connect(dashed.emit)\n"
+			+ "\tpass\n"
+		)
 	)
 	assert_does_not_have(r.report, "add func _ready")
 
@@ -380,7 +388,10 @@ func test_generate_twice_changes_nothing_the_second_time() -> void:
 
 func test_generate_update_restores_an_edited_forwarding_func() -> void:
 	DogApiGenerator.generate("actor", BOTH, "", TMP)
-	var edited := _read(TMP + "/actor/actor.gd").replace("\t_fixture_jump_2d.jump()\n", "\tprint(1)\n\t_fixture_jump_2d.jump()\n")
+	var edited := _read(TMP + "/actor/actor.gd").replace(
+		"\t_fixture_jump_2d.jump()\n",
+		"\tprint(1)\n\t_fixture_jump_2d.jump()\n",
+	)
 	_write(TMP + "/actor/actor.gd", edited)
 	var plain := DogApiGenerator.generate("actor", BOTH, "", TMP)
 	assert_string_contains(_read(TMP + "/actor/actor.gd"), "print(1)")

@@ -138,7 +138,11 @@ func test_func_block_with_args_and_default_values() -> void:
 	)
 	assert_eq(
 		b.text,
-		"func jump_with(power: float, times: int = 2, label: String = \"x\", v: Vector2 = Vector2(1, 2)) -> void:\n\t_x.jump_with(power, times, label, v)"
+		(
+			"func jump_with(power: float, times: int = 2, label: String = \"x\","
+			+ " v: Vector2 = Vector2(1, 2)) -> void:\n"
+			+ "\t_x.jump_with(power, times, label, v)"
+		)
 	)
 
 

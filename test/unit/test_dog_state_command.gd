@@ -102,7 +102,10 @@ func _scene(
 	if not host_source.is_empty():
 		text += "script = ExtResource(\"host\")\n"
 	for node_name in children:
-		text += "\n[node name=\"%s\" type=\"Node\" parent=\".\"]\nscript = ExtResource(\"%s\")\n" % [
+		text += (
+			"\n[node name=\"%s\" type=\"Node\" parent=\".\"]\n"
+			+ "script = ExtResource(\"%s\")\n"
+		) % [
 			node_name,
 			ids[children[node_name]],
 		]
@@ -410,7 +413,10 @@ func test_run_prints_validation_errors() -> void:
 
 func _initial(args: Array) -> String:
 	var request = _request(PackedStringArray(args))
-	return Generator.default_initial(request.tree) if request.initial.is_empty() else request.initial
+	return (
+		Generator.default_initial(request.tree) if request.initial.is_empty()
+		else request.initial
+	)
 
 
 func test_initial_defaults_to_the_deepest_state() -> void:
@@ -430,7 +436,9 @@ func test_initial_on_a_flat_tree_is_the_first() -> void:
 
 func test_initial_flag_overrides_the_default() -> void:
 	_scene("enemy")
-	var result = _generate(PackedStringArray(["hpda", "enemy", "--initial", "alive", "alive", ".grounded"]))
+	var result = _generate(
+		PackedStringArray(["hpda", "enemy", "--initial", "alive", "alive", ".grounded"])
+	)
 	assert_eq(result.initial, "alive")
 	assert_string_contains(result.host_source, "_dog_hpda.init(alive_state)")
 
@@ -467,8 +475,14 @@ func test_plumbing_is_added_to_the_host_in_style_guide_order() -> void:
 	assert_eq(result.error, "")
 	assert_eq(_host(), ENEMY_HOST)
 	assert_eq(result.report, [
-		"add var alive_state", "add var grounded_state", "add var dead_state", "add var _dog_hpda",
-		"add func _ready", "add line _dog_hpda.init", "add func _physics_process", "add line _dog_hpda.update",
+		"add var alive_state",
+		"add var grounded_state",
+		"add var dead_state",
+		"add var _dog_hpda",
+		"add func _ready",
+		"add line _dog_hpda.init",
+		"add func _physics_process",
+		"add line _dog_hpda.update",
 	])
 
 
@@ -528,7 +542,9 @@ func test_update_changes_the_init_line_and_leaves_state_files_alone() -> void:
 	_generate(PackedStringArray(["hpda", "enemy", "alive", ".grounded"]))
 	var grounded := _states("enemy").path_join("enemy_grounded_state.gd")
 	_write(grounded, "custom")
-	var result = _generate(PackedStringArray(["hpda", "enemy", "-u", "--initial", "alive", "alive", ".grounded"]))
+	var result = _generate(
+		PackedStringArray(["hpda", "enemy", "-u", "--initial", "alive", "alive", ".grounded"])
+	)
 	assert_has(result.report, "update line _dog_hpda.init")
 	assert_string_contains(_host(), "\t_dog_hpda.init(alive_state)\n")
 	assert_false(_host().contains("init(grounded_state)"))
@@ -560,7 +576,13 @@ func test_force_deletes_the_whole_states_folder_and_reports_each_file() -> void:
 	var result = _generate(PackedStringArray(["hpda", "enemy", "-f", "alive"]))
 	assert_eq(result.error, "")
 	assert_eq(_files(dir), ["enemy_alive_state.gd", "enemy_state.gd"])
-	for file in ["enemy_alive_state.gd", "enemy_grounded_state.gd", "enemy_old_state.gd", "enemy_state.gd", "sub/notes.txt"]:
+	for file in [
+		"enemy_alive_state.gd",
+		"enemy_grounded_state.gd",
+		"enemy_old_state.gd",
+		"enemy_state.gd",
+		"sub/notes.txt",
+	]:
 		assert_has(result.report, "drop file states/" + file)
 	assert_has(result.report, "drop func mine")
 	assert_has(result.report, "drop var grounded_state")

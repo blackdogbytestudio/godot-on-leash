@@ -93,7 +93,9 @@ func test_var_matches_without_onready() -> void:
 
 
 func test_update_replaces_a_var_line_that_differs() -> void:
-	var source := "extends CharacterBody2D\n\n@onready var _jump = $Other\n\n\nfunc a() -> void:\n\tpass\n"
+	var source := (
+		"extends CharacterBody2D\n\n@onready var _jump = $Other\n\n\nfunc a() -> void:\n\tpass\n"
+	)
 	var r := _update(source, [_var()])
 	assert_eq(
 		r.source,
@@ -168,7 +170,10 @@ func test_created_ready_goes_after_vars_and_before_funcs() -> void:
 	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_func(), _connect(), _var()])
 	assert_eq(
 		r.source,
-		"extends CharacterBody2D\n\n" + VAR_LINE + "\n\n\nfunc _ready() -> void:\n" + CONNECT_LINE + "\n\n\nfunc jump() -> void:\n\t_jump.jump()\n"
+		(
+			"extends CharacterBody2D\n\n" + VAR_LINE + "\n\n\nfunc _ready() -> void:\n"
+			+ CONNECT_LINE + "\n\n\nfunc jump() -> void:\n\t_jump.jump()\n"
+		)
 	)
 	assert_eq(
 		r.report,
@@ -195,13 +200,18 @@ func test_inserts_only_the_missing_connect_lines_in_order() -> void:
 	var r := DogApiMerge.merge(source, [_connect("_jump", "landed"), _connect("_dash", "dashed")])
 	assert_eq(
 		r.source,
-		HEAD + "func _ready() -> void:\n\t_jump.landed.connect(landed.emit)\n\t_dash.dashed.connect(dashed.emit)\n\tpass\n"
+		(
+			HEAD + "func _ready() -> void:\n\t_jump.landed.connect(landed.emit)\n"
+			+ "\t_dash.dashed.connect(dashed.emit)\n\tpass\n"
+		)
 	)
 	assert_eq(r.report, ["add connect _jump.landed", "skip connect _dash.dashed"])
 
 
 func test_connect_line_in_another_func_does_not_count() -> void:
-	var source := HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc other() -> void:\n" + CONNECT_LINE + "\n"
+	var source := (
+		HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc other() -> void:\n" + CONNECT_LINE + "\n"
+	)
 	var r := DogApiMerge.merge(source, [_connect()])
 	assert_eq(r.report, ["add connect _jump.landed"])
 
@@ -234,7 +244,11 @@ func test_force_orders_signals_vars_ready_then_funcs_below_the_header() -> void:
 	var r := _force(source, [_func(), _signal(), _connect(), _var()])
 	assert_eq(
 		r.source,
-		"@tool\nextends CharacterBody2D\n\n" + SIGNAL_LINE + "\n\n" + VAR_LINE + "\n\n\nfunc _ready() -> void:\n" + CONNECT_LINE + "\n\n\nfunc jump() -> void:\n\t_jump.jump()\n"
+		(
+			"@tool\nextends CharacterBody2D\n\n" + SIGNAL_LINE + "\n\n" + VAR_LINE + "\n\n\n"
+			+ "func _ready() -> void:\n" + CONNECT_LINE + "\n\n\nfunc jump() -> void:\n"
+			+ "\t_jump.jump()\n"
+		)
 	)
 	assert_false(r.source.contains("old"))
 
@@ -262,13 +276,19 @@ func test_func_line_goes_to_the_top_of_an_existing_body() -> void:
 	var r := DogApiMerge.merge(source, [_update_line()])
 	assert_eq(
 		r.source,
-		HEAD + "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\tmove_and_slide()\n",
+		(
+			HEAD + "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n"
+			+ "\tmove_and_slide()\n"
+		),
 	)
 	assert_eq(r.report, ["add line _dog_hpda.update"])
 
 
 func test_func_line_already_there_is_skipped() -> void:
-	var source := HEAD + "func _physics_process(delta: float) -> void:\n\tmove_and_slide()\n" + UPDATE_LINE + "\n"
+	var source := (
+		HEAD + "func _physics_process(delta: float) -> void:\n\tmove_and_slide()\n"
+		+ UPDATE_LINE + "\n"
+	)
 	var r := DogApiMerge.merge(source, [_update_line()])
 	assert_eq(r.source, source)
 	assert_eq(r.report, ["skip line _dog_hpda.update"])
@@ -293,14 +313,20 @@ func test_func_line_on_ready_matches_ready_line() -> void:
 
 
 func test_func_lines_for_two_funcs_go_to_their_own_funcs() -> void:
-	var source := HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc _physics_process(delta: float) -> void:\n\tpass\n"
+	var source := (
+		HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc _physics_process(delta: float) -> void:\n"
+		+ "\tpass\n"
+	)
 	var r := DogApiMerge.merge(
 		source,
 		[_update_line(), _func_line("_ready", "_dog_hpda.init", "\t_dog_hpda.init(idle_state)")],
 	)
 	assert_eq(
 		r.source,
-		HEAD + "func _ready() -> void:\n\t_dog_hpda.init(idle_state)\n\tpass\n\n\nfunc _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\tpass\n"
+		(
+			HEAD + "func _ready() -> void:\n\t_dog_hpda.init(idle_state)\n\tpass\n\n\n"
+			+ "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\tpass\n"
+		)
 	)
 	assert_eq(r.report, ["add line _dog_hpda.update", "add line _dog_hpda.init"])
 
@@ -319,7 +345,9 @@ func test_match_keeps_a_differing_line_in_add_mode() -> void:
 
 
 func test_match_replaces_a_differing_line_in_update_mode() -> void:
-	var source := HEAD + "func _ready() -> void:\n\tprint(1)\n\t_dog_hpda.init(idle_state)\n\tprint(2)\n"
+	var source := (
+		HEAD + "func _ready() -> void:\n\tprint(1)\n\t_dog_hpda.init(idle_state)\n\tprint(2)\n"
+	)
 	var r := _update(source, [_init_line("run_state")])
 	assert_eq(
 		r.source,

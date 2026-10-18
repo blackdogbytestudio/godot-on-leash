@@ -45,7 +45,10 @@ func test_separates_new_funcs_with_two_blank_lines() -> void:
 	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_block("jump"), _block("run")])
 	assert_eq(
 		r.source,
-		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n\n\nfunc run() -> void:\n\t_dog_jump_2d.run()\n"
+		(
+			"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n\n\n"
+			+ "func run() -> void:\n\t_dog_jump_2d.run()\n"
+		)
 	)
 
 
@@ -141,7 +144,10 @@ func test_update_replaces_changed_signature() -> void:
 
 
 func test_update_keeps_neighbor_funcs_and_spacing() -> void:
-	var source := HEAD + "func a() -> void:\n\tpass\n\n\nfunc jump() -> void:\n\tprint(\"x\")\n\n\nfunc b() -> void:\n\tpass\n"
+	var source := (
+		HEAD + "func a() -> void:\n\tpass\n\n\nfunc jump() -> void:\n\tprint(\"x\")\n\n\n"
+		+ "func b() -> void:\n\tpass\n"
+	)
 	var r := _update(source, [_block("jump")])
 	assert_eq(
 		r.source,
@@ -156,7 +162,9 @@ func test_update_keeps_blank_lines_after_the_last_func() -> void:
 
 
 func test_update_blank_line_inside_body_is_still_the_body() -> void:
-	var source := HEAD + "func jump() -> void:\n\tvar a := 1\n\n\tprint(a)\n\n\nfunc b() -> void:\n\tpass\n"
+	var source := (
+		HEAD + "func jump() -> void:\n\tvar a := 1\n\n\tprint(a)\n\n\nfunc b() -> void:\n\tpass\n"
+	)
 	var r := _update(source, [_block("jump")])
 	assert_eq(r.source, HEAD + JUMP + "\n\n\nfunc b() -> void:\n\tpass\n")
 
@@ -168,7 +176,9 @@ func test_update_stops_before_a_following_onready_var() -> void:
 
 
 func test_update_stops_before_the_doc_comment_of_the_next_func() -> void:
-	var source := HEAD + "func jump() -> void:\n\tprint(\"x\")\n\n\n## Runs.\nfunc run() -> void:\n\tpass\n"
+	var source := (
+		HEAD + "func jump() -> void:\n\tprint(\"x\")\n\n\n## Runs.\nfunc run() -> void:\n\tpass\n"
+	)
 	var r := _update(source, [_block("jump")])
 	assert_eq(r.source, HEAD + JUMP + "\n\n\n## Runs.\nfunc run() -> void:\n\tpass\n")
 
@@ -192,11 +202,17 @@ func test_update_replaces_a_one_line_func() -> void:
 
 
 func test_update_adds_missing_updates_changed_and_skips_equal() -> void:
-	var source := HEAD + "func jump() -> void:\n\tprint(\"x\")\n\n\nfunc run() -> void:\n\t_dog_jump_2d.run()\n"
+	var source := (
+		HEAD + "func jump() -> void:\n\tprint(\"x\")\n\n\nfunc run() -> void:\n"
+		+ "\t_dog_jump_2d.run()\n"
+	)
 	var r := _update(source, [_block("jump"), _block("run"), _block("dash")])
 	assert_eq(
 		r.source,
-		HEAD + JUMP + "\n\n\nfunc run() -> void:\n\t_dog_jump_2d.run()\n\n\nfunc dash() -> void:\n\t_dog_jump_2d.dash()\n"
+		(
+			HEAD + JUMP + "\n\n\nfunc run() -> void:\n\t_dog_jump_2d.run()\n\n\n"
+			+ "func dash() -> void:\n\t_dog_jump_2d.dash()\n"
+		)
 	)
 	assert_eq(r.report, ["update func jump", "skip func run", "add func dash"])
 
@@ -209,7 +225,10 @@ func test_update_leaves_funcs_that_are_not_targets() -> void:
 
 
 func test_update_ignores_a_malformed_func_that_is_not_a_target() -> void:
-	var source := HEAD + "func helper() -> void:\n\tpass\n# stray\n\tpass\n\n\nfunc jump() -> void:\n\tprint(\"x\")\n"
+	var source := (
+		HEAD + "func helper() -> void:\n\tpass\n# stray\n\tpass\n\n\nfunc jump() -> void:\n"
+		+ "\tprint(\"x\")\n"
+	)
 	var r := _update(source, [_block("jump")])
 	assert_eq(r.error, "")
 	assert_string_contains(r.source, "# stray\n\tpass\n")
@@ -228,7 +247,9 @@ func test_update_twice_skips_everything_the_second_time() -> void:
 
 
 func test_update_errors_on_a_column_zero_comment_inside_the_body() -> void:
-	var source := HEAD + "func jump() -> void:\n\tfoo()\n# bar()\n\tbaz()\n\n\nfunc b() -> void:\n\tpass\n"
+	var source := (
+		HEAD + "func jump() -> void:\n\tfoo()\n# bar()\n\tbaz()\n\n\nfunc b() -> void:\n\tpass\n"
+	)
 	var r := _update(source, [_block("jump")])
 	assert_string_contains(r.error, "jump")
 	assert_string_contains(r.error, "line 4")
@@ -237,7 +258,10 @@ func test_update_errors_on_a_column_zero_comment_inside_the_body() -> void:
 
 
 func test_update_errors_on_text_at_column_zero_inside_the_body() -> void:
-	var source := HEAD + "func jump() -> void:\n\tvar t = \"\"\"\ntexto na coluna zero\n\"\"\"\n\tprint(t)\n\n\nfunc b() -> void:\n\tpass\n"
+	var source := (
+		HEAD + "func jump() -> void:\n\tvar t = \"\"\"\ntexto na coluna zero\n\"\"\"\n"
+		+ "\tprint(t)\n\n\nfunc b() -> void:\n\tpass\n"
+	)
 	var r := _update(source, [_block("jump")])
 	assert_string_contains(r.error, "jump")
 	assert_string_contains(r.error, "line 4")
@@ -246,7 +270,10 @@ func test_update_errors_on_text_at_column_zero_inside_the_body() -> void:
 
 
 func test_update_error_changes_nothing_even_for_the_other_funcs() -> void:
-	var source := HEAD + "func a() -> void:\n\tprint(\"x\")\n\n\nfunc jump() -> void:\n\tfoo()\n# bar()\n\tbaz()\n"
+	var source := (
+		HEAD + "func a() -> void:\n\tprint(\"x\")\n\n\nfunc jump() -> void:\n\tfoo()\n# bar()\n"
+		+ "\tbaz()\n"
+	)
 	var r := _update(source, [_block("a"), _block("jump")])
 	assert_string_contains(r.error, "jump")
 	assert_string_contains(r.error, "line 8")
@@ -284,11 +311,17 @@ func test_force_rewrites_a_func_that_already_exists() -> void:
 
 
 func test_force_keeps_annotations_class_name_and_doc_comment() -> void:
-	var source := "@tool\nclass_name Player\nextends CharacterBody2D\n## The player.\n\n\nfunc old() -> void:\n\tpass\n"
+	var source := (
+		"@tool\nclass_name Player\nextends CharacterBody2D\n## The player.\n\n\n"
+		+ "func old() -> void:\n\tpass\n"
+	)
 	var r := _force(source, [_block("jump")])
 	assert_eq(
 		r.source,
-		"@tool\nclass_name Player\nextends CharacterBody2D\n## The player.\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n"
+		(
+			"@tool\nclass_name Player\nextends CharacterBody2D\n## The player.\n\n\n"
+			+ "func jump() -> void:\n\t_dog_jump_2d.jump()\n"
+		)
 	)
 
 
@@ -319,7 +352,10 @@ func test_force_does_not_error_on_malformed_funcs_below_the_header() -> void:
 
 
 func test_force_reports_each_dropped_member_in_file_order() -> void:
-	var source := HEAD + "signal died\nvar speed := 1\n@onready var _x: Node = $X\n\n\nfunc old() -> void:\n\tpass\n"
+	var source := (
+		HEAD + "signal died\nvar speed := 1\n@onready var _x: Node = $X\n\n\nfunc old() -> void:\n"
+		+ "\tpass\n"
+	)
 	var r := _force(source, [_block("jump")])
 	assert_eq(
 		r.report,
@@ -328,7 +364,9 @@ func test_force_reports_each_dropped_member_in_file_order() -> void:
 
 
 func test_force_does_not_report_regenerated_members_as_dropped() -> void:
-	var source := HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc jump() -> void:\n\tprint(\"mine\")\n"
+	var source := (
+		HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc jump() -> void:\n\tprint(\"mine\")\n"
+	)
 	var connect := {
 		"kind": "ready_line",
 		"name": "_x.landed",
