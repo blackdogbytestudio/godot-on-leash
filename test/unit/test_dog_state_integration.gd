@@ -73,7 +73,12 @@ func test_force_result_compiles_and_lists_what_it_drops() -> void:
 	])
 	assert_false(result.host_source.contains("jump"))
 	assert_eq(result.delete_dir, ROOT + "/hero/states")
-	for line in ["drop file states/hero_state.gd", "drop file states/hero_alive_state.gd", "drop var speed", "drop func jump"]:
+	for line in [
+		"drop file states/hero_state.gd",
+		"drop file states/hero_alive_state.gd",
+		"drop var speed",
+		"drop func jump",
+	]:
 		assert_has(result.report, line)
 	assert_eq(result.files.size(), 4)
 

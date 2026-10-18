@@ -233,7 +233,10 @@ func test_run_root_flag_overrides_the_default_root() -> void:
 
 func test_run_update_restores_an_edited_func_and_force_rewrites_below_the_header() -> void:
 	_command.run(_args("actor fixture_jump_2d"))
-	var edited := _read(TMP + "/actor/actor.gd").replace("\t_fixture_jump_2d.jump()\n", "\tprint(1)\n\t_fixture_jump_2d.jump()\n")
+	var edited := _read(TMP + "/actor/actor.gd").replace(
+		"\t_fixture_jump_2d.jump()\n",
+		"\tprint(1)\n\t_fixture_jump_2d.jump()\n",
+	)
 	_write(TMP + "/actor/actor.gd", edited)
 
 	_lines.clear()

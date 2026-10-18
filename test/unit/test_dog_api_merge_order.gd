@@ -79,8 +79,12 @@ func test_header_only_file_gets_the_style_guide_order() -> void:
 	var r := DogApiMerge.merge(HEAD, _all())
 	assert_eq(
 		r.source,
-		HEAD + "\n" + SIGNAL_LINE + "\n\n" + VAR_LINE + "\n\n\nfunc _ready() -> void:\n" + CONNECT_LINE
-		+ "\n\n\nfunc _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\n\n" + JUMP + "\n"
+		(
+			HEAD + "\n" + SIGNAL_LINE + "\n\n" + VAR_LINE + "\n\n\n"
+			+ "func _ready() -> void:\n" + CONNECT_LINE + "\n\n\n"
+			+ "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\n\n"
+			+ JUMP + "\n"
+		)
 	)
 
 
@@ -167,7 +171,10 @@ func jump() -> void:
 
 
 func test_out_of_order_file_is_not_reordered() -> void:
-	var source := "extends CharacterBody2D\n\nvar speed := 200\nsignal died\n\n\nfunc _ready() -> void:\n\tpass\n"
+	var source := (
+		"extends CharacterBody2D\n\nvar speed := 200\nsignal died\n\n\nfunc _ready() -> void:\n"
+		+ "\tpass\n"
+	)
 	var blocks := [
 		{ "kind": "signal", "name": "landed", "text": "signal landed" },
 		{
@@ -201,8 +208,11 @@ func test_created_physics_process_goes_after_ready_and_before_custom_funcs() -> 
 	var r := DogApiMerge.merge(source, [_update_line()])
 	assert_eq(
 		r.source,
-		HEAD + "\n\nfunc _ready() -> void:\n\tpass\n\n\nfunc _physics_process(delta: float) -> void:\n" + UPDATE_LINE
-		+ "\n\n\nfunc run() -> void:\n\tpass\n"
+		(
+			HEAD + "\n\nfunc _ready() -> void:\n\tpass\n\n\n"
+			+ "func _physics_process(delta: float) -> void:\n" + UPDATE_LINE + "\n\n\n"
+			+ "func run() -> void:\n\tpass\n"
+		)
 	)
 
 
@@ -215,7 +225,10 @@ func test_multiline_enum_and_annotation_on_its_own_line_stay_whole() -> void:
 	var r := DogApiMerge.merge(source, blocks)
 	assert_eq(
 		r.source,
-		"extends Node\n\nsignal landed\n\nenum State {\n\tIDLE,\n\tRUN,\n}\n@export\nvar hp := 3\n\n@onready var _x: Node = $X\n"
+		(
+			"extends Node\n\nsignal landed\n\nenum State {\n\tIDLE,\n\tRUN,\n}\n@export\n"
+			+ "var hp := 3\n\n@onready var _x: Node = $X\n"
+		)
 	)
 
 
@@ -239,13 +252,20 @@ func test_running_twice_on_the_template_only_skips() -> void:
 
 
 func test_force_rebuilds_in_style_guide_order() -> void:
-	var source := HEAD + "\nfunc old() -> void:\n\tpass\nvar x := 1\nsignal s\n\n\nfunc _ready() -> void:\n\tpass\n"
+	var source := (
+		HEAD + "\nfunc old() -> void:\n\tpass\nvar x := 1\nsignal s\n\n\nfunc _ready() -> void:\n"
+		+ "\tpass\n"
+	)
 	var forced := DogApiMerge.merge(source, _all(), DogApiMerge.Mode.FORCE)
 	assert_eq(forced.source, DogApiMerge.merge(HEAD, _all()).source)
 
 
 func test_generated_text_compiles() -> void:
-	for source in [HEAD, GODOT_TEMPLATE, HEAD + "\nvar speed := 200\nsignal died\n\n\nfunc _ready() -> void:\n\tpass\n"]:
+	for source in [
+		HEAD,
+		GODOT_TEMPLATE,
+		HEAD + "\nvar speed := 200\nsignal died\n\n\nfunc _ready() -> void:\n\tpass\n",
+	]:
 		for mode in [DogApiMerge.Mode.ADD, DogApiMerge.Mode.FORCE]:
 			var r := DogApiMerge.merge(
 				source,

@@ -33,17 +33,24 @@ enum Mode {
 }
 
 ## A top-level line that starts a new declaration (so it can't be part of a body).
-const DECLARATION := "^(@|##|(static\\s+func|func|var|const|signal|enum|class_name|class|extends)\\b)"
+const DECLARATION := (
+	"^(@|##|(static\\s+func|func|var|const|signal|enum"
+	+ "|class_name|class|extends)\\b)"
+)
+
 ## Signatures for funcs that "func_line" creates; others get `func name() -> void:`.
 const SIGNATURES := {
 	"_ready": "func _ready() -> void:",
 	"_process": "func _process(delta: float) -> void:",
 	"_physics_process": "func _physics_process(delta: float) -> void:",
 }
+
 ## An annotation alone on its line (e.g. `@export` above a `var`).
 const ANNOTATION_ONLY := "^@\\w+(\\([^)]*\\))?\\s*$"
+
 ## Lines that belong to the top of the file, above the members.
 const HEADER_LINE := "^(@tool|@icon|@static_unload|class_name|extends)\\b"
+
 ## Style guide rank of each member (lower comes first). Built-in virtuals keep
 ## the order of VIRTUAL_ORDER; the other built-in virtuals come right after them.
 ## Overridden custom methods can't be told apart, so they rank as plain funcs.
@@ -60,6 +67,7 @@ const RANK_VIRTUAL := 140
 const RANK_OTHER_VIRTUAL := 150
 const RANK_FUNC := 160
 const RANK_CLASS := 170
+
 ## Before RANK_STATIC_INIT, members are one-liners that may sit together.
 const FIRST_METHOD_RANK := RANK_STATIC_INIT
 const VIRTUAL_ORDER := ["_init", "_enter_tree", "_ready", "_process", "_physics_process"]
@@ -70,6 +78,7 @@ const OTHER_VIRTUALS := [
 	"_property_get_revert", "_gui_input", "_get_minimum_size", "_has_point",
 	"_make_custom_tooltip", "_can_drop_data", "_drop_data", "_get_drag_data",
 ]
+
 ## Gaps in blank lines measured from these ranks (not members).
 const GAP_FILE_START := -2
 const GAP_HEADER := -1
@@ -122,7 +131,10 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 			if not lines[func_start].strip_edges().ends_with(":"):
 				return _error(source, BODY_ON_SAME_LINE % [target, func_start + 1])
 			var match_prefix: String = block.get("match", "")
-			var matched := -1 if match_prefix.is_empty() else _find_line(lines, func_start, match_prefix)
+			var matched := (
+				-1 if match_prefix.is_empty()
+				else _find_line(lines, func_start, match_prefix)
+			)
 			if matched != -1:
 				if mode == Mode.UPDATE and lines[matched].strip_edges() != text.strip_edges():
 					lines_to_update.append({ "func": target, "match": match_prefix, "text": text })

@@ -38,11 +38,17 @@ func _enter_tree() -> void:
 ## [/codeblock]
 func dog_leash(...components: Array) -> void:
 	if components.is_empty():
-		push_error("%s: must override dog_leash() and register its components" % [get_script().get_global_name()])
+		push_error(
+			"%s: must override dog_leash() and register its components"
+			% [get_script().get_global_name()]
+		)
 		return
 	for c in components:
 		if not c is DogComponent:
-			push_error("%s: dog_leash() received a non-DogComponent (%s)" % [get_script().get_global_name(), c])
+			push_error(
+				"%s: dog_leash() received a non-DogComponent (%s)"
+				% [get_script().get_global_name(), c]
+			)
 			continue
 		if not c.get_parent():
 			add_child(c, false, Node.INTERNAL_MODE_BACK)
