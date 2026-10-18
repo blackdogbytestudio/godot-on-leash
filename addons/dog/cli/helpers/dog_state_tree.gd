@@ -2,6 +2,14 @@
 class_name DogStateTree
 extends RefCounted
 
+# Error messages
+const NO_STATES := "no states given."
+const DOTS_WITHOUT_NAME := "'%s' has dots but no name."
+const INVALID_STATE := "'%s' is not a valid state name (use snake_case)."
+const NESTED_FIRST := "'%s' can't be nested: the first state must be a root."
+const NESTED_TOO_DEEP := "'%s' is nested too deep: previous state is at depth %d."
+const DECLARED_TWICE := "'%s' is declared twice."
+
 # Strict snake_case: every segment starts with a letter, so there are no double,
 # leading or trailing underscores. "\z" (not "$") because "$" also matches before
 # a trailing newline.
@@ -18,7 +26,7 @@ static func is_valid_name(name: String) -> bool:
 static func parse(tokens: PackedStringArray) -> DogStateTree:
 	var tree := DogStateTree.new()
 	if tokens.is_empty():
-		return _fail(tree, "no states given.")
+		return _fail(tree, NO_STATES)
 
 	var path: Array[String] = []
 	var seen: Dictionary[String, bool] = {}
@@ -30,27 +38,18 @@ static func parse(tokens: PackedStringArray) -> DogStateTree:
 
 		var state_name := token.substr(depth)
 		if state_name.is_empty():
-			return _fail(tree, "'%s' has dots but no name." % token)
+			return _fail(tree, DOTS_WITHOUT_NAME % token)
 
 		if not is_valid_name(state_name):
-			return _fail(tree, "'%s' is not a valid state name (use snake_case)." % state_name)
+			return _fail(tree, INVALID_STATE % state_name)
 
 		if depth > path.size():
 			if path.is_empty():
-				return _fail(
-					tree,
-					"'%s' can't be nested: the first state must be a root." % state_name,
-				)
-			return _fail(
-				tree,
-				"'%s' is nested too deep: previous state is at depth %d." % [
-					state_name,
-					path.size() - 1,
-				],
-			)
+				return _fail(tree, NESTED_FIRST % state_name)
+			return _fail(tree, NESTED_TOO_DEEP % [state_name, path.size() - 1])
 
 		if seen.has(state_name):
-			return _fail(tree, "'%s' is declared twice." % state_name)
+			return _fail(tree, DECLARED_TWICE % state_name)
 		seen[state_name] = true
 
 		path.resize(depth)

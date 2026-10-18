@@ -74,6 +74,16 @@ const OTHER_VIRTUALS := [
 const GAP_FILE_START := -2
 const GAP_HEADER := -1
 
+# Error messages
+const BODY_ON_SAME_LINE := (
+	"func %s (line %d) has its body on the same line:"
+	+ " can't add lines under it"
+)
+const FUNC_CUT := (
+	"func %s (line %d) looks cut in the middle:"
+	+ " line %d is neither a declaration nor part of its body"
+)
+
 
 static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary:
 	var lines := source.split("\n")
@@ -110,13 +120,7 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 				report.append("add " + label)
 				continue
 			if not lines[func_start].strip_edges().ends_with(":"):
-				return _error(
-					source,
-					"func %s (line %d) has its body on the same line: can't add lines under it" % [
-						target,
-						func_start + 1,
-					],
-				)
+				return _error(source, BODY_ON_SAME_LINE % [target, func_start + 1])
 			var match_prefix: String = block.get("match", "")
 			var matched := -1 if match_prefix.is_empty() else _find_line(lines, func_start, match_prefix)
 			if matched != -1:
@@ -144,14 +148,7 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 			var span := _span_for(kind, lines, start)
 			var bad_line: int = span["bad_line"]
 			if bad_line != -1:
-				return _error(
-					source,
-					"func %s (line %d) looks cut in the middle: line %d is neither a declaration nor part of its body" % [
-						block_name,
-						start + 1,
-						bad_line + 1,
-					],
-				)
+				return _error(source, FUNC_CUT % [block_name, start + 1, bad_line + 1])
 			var end: int = span["end"]
 			if "\n".join(lines.slice(start, end + 1)) != text:
 				to_replace.append(block)

@@ -5,16 +5,22 @@ extends RefCounted
 
 signal printed(text: String)
 
+# Error messages
+const UNNAMED_COMMAND := "DOG: a command has no name and was skipped."
+const DUPLICATE_COMMAND := "DOG: command '%s' is already registered and was skipped."
+const UNLOADABLE_COMMAND := "DOG: could not load command script '%s' (script error?)."
+const UNKNOWN_COMMAND := "DOG: unknown command '%s'. Try 'help'."
+
 var _commands: Dictionary[String, DogCommand] = {}
 
 
 func register(command: DogCommand) -> void:
 	var key := command.command_name()
 	if key.is_empty():
-		push_warning("DOG: a command has no name and was skipped.")
+		push_warning(UNNAMED_COMMAND)
 		return
 	if _commands.has(key):
-		push_warning("DOG: command '%s' is already registered and was skipped." % key)
+		push_warning(DUPLICATE_COMMAND % key)
 		return
 
 	command.cli = self
@@ -33,7 +39,7 @@ func register_folder(path: String) -> void:
 
 		var script := load(path.path_join(file)) as GDScript
 		if script == null or not script.can_instantiate():
-			push_warning("DOG: could not load command script '%s' (script error?)." % file)
+			push_warning(UNLOADABLE_COMMAND % file)
 			continue
 
 		# Avoid leaking a Node (or anything non-RefCounted) by instantiating it.
@@ -70,7 +76,7 @@ func execute(line: String) -> Error:
 
 	var command: DogCommand = _commands.get(tokens[0])
 	if command == null:
-		printed.emit("DOG: unknown command '%s'. Try 'help'." % tokens[0])
+		printed.emit(UNKNOWN_COMMAND % tokens[0])
 		return ERR_DOES_NOT_EXIST
 
 	tokens.remove_at(0)
