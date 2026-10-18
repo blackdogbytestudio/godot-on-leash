@@ -54,6 +54,7 @@ static func parse(tokens: PackedStringArray) -> DogStateTree:
 
 		path.resize(depth)
 
+		# gdstyle:ignore=quality/allocation-in-loop
 		var node := StateNode.new()
 		node.name = state_name
 		node.parent = path[depth - 1] if depth > 0 else ""

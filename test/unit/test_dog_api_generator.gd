@@ -62,6 +62,7 @@ func _compile(source: String) -> int:
 func _host(components: Dictionary) -> Node:
 	var host: Node = autofree(Node2D.new())
 	for node_name in components:
+		# gdstyle:ignore=quality/allocation-in-loop
 		var node := Node.new()
 		node.name = node_name
 		node.set_script(load(components[node_name]))
