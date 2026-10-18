@@ -4,6 +4,7 @@ extends GutTest
 ## get_script_method_list / get_script_signal_list) into merge blocks.
 
 
+# gdstyle:ignore=quality/max-parameters
 func _info(
 	type: int,
 	klass := "",

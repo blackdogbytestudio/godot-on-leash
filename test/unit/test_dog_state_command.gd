@@ -37,12 +37,12 @@ func after_each() -> void:
 	_remove(ROOT)
 
 
-func _request(args: PackedStringArray):
+func _request(args: PackedStringArray) -> DogStateCommand.Request:
 	return Command.parse_request(args)
 
 
-func _generate(args: PackedStringArray):
-	var request = _request(args)
+func _generate(args: PackedStringArray) -> DogStateGenerator.Result:
+	var request := _request(args)
 	assert_eq(request.error, "", "unexpected parse error: %s" % request.error)
 	return Generator.generate(
 		request.type, request.actor, request.folder,
@@ -51,7 +51,7 @@ func _generate(args: PackedStringArray):
 
 
 func _run(args: PackedStringArray) -> Array:
-	var command = Command.new()
+	var command := Command.new()
 	command.root = ROOT
 	var lines: Array[String] = []
 	command.printed.connect(func(text: String) -> void: lines.append(text))
@@ -143,7 +143,7 @@ func _remove(path: String) -> void:
 
 
 func test_parse_accepts_hpda() -> void:
-	var request = _request(PackedStringArray(["hpda", "enemy", "alive", ".grounded", "dead"]))
+	var request := _request(PackedStringArray(["hpda", "enemy", "alive", ".grounded", "dead"]))
 	assert_eq(request.error, "")
 	assert_eq(request.type, "hpda")
 	assert_eq(request.actor, "enemy")
@@ -151,7 +151,7 @@ func test_parse_accepts_hpda() -> void:
 
 
 func test_parse_reads_folder_and_extends() -> void:
-	var request = _request(PackedStringArray([
+	var request := _request(PackedStringArray([
 		"hpda", "slime", "--folder", "enemies/slime",
 		"--extends", "enemy_alive_state", "jump",
 	]))
@@ -161,7 +161,7 @@ func test_parse_reads_folder_and_extends() -> void:
 
 
 func test_parse_rejects_host_option() -> void:
-	var request = _request(PackedStringArray(["hpda", "slime", "--host", "Slime", "jump"]))
+	var request := _request(PackedStringArray(["hpda", "slime", "--host", "Slime", "jump"]))
 	assert_string_contains(request.error, "unknown option '--host'")
 
 
@@ -186,7 +186,7 @@ func test_parse_rejects_nesting_on_flat_types() -> void:
 
 
 func test_flat_types_accept_multiple_roots() -> void:
-	var request = _request(PackedStringArray(["fsm", "player", "alive", "dead"]))
+	var request := _request(PackedStringArray(["fsm", "player", "alive", "dead"]))
 	assert_eq(request.error, "")
 	assert_eq(request.tree.nodes.size(), 2)
 
@@ -237,7 +237,7 @@ func test_generate_skips_existing_and_force_rewrites() -> void:
 	var run_path := _states("player").path_join("player_run_state.gd")
 	_write(run_path, "custom")
 
-	var kept = _generate(args)
+	var kept := _generate(args)
 	assert_has(kept.skipped, run_path)
 	assert_eq(_text(run_path), "custom")
 
@@ -248,7 +248,7 @@ func test_generate_skips_existing_and_force_rewrites() -> void:
 
 func test_generate_extends_suppresses_actor_base() -> void:
 	_scene("slime", { "DogHPDA": "DogHPDA" }, "enemies/slime")
-	var result = _generate(PackedStringArray([
+	var result := _generate(PackedStringArray([
 		"hpda", "slime", "--extends", "enemy_alive_state",
 		"--folder", "enemies/slime", "jump",
 	]))
@@ -316,7 +316,7 @@ func test_generate_capitalizes_the_letter_after_a_number() -> void:
 
 func _fails_without_writing(args: PackedStringArray, expected: Array) -> void:
 	var before := _files(ROOT)
-	var result = _generate(args)
+	var result := _generate(args)
 	for text in expected:
 		assert_string_contains(result.error, text)
 	assert_eq(result.written, [])
@@ -366,21 +366,21 @@ func test_two_machines_of_the_type_is_an_error_listing_them() -> void:
 
 func test_machine_node_name_does_not_matter() -> void:
 	_scene("enemy", { "Brain": "DogHPDA" })
-	var result = _generate(PackedStringArray(["hpda", "enemy", "alive"]))
+	var result := _generate(PackedStringArray(["hpda", "enemy", "alive"]))
 	assert_eq(result.error, "")
 	assert_eq(result.machine_node, "Brain")
 
 
 func test_host_without_class_name_is_only_a_warning() -> void:
 	_scene("slime", { "DogHPDA": "DogHPDA" }, "", "extends Node\n")
-	var result = _generate(PackedStringArray(["hpda", "slime", "alive"]))
+	var result := _generate(PackedStringArray(["hpda", "slime", "alive"]))
 	assert_eq(result.error, "")
 	assert_eq(result.warnings, ["states cast host as Slime, but slime.gd has no class_name Slime"])
 
 
 func test_host_with_another_class_name_is_only_a_warning() -> void:
 	_scene("slime", { "DogHPDA": "DogHPDA" }, "", "class_name Enemy\nextends Node\n")
-	var result = _generate(PackedStringArray(["hpda", "slime", "alive"]))
+	var result := _generate(PackedStringArray(["hpda", "slime", "alive"]))
 	assert_eq(
 		result.warnings,
 		["states cast host as Slime, but slime.gd has no class_name Slime (found: Enemy)"],
@@ -394,7 +394,7 @@ func test_host_with_the_class_name_has_no_warning() -> void:
 
 func test_run_prints_warnings() -> void:
 	_scene("slime")
-	var result = _run(PackedStringArray(["hpda", "slime", "alive"]))
+	var result := _run(PackedStringArray(["hpda", "slime", "alive"]))
 	assert_eq(result[0], OK)
 	assert_has(
 		result[1],
@@ -403,7 +403,7 @@ func test_run_prints_warnings() -> void:
 
 
 func test_run_prints_validation_errors() -> void:
-	var result = _run(PackedStringArray(["hpda", "enemy", "alive"]))
+	var result := _run(PackedStringArray(["hpda", "enemy", "alive"]))
 	assert_eq(result[0], FAILED)
 	assert_string_contains(result[1][0], "DOG: state: ")
 
@@ -412,7 +412,7 @@ func test_run_prints_validation_errors() -> void:
 
 
 func _initial(args: Array) -> String:
-	var request = _request(PackedStringArray(args))
+	var request := _request(PackedStringArray(args))
 	return (
 		Generator.default_initial(request.tree) if request.initial.is_empty()
 		else request.initial
@@ -436,7 +436,7 @@ func test_initial_on_a_flat_tree_is_the_first() -> void:
 
 func test_initial_flag_overrides_the_default() -> void:
 	_scene("enemy")
-	var result = _generate(
+	var result := _generate(
 		PackedStringArray(["hpda", "enemy", "--initial", "alive", "alive", ".grounded"])
 	)
 	assert_eq(result.initial, "alive")
@@ -471,7 +471,7 @@ func _host(actor := "enemy", dir := "") -> String:
 
 func test_plumbing_is_added_to_the_host_in_style_guide_order() -> void:
 	_scene("enemy")
-	var result = _generate(PackedStringArray(["hpda", "enemy", "alive", ".grounded", "dead"]))
+	var result := _generate(PackedStringArray(["hpda", "enemy", "alive", ".grounded", "dead"]))
 	assert_eq(result.error, "")
 	assert_eq(_host(), ENEMY_HOST)
 	assert_eq(result.report, [
@@ -524,7 +524,7 @@ func test_reference_already_written_by_api_is_not_duplicated() -> void:
 		"",
 		"extends Node\n\n@onready var _dog_hpda: DogHPDA = $DogHPDA\n",
 	)
-	var result = _generate(PackedStringArray(["hpda", "enemy", "alive"]))
+	var result := _generate(PackedStringArray(["hpda", "enemy", "alive"]))
 	assert_has(result.report, "skip var _dog_hpda")
 	assert_eq(_host().count("var _dog_hpda"), 1)
 
@@ -532,7 +532,7 @@ func test_reference_already_written_by_api_is_not_duplicated() -> void:
 func test_add_keeps_the_init_line_when_the_initial_changes() -> void:
 	_scene("enemy")
 	_generate(PackedStringArray(["hpda", "enemy", "alive", ".grounded"]))
-	var result = _generate(PackedStringArray(["hpda", "enemy", "alive", ".grounded", "..run"]))
+	var result := _generate(PackedStringArray(["hpda", "enemy", "alive", ".grounded", "..run"]))
 	assert_has(result.report, "skip line _dog_hpda.init")
 	assert_string_contains(_host(), "_dog_hpda.init(grounded_state)")
 
@@ -542,7 +542,7 @@ func test_update_changes_the_init_line_and_leaves_state_files_alone() -> void:
 	_generate(PackedStringArray(["hpda", "enemy", "alive", ".grounded"]))
 	var grounded := _states("enemy").path_join("enemy_grounded_state.gd")
 	_write(grounded, "custom")
-	var result = _generate(
+	var result := _generate(
 		PackedStringArray(["hpda", "enemy", "-u", "--initial", "alive", "alive", ".grounded"])
 	)
 	assert_has(result.report, "update line _dog_hpda.init")
@@ -573,7 +573,7 @@ func test_force_deletes_the_whole_states_folder_and_reports_each_file() -> void:
 	DirAccess.make_dir_recursive_absolute(dir.path_join("sub"))
 	_write(dir.path_join("sub/notes.txt"), "x")
 
-	var result = _generate(PackedStringArray(["hpda", "enemy", "-f", "alive"]))
+	var result := _generate(PackedStringArray(["hpda", "enemy", "-f", "alive"]))
 	assert_eq(result.error, "")
 	assert_eq(_files(dir), ["enemy_alive_state.gd", "enemy_state.gd"])
 	for file in [
@@ -592,7 +592,7 @@ func test_force_deletes_the_whole_states_folder_and_reports_each_file() -> void:
 
 func test_force_without_a_states_folder_just_creates_it() -> void:
 	_scene("enemy")
-	var result = _generate(PackedStringArray(["hpda", "enemy", "-f", "alive"]))
+	var result := _generate(PackedStringArray(["hpda", "enemy", "-f", "alive"]))
 	assert_eq(result.error, "")
 	assert_eq(_files(_states("enemy")), ["enemy_alive_state.gd", "enemy_state.gd"])
 
@@ -602,7 +602,7 @@ func test_force_deletes_nothing_when_validation_fails() -> void:
 	_generate(PackedStringArray(["hpda", "enemy", "alive"]))
 	_scene("enemy", { "Brain": "DogFSM" })
 	var before := _files(ROOT)
-	var result = _generate(PackedStringArray(["hpda", "enemy", "-f", "alive"]))
+	var result := _generate(PackedStringArray(["hpda", "enemy", "-f", "alive"]))
 	assert_string_contains(result.error, "no DogHPDA child")
 	assert_eq(_files(ROOT), before)
 
@@ -654,7 +654,7 @@ func test_run_prints_created_and_keeps() -> void:
 
 
 func test_run_reports_parse_errors() -> void:
-	var result = _run(PackedStringArray(["hdpa", "enemy", "alive"]))
+	var result := _run(PackedStringArray(["hdpa", "enemy", "alive"]))
 	assert_eq(result[0], ERR_INVALID_PARAMETER)
 	assert_eq(result[1].size(), 1)
 	assert_string_contains(result[1][0], "DOG: state:")
@@ -662,6 +662,6 @@ func test_run_reports_parse_errors() -> void:
 
 
 func test_run_reports_unknown_type() -> void:
-	var result = _run(PackedStringArray(["nope", "enemy", "alive"]))
+	var result := _run(PackedStringArray(["nope", "enemy", "alive"]))
 	assert_eq(result[0], ERR_INVALID_PARAMETER)
 	assert_string_contains(result[1][0], "unknown type")
