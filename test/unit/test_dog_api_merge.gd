@@ -367,12 +367,12 @@ func test_force_does_not_report_regenerated_members_as_dropped() -> void:
 	var source := (
 		HEAD + "func _ready() -> void:\n\tpass\n\n\nfunc jump() -> void:\n\tprint(\"mine\")\n"
 	)
-	var connect := {
+	var connect_block := {
 		"kind": "ready_line",
 		"name": "_x.landed",
 		"text": "\t_x.landed.connect(landed.emit)",
 	}
-	var r := _force(source, [_block("jump"), connect])
+	var r := _force(source, [_block("jump"), connect_block])
 	assert_eq(r.report, ["add func jump", "add func _ready", "add connect _x.landed"])
 
 

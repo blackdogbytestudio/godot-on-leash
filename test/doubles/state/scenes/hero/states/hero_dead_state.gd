@@ -1,6 +1,9 @@
 class_name HeroDeadState
 extends HeroState
 
+# Generated stubs: the hooks are empty, so host and delta are unused.
+@warning_ignore_start("unused_parameter")
+
 
 func _enter(host: Hero) -> void:
 	pass

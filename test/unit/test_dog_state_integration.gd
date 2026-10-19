@@ -17,7 +17,9 @@ func _build(extra: Array = []) -> DogStateGenerator.Result:
 ## The host is the global class Hero already, so compile it without its class_name.
 func _compile(source: String) -> int:
 	var script := GDScript.new()
-	script.source_code = source.replace("class_name Hero\n", "")
+	# Only checks that it compiles: unused params and signals are expected here.
+	var ignore := "@warning_ignore_start(\"unused_parameter\", \"unused_signal\")\n"
+	script.source_code = ignore + source.replace("class_name Hero\n", "")
 	return script.reload()
 
 
