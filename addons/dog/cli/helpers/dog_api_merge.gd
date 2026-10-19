@@ -37,20 +37,16 @@ const DECLARATION := (
 	"^(@|##|(static\\s+func|func|var|const|signal|enum"
 	+ "|class_name|class|extends)\\b)"
 )
-
 ## Signatures for funcs that "func_line" creates; others get `func name() -> void:`.
 const SIGNATURES := {
 	"_ready": "func _ready() -> void:",
 	"_process": "func _process(delta: float) -> void:",
 	"_physics_process": "func _physics_process(delta: float) -> void:",
 }
-
 ## An annotation alone on its line (e.g. `@export` above a `var`).
 const ANNOTATION_ONLY := "^@\\w+(\\([^)]*\\))?\\s*$"
-
 ## Lines that belong to the top of the file, above the members.
 const HEADER_LINE := "^(@tool|@icon|@static_unload|class_name|extends)\\b"
-
 ## Style guide rank of each member (lower comes first). Built-in virtuals keep
 ## the order of VIRTUAL_ORDER; the other built-in virtuals come right after them.
 ## Overridden custom methods can't be told apart, so they rank as plain funcs.
@@ -67,7 +63,6 @@ const RANK_VIRTUAL := 140
 const RANK_OTHER_VIRTUAL := 150
 const RANK_FUNC := 160
 const RANK_CLASS := 170
-
 ## Before RANK_STATIC_INIT, members are one-liners that may sit together.
 const FIRST_METHOD_RANK := RANK_STATIC_INIT
 const VIRTUAL_ORDER := ["_init", "_enter_tree", "_ready", "_process", "_physics_process"]
@@ -78,11 +73,9 @@ const OTHER_VIRTUALS := [
 	"_property_get_revert", "_gui_input", "_get_minimum_size", "_has_point",
 	"_make_custom_tooltip", "_can_drop_data", "_drop_data", "_get_drag_data",
 ]
-
 ## Gaps in blank lines measured from these ranks (not members).
 const GAP_FILE_START := -2
 const GAP_HEADER := -1
-
 # Error messages
 const BODY_ON_SAME_LINE := (
 	"func %s (line %d) has its body on the same line:"
@@ -99,100 +92,140 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 	var dropped := PackedStringArray()
 	if mode == Mode.FORCE:
 		dropped = _dropped(lines, blocks)
-		lines = _trim_blank_tail(lines.slice(0, _header_end(lines)))
-		if not lines.is_empty():
-			lines.append("")
+		lines = _force_header(lines)
 		mode = Mode.ADD
 
-	var report := []
-	var to_add: Array = []
-	var to_replace: Array = []
-	var lines_to_insert := {}  # func name -> PackedStringArray, for funcs that exist
-	var funcs_to_create := {}  # func name -> PackedStringArray, in block order
-	var lines_to_update: Array = []  # func_line blocks whose "match" line differs
-
 	# Pass 1 only reads: classify every block and validate before touching anything.
+	var plan := Plan.new()
 	for block in blocks:
-		var kind: String = block.get("kind", "func")
-		var block_name: String = block["name"]
-		var text: String = block["text"]
-		var label := "%s %s" % [_word(kind), block_name]
+		var error := _classify(plan, lines, block, mode)
+		if not error.is_empty():
+			return _error(source, error)
 
-		if kind == "ready_line" or kind == "func_line":
-			var target: String = "_ready" if kind == "ready_line" else block["func"]
-			var func_start := _find(lines, "func", target)
-			if func_start == -1:
-				if not funcs_to_create.has(target):
-					funcs_to_create[target] = PackedStringArray()
-					report.append("add func " + target)
-				funcs_to_create[target].append(text)
-				report.append("add " + label)
-				continue
-			if not lines[func_start].strip_edges().ends_with(":"):
-				return _error(source, BODY_ON_SAME_LINE % [target, func_start + 1])
-			var match_prefix: String = block.get("match", "")
-			var matched := (
-				-1 if match_prefix.is_empty()
-				else _find_line(lines, func_start, match_prefix)
-			)
-			if matched != -1:
-				if mode == Mode.UPDATE and lines[matched].strip_edges() != text.strip_edges():
-					lines_to_update.append({ "func": target, "match": match_prefix, "text": text })
-					report.append("update " + label)
-				else:
-					report.append("skip " + label)
-			elif _has_line(lines, func_start, text):
-				report.append("skip " + label)
-			else:
-				if not lines_to_insert.has(target):
-					lines_to_insert[target] = PackedStringArray()
-				lines_to_insert[target].append(text)
-				report.append("add " + label)
-			continue
+	# Pass 2 writes.
+	lines = _apply(plan, lines)
+	for label in dropped:
+		plan.report.append("drop " + label)
+	return { "source": "\n".join(lines), "report": plan.report, "error": "" }
 
-		var start := _find(lines, kind, block_name)
-		if start == -1:
-			to_add.append(block)
-			report.append("add " + label)
-			continue
 
-		if mode == Mode.UPDATE:
-			var span := _span_for(kind, lines, start)
-			var bad_line: int = span["bad_line"]
-			if bad_line != -1:
-				return _error(source, FUNC_CUT % [block_name, start + 1, bad_line + 1])
-			var end: int = span["end"]
-			if "\n".join(lines.slice(start, end + 1)) != text:
-				to_replace.append(block)
-				report.append("update " + label)
-				continue
-		report.append("skip " + label)
+## FORCE keeps only the header, followed by one blank line.
+static func _force_header(lines: PackedStringArray) -> PackedStringArray:
+	var header := _trim_blank_tail(lines.slice(0, _header_end(lines)))
+	if not header.is_empty():
+		header.append("")
+	return header
 
-	# Pass 2 writes. Replace first (positions shift, so find again every time).
-	for block in to_replace:
+
+## Adds what `block` needs to `plan`. Returns an error message, or "".
+static func _classify(plan: Plan, lines: PackedStringArray, block: Dictionary, mode: Mode) -> String:
+	var kind: String = block.get("kind", "func")
+	if kind == "ready_line" or kind == "func_line":
+		return _classify_line(plan, lines, block, mode)
+	return _classify_member(plan, lines, block, mode)
+
+
+## A line that must exist inside a func ("func_line" / "ready_line").
+static func _classify_line(
+	plan: Plan,
+	lines: PackedStringArray,
+	block: Dictionary,
+	mode: Mode,
+) -> String:
+	var target := _target_func(block)
+	var text: String = block["text"]
+	var label := _label(block)
+	var func_start := _find(lines, "func", target)
+	if func_start == -1:
+		plan.create_line(target, text)
+		plan.report.append("add " + label)
+		return ""
+	if not lines[func_start].strip_edges().ends_with(":"):
+		return BODY_ON_SAME_LINE % [target, func_start + 1]
+
+	var match_prefix: String = block.get("match", "")
+	var matched := -1 if match_prefix.is_empty() else _find_line(lines, func_start, match_prefix)
+	if matched != -1:
+		if mode == Mode.UPDATE and lines[matched].strip_edges() != text.strip_edges():
+			plan.lines_to_update.append({ "func": target, "match": match_prefix, "text": text })
+			plan.report.append("update " + label)
+		else:
+			plan.report.append("skip " + label)
+	elif _has_line(lines, func_start, text):
+		plan.report.append("skip " + label)
+	else:
+		plan.insert_line(target, text)
+		plan.report.append("add " + label)
+	return ""
+
+
+## A whole member: func, var or signal.
+static func _classify_member(
+	plan: Plan,
+	lines: PackedStringArray,
+	block: Dictionary,
+	mode: Mode,
+) -> String:
+	var kind: String = block.get("kind", "func")
+	var block_name: String = block["name"]
+	var label := _label(block)
+	var start := _find(lines, kind, block_name)
+	if start == -1:
+		plan.to_add.append(block)
+		plan.report.append("add " + label)
+		return ""
+
+	if mode == Mode.UPDATE:
+		var span := _span_for(kind, lines, start)
+		var bad_line: int = span["bad_line"]
+		if bad_line != -1:
+			return FUNC_CUT % [block_name, start + 1, bad_line + 1]
+		var end: int = span["end"]
+		if "\n".join(lines.slice(start, end + 1)) != block["text"]:
+			plan.to_replace.append(block)
+			plan.report.append("update " + label)
+			return ""
+	plan.report.append("skip " + label)
+	return ""
+
+
+## Writes `plan` into `lines`. Replace first (positions shift, so find again
+## every time), then the lines inside funcs, then the new members.
+static func _apply(plan: Plan, lines: PackedStringArray) -> PackedStringArray:
+	for block in plan.to_replace:
 		var kind: String = block.get("kind", "func")
 		var text: String = block["text"]
 		var start := _find(lines, kind, block["name"])
 		var end: int = _span_for(kind, lines, start)["end"]
 		lines = lines.slice(0, start) + text.split("\n") + lines.slice(end + 1)
 
-	for line in lines_to_update:
-		lines[_find_line(lines, _find(lines, "func", line["func"]), line["match"])] = line["text"]
+	for line in plan.lines_to_update:
+		var func_start := _find(lines, "func", line["func"])
+		lines[_find_line(lines, func_start, line["match"])] = line["text"]
 
-	for target in lines_to_insert:
+	for target in plan.lines_to_insert:
 		var at := _find(lines, "func", target) + 1
-		lines = lines.slice(0, at) + lines_to_insert[target] + lines.slice(at)
+		lines = lines.slice(0, at) + plan.lines_to_insert[target] + lines.slice(at)
 
-	for target in funcs_to_create:
+	for target in plan.funcs_to_create:
 		var signature: String = SIGNATURES.get(target, "func %s() -> void:" % target)
-		to_add.append({ "text": signature + "\n" + "\n".join(funcs_to_create[target]) })
+		var body := "\n".join(plan.funcs_to_create[target])
+		plan.to_add.append({ "text": signature + "\n" + body })
 
-	for block in to_add:
+	for block in plan.to_add:
 		lines = _insert(lines, block["text"].split("\n"))
+	return lines
 
-	for label in dropped:
-		report.append("drop " + label)
-	return { "source": "\n".join(lines), "report": report, "error": "" }
+
+static func _target_func(block: Dictionary) -> String:
+	if block.get("kind", "func") == "ready_line":
+		return "_ready"
+	return block["func"]
+
+
+static func _label(block: Dictionary) -> String:
+	var kind: String = block.get("kind", "func")
+	return "%s %s" % [_word(kind), block["name"]]
 
 
 ## "<keyword> <name>" of each member below the header that no block regenerates.
@@ -466,3 +499,24 @@ static func _matches(pattern: String, line: String) -> bool:
 	var re := RegEx.new()
 	re.compile(pattern)
 	return re.search(line) != null
+
+
+## What pass 1 decided and pass 2 writes.
+class Plan:
+	var report: Array = []
+	var to_add: Array = []
+	var to_replace: Array = []
+	var lines_to_insert := {}  # func name -> PackedStringArray, for funcs that exist
+	var funcs_to_create := {}  # func name -> PackedStringArray, in block order
+	var lines_to_update: Array = []  # func_line blocks whose "match" line differs
+
+	func create_line(target: String, text: String) -> void:
+		if not funcs_to_create.has(target):
+			funcs_to_create[target] = PackedStringArray()
+			report.append("add func " + target)
+		funcs_to_create[target].append(text)
+
+	func insert_line(target: String, text: String) -> void:
+		if not lines_to_insert.has(target):
+			lines_to_insert[target] = PackedStringArray()
+		lines_to_insert[target].append(text)
