@@ -72,8 +72,21 @@ func run(args: PackedStringArray) -> Error:
 
 
 static func parse_request(args: PackedStringArray) -> Request:
-	var request: Request = Request.new()
+	var request := Request.new()
+	var parser := _build_parser()
+	parser.parse(args)  # always pass args: null would read the editor's cmdline
 
+	request.error = _read_arguments(parser, request)
+	if not request.error.is_empty():
+		return request
+	request.error = _read_options(parser, request)
+	if not request.error.is_empty():
+		return request
+	request.error = _read_tree(parser, request)
+	return request
+
+
+static func _build_parser() -> DogOptParse:
 	var parser := DogOptParse.new()
 	parser.add_positional_required("type", "", "type: fsm | pda | hfsm | hpda")
 	parser.add_positional_required("actor", "", "actor name (snake_case)")
@@ -86,73 +99,75 @@ static func parse_request(args: PackedStringArray) -> Request:
 	parser.add(
 		"--initial",
 		"",
-		"state the machine starts in (default: the deepest, first on a tie)",
+		"state the machine starts in (default: the deepest, first on a tie",
 	)
 	parser.add(
-		["--force", "-f"],
-		false,
-		"back to factory: delete states/, recreate it, rewrite the script below its header",
+	["--force", "-f"],
+	false,
+	"back to factory: delete states/, recreate it, rewrite the script beloow its header",
 	)
 	parser.add(
 		["--update", "-u"],
 		false,
 		"update the host script (e.g. the init line); state files are left alone",
 	)
-	parser.parse(args)  # always pass args: null would read the editor's cmdline
+	return parser
 
+
+## Positional arguments: <type> <actor>. Also rejects unknown options.
+static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 	var missing: Array = parser.get_missing_required_options()
 	if not missing.is_empty():
-		request.error = MISSING_ARGUMENT % missing[0].option_name
-		return request
+		return MISSING_ARGUMENT % missing[0].option_name
 
 	for token in parser.unused:
 		if parser.is_option(token):
-			request.error = UNKNOWN_OPTION % token
-			return request
+			return UNKNOWN_OPTION % token
 
 	request.type = parser.get_value("type")
 	if request.type not in FLAT_TYPES and request.type not in TREE_TYPES:
-		request.error = UNKNOWN_TYPE % request.type
-		return request
+		return UNKNOWN_TYPE % request.type
 
 	request.actor = parser.get_value("actor")
-	request.error = DogNames.actor_error(request.actor)
-	if not request.error.is_empty():
-		return request
+	return DogNames.actor_error(request.actor)
 
+
+## --folder, --extends, --initial and the -f / -u mode.
+static func _read_options(parser: DogOptParse, request: Request) -> String:
 	request.folder = parser.get_value("--folder")
-	request.error = DogNames.folder_error(request.folder)
-	if not request.error.is_empty():
-		return request
+	var error := DogNames.folder_error(request.folder)
+	if not error.is_empty():
+		return error
 
 	request.extends_state = parser.get_value("--extends")
-
 	request.initial = parser.get_value("--initial")
 	if not request.initial.is_empty() and not DogStateTree.is_valid_name(request.initial):
-		request.error = INVALID_INITIAL % request.initial
-		return request
+		return INVALID_INITIAL % request.initial
 
+	return _read_mode(parser, request)
+
+
+static func _read_mode(parser: DogOptParse, request: Request) -> String:
 	var force: bool = parser.get_value("--force")
 	var update: bool = parser.get_value("--update")
 	if force and update:
-		request.error = FORCE_AND_UPDATE
-		return request
+		return FORCE_AND_UPDATE
 	if force:
 		request.mode = DogApiMerge.Mode.FORCE
 	elif update:
 		request.mode = DogApiMerge.Mode.UPDATE
+	return ""
 
+
+## The remaining tokens as the state tree; flat types reject nesting.
+static func _read_tree(parser: DogOptParse, request: Request) -> String:
 	var tree := DogStateTree.parse(PackedStringArray(parser.unused))
 	if not tree.error.is_empty():
-		request.error = tree.error
-		return request
-
+		return tree.error
 	if request.type in FLAT_TYPES and tree.nodes.any(func(n): return n.depth > 0):
-		request.error = NESTED_IN_FLAT % request.type
-		return request
-
+		return NESTED_IN_FLAT % request.type
 	request.tree = tree
-	return request
+	return ""
 
 
 class Request:
