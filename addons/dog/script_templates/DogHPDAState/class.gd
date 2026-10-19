@@ -2,6 +2,7 @@ class_name _CLASS_
 extends _BASE_
 
 # Replace 'CUSTOM_HOST' with the specific class name of your host script (e.g., Player).
+# Every hook below is optional: delete the ones this state doesn't use.
 
 
 func enter(host: Node) -> void:
