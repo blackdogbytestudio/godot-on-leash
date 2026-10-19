@@ -1,6 +1,9 @@
 class_name HeroState
 extends DogHPDAState
 
+# Generated stubs: the hooks are empty, so host and delta are unused.
+@warning_ignore_start("unused_parameter")
+
 
 func enter(host: Node) -> void:
 	_enter(host as Hero)

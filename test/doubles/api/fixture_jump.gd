@@ -2,6 +2,9 @@ class_name FixtureJump2D
 extends FixtureBase
 ## Test double: a component with signals, args, defaults, a static and internals.
 
+# Members exist only to be found by reflection, never used.
+@warning_ignore_start("unused_signal", "unused_parameter", "shadowed_variable")
+
 signal landed(speed: float)
 signal _hidden
 

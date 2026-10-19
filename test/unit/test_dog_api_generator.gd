@@ -71,7 +71,9 @@ func _read(path: String) -> String:
 
 func _compile(source: String) -> int:
 	var script := GDScript.new()
-	script.source_code = source
+	# Only checks that it compiles: unused params and signals are expected here.
+	var ignore := "@warning_ignore_start(\"unused_parameter\", \"unused_signal\")\n"
+	script.source_code = ignore + source
 	return script.reload()
 
 
@@ -442,5 +444,5 @@ func test_plan_never_forwards_property_accessors() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host)
 	host.free()
-	for name in _names(p.blocks, "func"):
-		assert_false(name.begins_with("@"), name)
+	for func_name in _names(p.blocks, "func"):
+		assert_false(func_name.begins_with("@"), func_name)
