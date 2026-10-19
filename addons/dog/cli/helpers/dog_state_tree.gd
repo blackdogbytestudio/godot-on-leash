@@ -32,26 +32,13 @@ static func parse(tokens: PackedStringArray) -> DogStateTree:
 	var seen: Dictionary[String, bool] = {}
 
 	for token in tokens:
-		var depth := 0
-		while depth < token.length() and token[depth] == ".":
-			depth += 1
+		var depth := _depth_of(token)
+		var error := _token_error(token, depth, path, seen)
+		if not error.is_empty():
+			return _fail(tree, error)
 
 		var state_name := token.substr(depth)
-		if state_name.is_empty():
-			return _fail(tree, DOTS_WITHOUT_NAME % token)
-
-		if not is_valid_name(state_name):
-			return _fail(tree, INVALID_STATE % state_name)
-
-		if depth > path.size():
-			if path.is_empty():
-				return _fail(tree, NESTED_FIRST % state_name)
-			return _fail(tree, NESTED_TOO_DEEP % [state_name, path.size() - 1])
-
-		if seen.has(state_name):
-			return _fail(tree, DECLARED_TWICE % state_name)
 		seen[state_name] = true
-
 		path.resize(depth)
 
 		# gdstyle:ignore=quality/allocation-in-loop
@@ -66,6 +53,36 @@ static func parse(tokens: PackedStringArray) -> DogStateTree:
 	return tree
 
 
+## How many leading dots `token` has.
+static func _depth_of(token: String) -> int:
+	var depth := 0
+	while depth < token.length() and token[depth] == ".":
+		depth += 1
+	return depth
+
+
+## Why `token` can't be the next state, or "". `path` holds the current branch
+## (one name per depth) and `seen` every name declared so far.
+static func _token_error(
+	token: String,
+	depth: int,
+	path: Array[String],
+	seen: Dictionary[String, bool],
+) -> String:
+	var state_name := token.substr(depth)
+	if state_name.is_empty():
+		return DOTS_WITHOUT_NAME % token
+	if not is_valid_name(state_name):
+		return INVALID_STATE % state_name
+	if depth > path.size():
+		if path.is_empty():
+			return NESTED_FIRST % state_name
+		return NESTED_TOO_DEEP % [state_name, path.size() - 1]
+	if seen.has(state_name):
+		return DECLARED_TWICE % state_name
+	return ""
+
+
 # On any error the tree is returned empty, so a caller can never generate from a
 # half-parsed tree.
 static func _fail(tree: DogStateTree, message: String) -> DogStateTree:
@@ -76,8 +93,6 @@ static func _fail(tree: DogStateTree, message: String) -> DogStateTree:
 
 ## Parses a dot-depth state tree into a flat, ordered list of nodes.
 ## Example: alive .grounded ..run ...run_ground ..idle dead
-
-
 class StateNode:
 	var name: String
 	var parent: String  # Empty for roots.
