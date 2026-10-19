@@ -36,19 +36,24 @@ func register_folder(path: String) -> void:
 	for file in files:
 		if not file.ends_with(".gd"):
 			continue
-
-		var script := load(path.path_join(file)) as GDScript
-		if script == null or not script.can_instantiate():
-			push_warning(UNLOADABLE_COMMAND % file)
-			continue
-
-		# Avoid leaking a Node (or anything non-RefCounted) by instantiating it.
-		if script.get_instance_base_type() != "RefCounted":
-			continue
-
-		var command := script.new() as DogCommand
+		var command := _load_command(path.path_join(file))
 		if command != null:
 			register(command)
+
+
+## The command in the script at `path`, or null when it can't be loaded or isn't
+## a RefCounted DogCommand.
+func _load_command(path: String) -> DogCommand:
+	var script := load(path) as GDScript
+	if script == null or not script.can_instantiate():
+		push_warning(UNLOADABLE_COMMAND % path.get_file())
+		return null
+
+	# Avoid leaking a Node (or anything non-RefCounted) by instantiating it.
+	if script.get_instance_base_type() != "RefCounted":
+		return null
+
+	return script.new() as DogCommand
 
 
 ## Commands hold a reference back to the cli, and the cli holds the commands.
