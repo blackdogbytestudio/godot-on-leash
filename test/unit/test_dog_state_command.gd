@@ -44,10 +44,7 @@ func _request(args: PackedStringArray) -> DogStateCommand.Request:
 func _generate(args: PackedStringArray) -> DogStateGenerator.Result:
 	var request := _request(args)
 	assert_eq(request.error, "", "unexpected parse error: %s" % request.error)
-	return Generator.generate(
-		request.type, request.actor, request.folder,
-		request.extends_state, request.tree, request.mode, ROOT, request.initial
-	)
+	return Generator.generate(Command.options_for(request, ROOT))
 
 
 func _run(args: PackedStringArray) -> Array:

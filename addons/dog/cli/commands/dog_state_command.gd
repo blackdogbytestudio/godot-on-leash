@@ -6,7 +6,6 @@ extends DogCommand
 
 const FLAT_TYPES: PackedStringArray = ["fsm", "pda"]
 const TREE_TYPES: PackedStringArray = ["hfsm", "hpda"]
-
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
@@ -41,16 +40,7 @@ func run(args: PackedStringArray) -> Error:
 		print_line("DOG: state: %s" % request.error)
 		return ERR_INVALID_PARAMETER
 
-	var result := DogStateGenerator.generate(
-		request.type,
-		request.actor,
-		request.folder,
-		request.extends_state,
-		request.tree,
-		request.mode,
-		root,
-		request.initial
-	)
+	var result := DogStateGenerator.generate(options_for(request, root))
 	if not result.error.is_empty():
 		print_line("DOG: state: %s" % result.error)
 		return FAILED
@@ -69,6 +59,20 @@ func run(args: PackedStringArray) -> Error:
 	else:
 		print_line("updated %s" % result.host_path)
 	return OK
+
+
+## The generator options for a parsed `request`, writing below `root`.
+static func options_for(request: Request, root: String) -> DogStateGenerator.Options:
+	var options := DogStateGenerator.Options.new()
+	options.type = request.type
+	options.actor = request.actor
+	options.folder = request.folder
+	options.base = request.extends_state
+	options.tree = request.tree
+	options.mode = request.mode
+	options.root = root
+	options.initial = request.initial
+	return options
 
 
 static func parse_request(args: PackedStringArray) -> Request:
@@ -99,12 +103,12 @@ static func _build_parser() -> DogOptParse:
 	parser.add(
 		"--initial",
 		"",
-		"state the machine starts in (default: the deepest, first on a tie",
+		"state the machine starts in (default: the deepest, first on a tie)",
 	)
 	parser.add(
-	["--force", "-f"],
-	false,
-	"back to factory: delete states/, recreate it, rewrite the script beloow its header",
+		["--force", "-f"],
+		false,
+		"back to factory: delete states/, recreate it, rewrite the script below its header",
 	)
 	parser.add(
 		["--update", "-u"],

@@ -41,13 +41,7 @@ func run(args: PackedStringArray) -> Error:
 		print_line("DOG: api: %s" % request.error)
 		return ERR_INVALID_PARAMETER
 
-	var result := DogApiGenerator.generate(
-		request.actor,
-		request.components,
-		request.folder,
-		request.root if not request.root.is_empty() else root,
-		request.mode
-	)
+	var result := DogApiGenerator.generate(options_for(request, root))
 	var error: String = result["error"]
 	if not error.is_empty():
 		print_line("DOG: api: %s" % error)
@@ -62,6 +56,18 @@ func run(args: PackedStringArray) -> Error:
 	else:
 		print_line("updated %s" % result["path"])
 	return OK
+
+
+## The generator options for a parsed `request`; `default_root` is used when
+## --root wasn't given.
+static func options_for(request: Request, default_root: String) -> DogApiGenerator.Options:
+	var options := DogApiGenerator.Options.new()
+	options.actor = request.actor
+	options.components = request.components
+	options.folder = request.folder
+	options.root = request.root if not request.root.is_empty() else default_root
+	options.mode = request.mode
+	return options
 
 
 static func parse_request(args: PackedStringArray) -> Request:
