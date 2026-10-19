@@ -11,8 +11,6 @@ const TREE_TYPES: PackedStringArray = ["hfsm", "hpda"]
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
 const UNKNOWN_TYPE := "unknown type '%s'."
-const INVALID_ACTOR := "'%s' is not a valid actor name (use snake_case)."
-const INVALID_FOLDER := "'%s' is not a valid folder (snake_case names separated by /)."
 const INVALID_INITIAL := "'%s' is not a valid --initial (a state name, no dots)."
 const FORCE_AND_UPDATE := "use either -f or -u, not both."
 const NESTED_IN_FLAT := "'%s' is flat: nested states are not allowed."
@@ -118,17 +116,17 @@ static func parse_request(args: PackedStringArray) -> Request:
 		return request
 
 	request.actor = parser.get_value("actor")
-	if not DogNames.is_valid_name(request.actor):
-		request.error = INVALID_ACTOR % request.actor
+	request.error = DogNames.actor_error(request.actor)
+	if not request.error.is_empty():
 		return request
 
 	request.folder = parser.get_value("--folder")
-	if not request.folder.is_empty():
-		for part in request.folder.split("/"):
-			if not DogNames.is_valid_name(part):
-				request.error = INVALID_FOLDER % request.folder
-				return request
+	request.error = DogNames.folder_error(request.folder)
+	if not request.error.is_empty():
+		return request
+
 	request.extends_state = parser.get_value("--extends")
+
 	request.initial = parser.get_value("--initial")
 	if not request.initial.is_empty() and not DogStateTree.is_valid_name(request.initial):
 		request.error = INVALID_INITIAL % request.initial

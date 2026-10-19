@@ -11,7 +11,6 @@ extends DogCommand
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
-const INVALID_ACTOR := "'%s' is not a valid actor name (use snake_case)."
 const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
 const FORCE_AND_UPDATE := "use either -f or -u, not both."
 
@@ -91,8 +90,8 @@ static func parse_request(args: PackedStringArray) -> Request:
 		tokens.append(token)
 
 	request.actor = parser.get_value("actor")
-	if not DogNames.is_valid_name(request.actor):
-		request.error = INVALID_ACTOR % request.actor
+	request.error = DogNames.actor_error(request.actor)
+	if not request.error.is_empty():
 		return request
 
 	var prefix: String = String(parser.get_value("--prefix")).trim_suffix("_")
