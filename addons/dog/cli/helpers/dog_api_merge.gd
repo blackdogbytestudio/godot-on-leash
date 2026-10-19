@@ -63,6 +63,12 @@ const RANK_VIRTUAL := 140
 const RANK_OTHER_VIRTUAL := 150
 const RANK_FUNC := 160
 const RANK_CLASS := 170
+## Keywords that decide the rank on their own.
+const KEYWORD_RANKS := {
+	"signal": RANK_SIGNAL,
+	"enum": RANK_ENUM,
+	"const": RANK_CONST,
+}
 ## Before RANK_STATIC_INIT, members are one-liners that may sit together.
 const FIRST_METHOD_RANK := RANK_STATIC_INIT
 const VIRTUAL_ORDER := ["_init", "_enter_tree", "_ready", "_process", "_physics_process"]
@@ -118,7 +124,12 @@ static func _force_header(lines: PackedStringArray) -> PackedStringArray:
 
 
 ## Adds what `block` needs to `plan`. Returns an error message, or "".
-static func _classify(plan: Plan, lines: PackedStringArray, block: Dictionary, mode: Mode) -> String:
+static func _classify(
+	plan: Plan,
+	lines: PackedStringArray,
+	block: Dictionary,
+	mode: Mode,
+) -> String:
 	var kind: String = block.get("kind", "func")
 	if kind == "ready_line" or kind == "func_line":
 		return _classify_line(plan, lines, block, mode)
@@ -325,41 +336,52 @@ static func _members(lines: PackedStringArray) -> Array:
 
 ## Rank of the declaration at `decl`, with the annotation lines from `start` on.
 static func _rank(lines: PackedStringArray, start: int, decl: int) -> int:
+	var line := _with_annotations(lines, start, decl)
+	var bare := _strip_annotations(line)
+	for keyword in KEYWORD_RANKS:
+		if bare.begins_with(keyword):
+			return KEYWORD_RANKS[keyword]
+	if bare.begins_with("var") or _matches("^static\\s+var\\b", bare):
+		return _var_rank(line, bare)
+	if bare.begins_with("func") or _matches("^static\\s+func\\b", bare):
+		return _func_rank(bare)
+	if _matches("^class\\s", bare):
+		return RANK_CLASS
+	return RANK_FUNC
+
+
+## The declaration at `decl` with its annotation lines (from `start` on) in front,
+## on one line. Doc comments are skipped.
+static func _with_annotations(lines: PackedStringArray, start: int, decl: int) -> String:
 	var annotations := ""
 	var i := start
 	while i <= decl and (lines[i].begins_with("#") or _matches(ANNOTATION_ONLY, lines[i])):
 		if not lines[i].begins_with("#"):
 			annotations += lines[i] + " "
 		i += 1
-	var line := annotations + lines[i]
-	var bare := _strip_annotations(line)
-	if bare.begins_with("signal"):
-		return RANK_SIGNAL
-	if bare.begins_with("enum"):
-		return RANK_ENUM
-	if bare.begins_with("const"):
-		return RANK_CONST
+	return annotations + lines[i]
+
+
+static func _var_rank(line: String, bare: String) -> int:
 	if _matches("^static\\s+var\\b", bare):
 		return RANK_STATIC_VAR
-	if bare.begins_with("var"):
-		if _matches("^@export", line):
-			return RANK_EXPORT_VAR
-		if _matches("^(@\\w+(\\([^)]*\\))?\\s+)*@onready\\b", line):
-			return RANK_ONREADY_VAR
-		return RANK_VAR
+	if _matches("^@export", line):
+		return RANK_EXPORT_VAR
+	if _matches("^(@\\w+(\\([^)]*\\))?\\s+)*@onready\\b", line):
+		return RANK_ONREADY_VAR
+	return RANK_VAR
+
+
+static func _func_rank(bare: String) -> int:
 	if _matches("^(static\\s+)?func\\s+_static_init\\b", bare):
 		return RANK_STATIC_INIT
 	if _matches("^static\\s+func\\b", bare):
 		return RANK_STATIC_FUNC
-	if bare.begins_with("func"):
-		var func_name := bare.trim_prefix("func").strip_edges().get_slice("(", 0).strip_edges()
-		if func_name in VIRTUAL_ORDER:
-			return RANK_VIRTUAL + VIRTUAL_ORDER.find(func_name)
-		if func_name in OTHER_VIRTUALS:
-			return RANK_OTHER_VIRTUAL
-		return RANK_FUNC
-	if _matches("^class\\s", bare):
-		return RANK_CLASS
+	var func_name := bare.trim_prefix("func").strip_edges().get_slice("(", 0).strip_edges()
+	if func_name in VIRTUAL_ORDER:
+		return RANK_VIRTUAL + VIRTUAL_ORDER.find(func_name)
+	if func_name in OTHER_VIRTUALS:
+		return RANK_OTHER_VIRTUAL
 	return RANK_FUNC
 
 
