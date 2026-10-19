@@ -11,10 +11,7 @@ const ARGS := ["hpda", "hero", "alive", ".grounded", "dead"]
 func _build(extra: Array = []) -> DogStateGenerator.Result:
 	var request := DogStateCommand.parse_request(PackedStringArray(ARGS + extra))
 	assert_eq(request.error, "", "unexpected parse error: %s" % request.error)
-	return DogStateGenerator.build(
-		request.type, request.actor, request.folder, request.extends_state,
-		request.tree, request.mode, ROOT, request.initial
-	)
+	return DogStateGenerator.build(DogStateCommand.options_for(request, ROOT))
 
 
 ## The host is the global class Hero already, so compile it without its class_name.

@@ -114,6 +114,7 @@ func jump() -> void:
 	_jump.jump()
 """)
 
+
 # gdstyle:ignore-file=quality/max-function-length
 # gdstyle:ignore-file=quality/unnecessary-pass
 func test_file_already_in_order_gets_each_new_member_in_its_group() -> void:

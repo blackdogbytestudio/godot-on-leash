@@ -32,7 +32,6 @@ const FAMILIES := {
 	"hfsm": { "dir": "DogHState", "base": "DogHFSMState", "machine": "DogHFSM" },
 	"hpda": { "dir": "DogHPDAState", "base": "DogHPDAState", "machine": "DogHPDA" },
 }
-
 # Error messages
 const COULD_NOT_DELETE := "could not delete '%s' (error %d)."
 const COULD_NOT_CREATE := "could not create '%s' (error %d)."
@@ -54,17 +53,8 @@ const HOST_CLASS_FOUND := " (found: %s)"
 
 
 ## build + write. Nothing is written when build fails.
-static func generate(
-	type: String,
-	actor: String,
-	folder: String,
-	base: String,
-	tree: DogStateTree,
-	mode := DogApiMerge.Mode.ADD,
-	root: String = ROOT,
-	initial := ""
-) -> Result:
-	var result := build(type, actor, folder, base, tree, mode, root, initial)
+static func generate(options: Options) -> Result:
+	var result := build(options)
 	if not result.error.is_empty():
 		return result
 
@@ -75,7 +65,7 @@ static func generate(
 			return result
 
 	if not result.files.is_empty():
-		var dir := output_dir(folder, actor, root)
+		var dir := output_dir(options.folder, options.actor, options.root)
 		var make_error := DirAccess.make_dir_recursive_absolute(dir)
 		if make_error != OK:
 			result.error = COULD_NOT_CREATE % [dir, make_error]
@@ -101,28 +91,12 @@ static func generate(
 ## the state files that are missing (all of them with FORCE) and merges the
 ## machine plumbing into the host script. Returns a Result whose `files` and
 ## `host_source` are what generate writes.
-static func build(
-	type: String,
-	actor: String,
-	folder: String,
-	base: String,
-	tree: DogStateTree,
-	mode := DogApiMerge.Mode.ADD,
-	root: String = ROOT,
-	initial := ""
-) -> Result:
+static func build(options: Options) -> Result:
 	var result := Result.new()
+	var family: Dictionary = FAMILIES[options.type]
 
-	var family: Dictionary = FAMILIES[type]
-	var host_class := _pascal(actor)
-	var base_class := _pascal(base) if not base.is_empty() else ""
-
-	result.initial = initial if not initial.is_empty() else default_initial(tree)
-	var state_names: Array[String] = []
-	for node in tree.nodes:
-		state_names.append(node.name)
-	if result.initial not in state_names:
-		result.error = INITIAL_NOT_IN_TREE % [result.initial, ", ".join(state_names)]
+	result.error = _pick_initial(result, options)
+	if not result.error.is_empty():
 		return result
 
 	var template_dir := _find_template_dir(family["dir"])
@@ -130,69 +104,20 @@ static func build(
 		result.error = TEMPLATE_DIR_NOT_FOUND % family["dir"]
 		return result
 
-	_inspect_scene(result, actor, folder, root, family["machine"], host_class)
+	_inspect_scene(result, options, family["machine"])
 	if not result.error.is_empty():
 		return result
 
-	var dir := output_dir(folder, actor, root)
-	var force := mode == DogApiMerge.Mode.FORCE
 	var dropped_files: Array[String] = []
-	if force and DirAccess.dir_exists_absolute(dir):
-		if not is_safe_states_dir(dir, root):
-			result.error = UNSAFE_DELETE % [dir, root]
-			return result
-		result.delete_dir = dir
-		for file in _files_below(dir):
-			dropped_files.append("drop file %s/%s" % [STATES_DIR, file])
-		# Everything is recreated from the templates.
-		result.skipped.clear()
-	# Without --extends the actor base is the root of the hierarchy.
-	if base_class.is_empty():
-		var base_error := _plan_file(
-			result,
-			dir.path_join(file_name(actor)),
-			template_dir.path_join(ACTOR_TEMPLATE),
-			state_class(actor),
-			host_class,
-			family["base"],
-			force
-		)
-		if not base_error.is_empty():
-			result.error = base_error
-			return result
-
-	for node in tree.nodes:
-		var parent: String
-		if node.depth > 0:
-			parent = state_class(actor, node.parent)
-		elif not base_class.is_empty():
-			parent = base_class
-		else:
-			parent = state_class(actor)
-
-		var node_error := _plan_file(
-			result,
-			dir.path_join(file_name(actor, node.name)),
-			template_dir.path_join(NODE_TEMPLATE),
-			state_class(actor, node.name),
-			host_class,
-			parent,
-			force
-		)
-		if not node_error.is_empty():
-			result.error = node_error
-			return result
-
-	result.host_original = _read_text(result.host_path)
-	var blocks := host_blocks(actor, tree, family["machine"], result.machine_node, result.initial)
-	var merged := DogApiMerge.merge(result.host_original, blocks, mode)
-	var merge_error: String = merged["error"]
-	if not merge_error.is_empty():
-		result.error = HOST_MERGE_FAILED % [result.host_path.get_file(), merge_error]
-		result.files.clear()
+	result.error = _plan_force(result, options, dropped_files)
+	if not result.error.is_empty():
 		return result
-	result.host_source = merged["source"]
-	result.report.assign(dropped_files + Array(merged["report"]))
+
+	result.error = _plan_states(result, options, template_dir, family["base"])
+	if not result.error.is_empty():
+		return result
+
+	result.error = _merge_host(result, options, family["machine"], dropped_files)
 	return result
 
 
@@ -299,22 +224,10 @@ static func scene_path(folder: String, actor: String, root: String = ROOT) -> St
 
 
 ## Fills result.scene, host_path, machine_node and warnings, or result.error.
-static func _inspect_scene(
-	result: Result,
-	actor: String,
-	folder: String,
-	root: String,
-	machine_class: String,
-	host_class: String
-) -> void:
-	var path := scene_path(folder, actor, root)
+static func _inspect_scene(result: Result, options: Options, machine_class: String) -> void:
+	var path := scene_path(options.folder, options.actor, options.root)
 	if not FileAccess.file_exists(path):
-		result.error = SCENE_NOT_FOUND % [actor, path.get_base_dir()]
-		var found := DogApiGenerator.find_scene(actor, "", root)
-		var elsewhere: String = found["path"]
-		if not elsewhere.is_empty():
-			var actor_dir := elsewhere.get_base_dir().trim_prefix(root.trim_suffix("/") + "/")
-			result.error += SCENE_ELSEWHERE % [elsewhere, actor_dir]
+		result.error = _missing_scene_error(options, path)
 		return
 
 	var packed := ResourceLoader.load(
@@ -328,8 +241,34 @@ static func _inspect_scene(
 		return
 
 	var host_script := host.get_script() as Script
-	var host_path := host_script.resource_path if host_script != null else ""
-	var nodes: Array[String] = []
+	var children := _classed_children(host, machine_class)
+	host.free()
+
+	result.error = _host_error(path.get_file(), host_script, machine_class, children)
+	if not result.error.is_empty():
+		return
+
+	result.scene = path
+	result.host_path = host_script.resource_path
+	result.machine_node = children["machines"][0]
+	_check_host_class(result, _pascal(options.actor))
+
+
+## "no <actor>.tscn in <dir>.", plus where it is when it lives in another folder.
+static func _missing_scene_error(options: Options, path: String) -> String:
+	var error := SCENE_NOT_FOUND % [options.actor, path.get_base_dir()]
+	var found := DogApiGenerator.find_scene(options.actor, "", options.root)
+	var elsewhere: String = found["path"]
+	if not elsewhere.is_empty():
+		var actor_dir := elsewhere.get_base_dir().trim_prefix(options.root.trim_suffix("/") + "/")
+		error += SCENE_ELSEWHERE % [elsewhere, actor_dir]
+	return error
+
+
+## The direct children of `host` that have a class_name: {"machines": names of the
+## ones whose class is `machine_class`, "with_class": "Name (Class)" of all of them}.
+static func _classed_children(host: Node, machine_class: String) -> Dictionary:
+	var machines: Array[String] = []
 	var with_class: Array[String] = []
 	for child in host.get_children():
 		var script := child.get_script() as Script
@@ -338,31 +277,42 @@ static func _inspect_scene(
 			continue
 		with_class.append("%s (%s)" % [child.name, klass])
 		if klass == machine_class:
-			nodes.append(child.name)
-	host.free()
+			machines.append(child.name)
+	return { "machines": machines, "with_class": with_class }
 
-	var scene_file := path.get_file()
+
+## Why the scene's root can't host the states, or "".
+static func _host_error(
+	scene_file: String,
+	host_script: Script,
+	machine_class: String,
+	children: Dictionary,
+) -> String:
 	if host_script == null:
-		result.error = NO_HOST_SCRIPT % scene_file
-	elif host_path.is_empty() or host_path.contains("::"):
-		result.error = BUILT_IN_SCRIPT % scene_file
-	elif nodes.is_empty():
-		var children := ", ".join(with_class) if not with_class.is_empty() else "none"
-		result.error = NO_MACHINE % [machine_class, scene_file, children]
-	elif nodes.size() > 1:
-		result.error = MANY_MACHINES % [machine_class, scene_file, ", ".join(nodes)]
-	if not result.error.is_empty():
-		return
+		return NO_HOST_SCRIPT % scene_file
+	var host_path := host_script.resource_path
+	if host_path.is_empty() or host_path.contains("::"):
+		return BUILT_IN_SCRIPT % scene_file
 
-	result.scene = path
-	result.host_path = host_path
-	result.machine_node = nodes[0]
-	var found_class := _declared_class_name(_read_text(host_path))
-	if found_class != host_class:
-		var warning := HOST_CLASS_MISMATCH % [host_class, host_path.get_file(), host_class]
-		if not found_class.is_empty():
-			warning += HOST_CLASS_FOUND % found_class
-		result.warnings.append(warning)
+	var machines: Array = children["machines"]
+	if machines.is_empty():
+		var with_class: Array = children["with_class"]
+		var listed := ", ".join(with_class) if not with_class.is_empty() else "none"
+		return NO_MACHINE % [machine_class, scene_file, listed]
+	if machines.size() > 1:
+		return MANY_MACHINES % [machine_class, scene_file, ", ".join(machines)]
+	return ""
+
+
+## Warns when the host script doesn't declare `class_name <host_class>`.
+static func _check_host_class(result: Result, host_class: String) -> void:
+	var found_class := _declared_class_name(_read_text(result.host_path))
+	if found_class == host_class:
+		return
+	var warning := HOST_CLASS_MISMATCH % [host_class, result.host_path.get_file(), host_class]
+	if not found_class.is_empty():
+		warning += HOST_CLASS_FOUND % found_class
+	result.warnings.append(warning)
 
 
 ## The `class_name` written in `source`, or "".
@@ -382,26 +332,116 @@ static func state_class(actor: String, node: String = "") -> String:
 	return "%s%sState" % [_pascal(actor), _pascal(node)]
 
 
-# Puts the rendered file in result.files, or the path in result.skipped when it
-# exists and force is off. Returns an error message, or "".
+## result.initial is --initial or default_initial. Returns an error, or "".
+static func _pick_initial(result: Result, options: Options) -> String:
+	result.initial = options.initial
+	if result.initial.is_empty():
+		result.initial = default_initial(options.tree)
+	var state_names: Array[String] = []
+	for node in options.tree.nodes:
+		state_names.append(node.name)
+	if result.initial not in state_names:
+		return INITIAL_NOT_IN_TREE % [result.initial, ", ".join(state_names)]
+	return ""
+
+
+## With FORCE and an existing states folder: marks it for deletion and lists its
+## files in `dropped_files`. Returns an error, or "".
+static func _plan_force(result: Result, options: Options, dropped_files: Array[String]) -> String:
+	var dir := output_dir(options.folder, options.actor, options.root)
+	if options.mode != DogApiMerge.Mode.FORCE or not DirAccess.dir_exists_absolute(dir):
+		return ""
+	if not is_safe_states_dir(dir, options.root):
+		return UNSAFE_DELETE % [dir, options.root]
+	result.delete_dir = dir
+	for file in _files_below(dir):
+		dropped_files.append("drop file %s/%s" % [STATES_DIR, file])
+	# Everything is recreated from the templates.
+	result.skipped.clear()
+	return ""
+
+
+## Plans the actor base (only without --extends) and one file per tree node.
+## Returns an error, or "".
+static func _plan_states(
+	result: Result,
+	options: Options,
+	template_dir: String,
+	family_base: String,
+) -> String:
+	var base_class := _pascal(options.base) if not options.base.is_empty() else ""
+	# Without --extends the actor base is the root of the hierarchy.
+	if base_class.is_empty():
+		var base_error := _plan_file(result, options, template_dir, "", family_base)
+		if not base_error.is_empty():
+			return base_error
+
+	for node in options.tree.nodes:
+		var parent := _parent_class(options.actor, node, base_class)
+		var node_error := _plan_file(result, options, template_dir, node.name, parent)
+		if not node_error.is_empty():
+			return node_error
+	return ""
+
+
+## The class a tree node extends: its parent state, the --extends class for a
+## root state, or the actor base.
+static func _parent_class(
+	actor: String,
+	node: DogStateTree.StateNode,
+	base_class: String,
+) -> String:
+	if node.depth > 0:
+		return state_class(actor, node.parent)
+	if not base_class.is_empty():
+		return base_class
+	return state_class(actor)
+
+
+## Puts the rendered file of `node_name` ("" = the actor base) in result.files, or
+## its path in result.skipped when it exists and force is off. Returns an error, or "".
 static func _plan_file(
 	result: Result,
-	path: String,
-	template: String,
-	cls: String,
-	host: String,
+	options: Options,
+	template_dir: String,
+	node_name: String,
 	parent: String,
-	force: bool
 ) -> String:
-	if FileAccess.file_exists(path) and not force:
+	var dir := output_dir(options.folder, options.actor, options.root)
+	var path := dir.path_join(file_name(options.actor, node_name))
+	if FileAccess.file_exists(path) and options.mode != DogApiMerge.Mode.FORCE:
 		result.skipped.append(path)
 		return ""
 
+	var template_name := ACTOR_TEMPLATE if node_name.is_empty() else NODE_TEMPLATE
+	var template := template_dir.path_join(template_name)
 	var source := _read_text(template)
 	if source.is_empty():
 		return TEMPLATE_MISSING % template
 
-	result.files[path] = _substitute(source, cls, host, parent)
+	var cls := state_class(options.actor, node_name)
+	result.files[path] = _substitute(source, cls, _pascal(options.actor), parent)
+	return ""
+
+
+## Merges the machine plumbing into the host script. Returns an error, or "".
+static func _merge_host(
+	result: Result,
+	options: Options,
+	machine_class: String,
+	dropped_files: Array[String],
+) -> String:
+	result.host_original = _read_text(result.host_path)
+	var blocks := host_blocks(
+		options.actor, options.tree, machine_class, result.machine_node, result.initial
+	)
+	var merged := DogApiMerge.merge(result.host_original, blocks, options.mode)
+	var merge_error: String = merged["error"]
+	if not merge_error.is_empty():
+		result.files.clear()
+		return HOST_MERGE_FAILED % [result.host_path.get_file(), merge_error]
+	result.host_source = merged["source"]
+	result.report.assign(dropped_files + Array(merged["report"]))
 	return ""
 
 
@@ -460,6 +500,19 @@ static func _scan() -> void:
 	var fs := EditorInterface.get_resource_filesystem()
 	if fs != null and not fs.is_scanning():
 		fs.scan()
+
+
+## What to generate. `base` is the --extends state class ("" = none) and
+## `initial` the state the machine starts in ("" = default_initial).
+class Options:
+	var type := ""
+	var actor := ""
+	var folder := ""
+	var base := ""
+	var tree: DogStateTree
+	var mode := DogApiMerge.Mode.ADD
+	var root := ROOT
+	var initial := ""
 
 
 class Result:

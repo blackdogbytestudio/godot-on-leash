@@ -11,7 +11,6 @@ extends RefCounted
 ## Members starting with `_` are internal and never forwarded.
 
 const DEFAULT_ROOT := "res://scenes/characters"
-
 # Error messages
 const COULD_NOT_WRITE := "could not write %s"
 const COULD_NOT_READ := "could not read %s"
@@ -32,19 +31,12 @@ const MANY_SCENES := "more than one %s.tscn under %s: %s (use --folder)."
 const MEMBER_SKIPPED := "%s %s of %s was skipped: %s already provides it"
 
 
-## build + write. Nothing is written on error, when `write` is false, or when
-## the merged source equals the file.
-static func generate(
-	actor: String,
-	components: Array,
-	folder := "",
-	root := DEFAULT_ROOT,
-	mode := DogApiMerge.Mode.ADD,
-	write := true
-) -> Dictionary:
-	var result := build(actor, components, folder, root, mode)
+## build + write. Nothing is written on error, when `options.write` is false, or
+## when the merged source equals the file.
+static func generate(options: Options) -> Dictionary:
+	var result := build(options)
 	var error: String = result["error"]
-	if not error.is_empty() or not write or result["source"] == result["original"]:
+	if not error.is_empty() or not options.write or result["source"] == result["original"]:
 		return result
 	var file := FileAccess.open(result["path"], FileAccess.WRITE)
 	if file == null:
@@ -58,14 +50,8 @@ static func generate(
 
 ## Everything except the write. Returns {path, scene, original, source, report,
 ## warnings, blocks, error}; `path` is the host script.
-static func build(
-	actor: String,
-	components: Array,
-	folder := "",
-	root := DEFAULT_ROOT,
-	mode := DogApiMerge.Mode.ADD
-) -> Dictionary:
-	var found := find_scene(actor, folder, root)
+static func build(options: Options) -> Dictionary:
+	var found := find_scene(options.actor, options.folder, options.root)
 	var find_error: String = found["error"]
 	if not find_error.is_empty():
 		return _failure(find_error)
@@ -77,18 +63,18 @@ static func build(
 		return _failure(load_error)
 	var host: Node = loaded["host"]
 
-	if components.is_empty():
+	if options.components.is_empty():
 		var message := NO_COMPONENTS % [scene_path, ", ".join(candidates(host))]
 		host.free()
 		return _failure(message)
 
-	var planned := plan(host, components)
+	var planned := plan(host, options.components)
 	host.free()
 	var plan_error: String = planned["error"]
 	if not plan_error.is_empty():
 		return _failure(plan_error)
 
-	return _merge_into(loaded["path"], scene_path, planned, mode)
+	return _merge_into(loaded["path"], scene_path, planned, options.mode)
 
 
 ## Builds the blocks for the named components (snake_case class names, in the
@@ -359,3 +345,14 @@ static func _failure(message: String) -> Dictionary:
 
 static func _scene_error(message: String) -> Dictionary:
 	return { "path": "", "error": message }
+
+
+## What to generate. `components` are snake_case class names (prefix / suffix
+## already applied); with `write` false, build runs but nothing is written.
+class Options:
+	var actor := ""
+	var components: Array = []
+	var folder := ""
+	var root := DEFAULT_ROOT
+	var mode := DogApiMerge.Mode.ADD
+	var write := true

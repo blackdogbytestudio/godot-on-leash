@@ -40,6 +40,22 @@ func after_each() -> void:
 	DirAccess.remove_absolute(TMP)
 
 
+func _options(
+	actor: String,
+	components: Array,
+	root: String,
+	mode := DogApiMerge.Mode.ADD,
+	write := true,
+) -> DogApiGenerator.Options:
+	var options := DogApiGenerator.Options.new()
+	options.actor = actor
+	options.components = components
+	options.root = root
+	options.mode = mode
+	options.write = write
+	return options
+
+
 func _write(path: String, text: String) -> void:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(text)
@@ -298,7 +314,7 @@ func test_plan_skips_members_another_component_already_provides() -> void:
 
 
 func test_build_fills_the_root_script_of_the_scene() -> void:
-	var r := DogApiGenerator.build("actor", BOTH, "", ROOT)
+	var r := DogApiGenerator.build(_options("actor", BOTH, ROOT))
 	assert_eq(r.error, "")
 	assert_eq(r.path, ROOT + "/actor/actor.gd")
 	assert_eq(r.original, ACTOR_GD)
@@ -311,7 +327,7 @@ func test_build_fills_the_root_script_of_the_scene() -> void:
 
 
 func test_build_inserts_connect_lines_under_the_existing_ready() -> void:
-	var r := DogApiGenerator.build("actor", BOTH, "", ROOT)
+	var r := DogApiGenerator.build(_options("actor", BOTH, ROOT))
 	assert_string_contains(
 		r.source,
 		(
@@ -325,25 +341,25 @@ func test_build_inserts_connect_lines_under_the_existing_ready() -> void:
 
 
 func test_build_ignores_children_that_were_not_asked_for() -> void:
-	var r := DogApiGenerator.build("actor", BOTH, "", ROOT)
+	var r := DogApiGenerator.build(_options("actor", BOTH, ROOT))
 	assert_eq(r.warnings, [])
 	assert_false(r.source.contains("legacy"))
 
 
 func test_build_generated_source_compiles() -> void:
 	for mode in [DogApiMerge.Mode.ADD, DogApiMerge.Mode.FORCE]:
-		var r := DogApiGenerator.build("actor", BOTH, "", ROOT, mode)
+		var r := DogApiGenerator.build(_options("actor", BOTH, ROOT, mode))
 		assert_eq(_compile(r.source), OK, "mode %d" % mode)
 
 
 func test_build_error_when_the_root_node_has_no_script() -> void:
-	var r := DogApiGenerator.build("noscript", BOTH, "", ROOT)
+	var r := DogApiGenerator.build(_options("noscript", BOTH, ROOT))
 	assert_string_contains(r.error, "no script")
 	assert_eq(r.source, "")
 
 
 func test_build_without_components_is_an_error_listing_the_candidates() -> void:
-	var r := DogApiGenerator.build("actor", [], "", ROOT)
+	var r := DogApiGenerator.build(_options("actor", [], ROOT))
 	assert_string_contains(r.error, "no components")
 	assert_string_contains(r.error, "fixture_jump_2d")
 	assert_string_contains(r.error, "fixture_dash")
@@ -351,14 +367,14 @@ func test_build_without_components_is_an_error_listing_the_candidates() -> void:
 
 
 func test_build_only_forwards_the_listed_components() -> void:
-	var r := DogApiGenerator.build("actor", ["fixture_dash"], "", ROOT)
+	var r := DogApiGenerator.build(_options("actor", ["fixture_dash"], ROOT))
 	assert_eq(r.error, "")
 	assert_string_contains(r.source, "func dash() -> void:")
 	assert_false(r.source.contains("jump"))
 
 
 func test_build_error_when_the_scene_is_missing() -> void:
-	var r := DogApiGenerator.build("ghost", BOTH, "", ROOT)
+	var r := DogApiGenerator.build(_options("ghost", BOTH, ROOT))
 	assert_string_contains(r.error, "ghost")
 
 
@@ -366,38 +382,38 @@ func test_build_error_when_the_scene_is_missing() -> void:
 
 
 func test_generate_writes_the_merged_source() -> void:
-	var r := DogApiGenerator.generate("actor", BOTH, "", TMP)
+	var r := DogApiGenerator.generate(_options("actor", BOTH, TMP))
 	assert_eq(r.error, "")
 	assert_eq(_read(TMP + "/actor/actor.gd"), r.source)
 	assert_string_contains(_read(TMP + "/actor/actor.gd"), "func jump() -> void:")
 
 
 func test_generate_without_write_leaves_the_file_alone() -> void:
-	var r := DogApiGenerator.generate("actor", BOTH, "", TMP, DogApiMerge.Mode.ADD, false)
+	var r := DogApiGenerator.generate(_options("actor", BOTH, TMP, DogApiMerge.Mode.ADD, false))
 	assert_ne(r.source, r.original)
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
 func test_generate_twice_changes_nothing_the_second_time() -> void:
-	DogApiGenerator.generate("actor", BOTH, "", TMP)
+	DogApiGenerator.generate(_options("actor", BOTH, TMP))
 	var first := _read(TMP + "/actor/actor.gd")
-	var r := DogApiGenerator.generate("actor", BOTH, "", TMP)
+	var r := DogApiGenerator.generate(_options("actor", BOTH, TMP))
 	assert_eq(_read(TMP + "/actor/actor.gd"), first)
 	for line in r.report:
 		assert_true(line.begins_with("skip "), line)
 
 
 func test_generate_update_restores_an_edited_forwarding_func() -> void:
-	DogApiGenerator.generate("actor", BOTH, "", TMP)
+	DogApiGenerator.generate(_options("actor", BOTH, TMP))
 	var edited := _read(TMP + "/actor/actor.gd").replace(
 		"\t_fixture_jump_2d.jump()\n",
 		"\tprint(1)\n\t_fixture_jump_2d.jump()\n",
 	)
 	_write(TMP + "/actor/actor.gd", edited)
-	var plain := DogApiGenerator.generate("actor", BOTH, "", TMP)
+	var plain := DogApiGenerator.generate(_options("actor", BOTH, TMP))
 	assert_string_contains(_read(TMP + "/actor/actor.gd"), "print(1)")
 	assert_has(plain.report, "skip func jump")
-	var updated := DogApiGenerator.generate("actor", BOTH, "", TMP, DogApiMerge.Mode.UPDATE)
+	var updated := DogApiGenerator.generate(_options("actor", BOTH, TMP, DogApiMerge.Mode.UPDATE))
 	assert_has(updated.report, "update func jump")
 	assert_false(_read(TMP + "/actor/actor.gd").contains("print(1)"))
 
@@ -407,7 +423,7 @@ func test_generate_force_drops_what_was_written_below_the_header() -> void:
 		TMP + "/actor/actor.gd",
 		"extends CharacterBody2D\n\nvar my_counter := 1\n\n\nfunc mine() -> void:\n\tpass\n",
 	)
-	DogApiGenerator.generate("actor", BOTH, "", TMP, DogApiMerge.Mode.FORCE)
+	DogApiGenerator.generate(_options("actor", BOTH, TMP, DogApiMerge.Mode.FORCE))
 	var text := _read(TMP + "/actor/actor.gd")
 	assert_true(text.begins_with("extends CharacterBody2D\n"))
 	assert_false(text.contains("my_counter"))
@@ -417,7 +433,7 @@ func test_generate_force_drops_what_was_written_below_the_header() -> void:
 
 func test_generate_does_not_write_on_error() -> void:
 	_write(TMP + "/actor/actor.gd", "extends CharacterBody2D\n\n\nfunc _ready(): pass\n")
-	var r := DogApiGenerator.generate("actor", BOTH, "", TMP)
+	var r := DogApiGenerator.generate(_options("actor", BOTH, TMP))
 	assert_string_contains(r.error, "_ready")
 	assert_eq(_read(TMP + "/actor/actor.gd"), "extends CharacterBody2D\n\n\nfunc _ready(): pass\n")
 
