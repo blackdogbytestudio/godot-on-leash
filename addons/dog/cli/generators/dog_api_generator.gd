@@ -26,9 +26,7 @@ const NOT_A_CHILD := (
 )
 const UNKNOWN_CLASS := "no class in the project matches '%s'."
 const REPEATED_COMPONENT := "more than one %s under %s: %s. A component class must appear once."
-const INVALID_ACTOR := "'%s' is not a valid actor name (use snake_case)."
 const INVALID_ROOT := "'%s' is not a valid root."
-const INVALID_FOLDER := "'%s' is not a valid folder (snake_case names separated by /)."
 const SCENE_NOT_FOUND := "no %s.tscn found under %s."
 const MANY_SCENES := "more than one %s.tscn under %s: %s (use --folder)."
 const MEMBER_SKIPPED := "%s %s of %s was skipped: %s already provides it"
@@ -201,18 +199,15 @@ static func candidates(host: Node) -> Array:
 ## `<root>/<folder>` (or all of `<root>`) for `<actor>.tscn`. More than one match
 ## is an error listing them. Returns {path, error}.
 static func find_scene(actor: String, folder := "", root := DEFAULT_ROOT) -> Dictionary:
-	if not DogNames.is_valid_name(actor):
-		return { "path": "", "error": INVALID_ACTOR % actor }
+	var error := DogNames.actor_error(actor)
+	if not error.is_empty():
+		return _scene_error(error)
 	var base := normalize_root(root)
 	if base.is_empty():
-		return { "path": "", "error": INVALID_ROOT % root }
-	if not folder.is_empty():
-		for part in folder.split("/"):
-			if not DogNames.is_valid_name(part):
-				return {
-					"path": "",
-					"error": INVALID_FOLDER % folder,
-				}
+		return _scene_error(INVALID_ROOT % root)
+	error = DogNames.folder_error(folder)
+	if not error.is_empty():
+		return _scene_error(error)
 
 	var actor_dir := folder if not folder.is_empty() else actor
 	var exact := "%s/%s/%s.tscn" % [base, actor_dir, actor]
@@ -224,16 +219,9 @@ static func find_scene(actor: String, folder := "", root := DEFAULT_ROOT) -> Dic
 	_find_files(search_in, actor + ".tscn", matches)
 	matches.sort()
 	if matches.is_empty():
-		return { "path": "", "error": SCENE_NOT_FOUND % [actor, search_in] }
+		return _scene_error(SCENE_NOT_FOUND % [actor, search_in])
 	if matches.size() > 1:
-		return {
-			"path": "",
-			"error": MANY_SCENES % [
-				actor,
-				search_in,
-				", ".join(matches),
-			],
-		}
+		return _scene_error(MANY_SCENES % [actor, search_in, ", ".join(matches)])
 	return { "path": matches[0], "error": "" }
 
 
@@ -329,3 +317,7 @@ static func _failure(message: String) -> Dictionary:
 		"blocks": [],
 		"error": message,
 	}
+
+
+static func _scene_error(message: String) -> Dictionary:
+	return { "path": "", "error": message }
