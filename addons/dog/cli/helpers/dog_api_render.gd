@@ -50,19 +50,9 @@ static func ref_block(var_name: String, component_class: String, node_name: Stri
 static func func_block(var_name: String, method: Dictionary) -> Dictionary:
 	var method_name := String(method["name"])
 	var args: Array = method.get("args", [])
-	var defaults: Array = method.get("default_args", [])
-	var first_default := args.size() - defaults.size()
-	var params := PackedStringArray()
-	var call_args := PackedStringArray()
-	for i in args.size():
-		var arg: Dictionary = args[i]
-		var param := "%s: %s" % [arg["name"], _arg_type(arg)]
-		if i >= first_default:
-			param += " = " + var_to_str(defaults[i - first_default])
-		params.append(param)
-		call_args.append(String(arg["name"]))
+	var params := _params(args, method.get("default_args", []))
 	var return_type := type_text(method.get("return", {}))
-	var call := "%s.%s(%s)" % [var_name, method_name, ", ".join(call_args)]
+	var call := "%s.%s(%s)" % [var_name, method_name, ", ".join(_arg_names(args))]
 	var body := call if return_type == "void" else "return " + call
 	return {
 		"kind": "func",
@@ -76,10 +66,7 @@ static func signal_block(info: Dictionary) -> Dictionary:
 	var args: Array = info.get("args", [])
 	var text := "signal " + signal_name
 	if not args.is_empty():
-		var params := PackedStringArray()
-		for arg in args:
-			params.append("%s: %s" % [arg["name"], _arg_type(arg)])
-		text += "(%s)" % ", ".join(params)
+		text += "(%s)" % ", ".join(_params(args, []))
 	return { "kind": "signal", "name": signal_name, "text": text }
 
 
@@ -90,6 +77,26 @@ static func connect_block(var_name: String, signal_name: String) -> Dictionary:
 		"name": "%s.%s" % [var_name, signal_name],
 		"text": "\t%s.%s.connect(%s.emit)" % [var_name, signal_name, signal_name],
 	}
+
+
+## `name: Type` for each argument, with `= default` on the last ones.
+static func _params(args: Array, defaults: Array) -> PackedStringArray:
+	var first_default := args.size() - defaults.size()
+	var params := PackedStringArray()
+	for i in args.size():
+		var arg: Dictionary = args[i]
+		var param := "%s: %s" % [arg["name"], _arg_type(arg)]
+		if i >= first_default:
+			param += " = " + var_to_str(defaults[i - first_default])
+		params.append(param)
+	return params
+
+
+static func _arg_names(args: Array) -> PackedStringArray:
+	var names := PackedStringArray()
+	for arg in args:
+		names.append(String(arg["name"]))
+	return names
 
 
 ## An argument is never void: an untyped one is Variant.
