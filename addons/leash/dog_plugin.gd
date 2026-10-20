@@ -7,7 +7,7 @@ var _panel: DogPanel
 
 func _enter_tree() -> void:
 	_cli = DogCli.new()
-	_cli.register_folder("res://addons/dog/cli/commands")
+	_cli.register_folder("res://addons/leash/cli/commands")
 	_panel = DogPanel.new(_cli)
 	add_control_to_bottom_panel(_panel, "DOG")
 

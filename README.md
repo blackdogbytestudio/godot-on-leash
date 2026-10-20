@@ -92,7 +92,7 @@ func _on_hitbox_area_entered(_area: Area2D) -> void:
 
 ## Installation
 
-1. Copy `addons/dog/` into your project's `addons/` folder.
+1. Copy `addons/leash/` into your project's `addons/` folder.
 2. Enable **Godot On Leash** under **Project → Project Settings → Plugins**.
 3. Enabling the plugin automatically:
    - Scaffolds your project's folder structure from
@@ -167,7 +167,7 @@ instead of the actor base and skips generating the actor base, e.g.
 ## Project Structure (addon)
 
 ```
-addons/dog/
+addons/leash/
   components/
     dog_component.gd          # base for all components
     facades/
