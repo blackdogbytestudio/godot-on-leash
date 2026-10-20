@@ -1,8 +1,8 @@
-# Normalize EOL for all files that Git considers text files.
+## Normalize EOL for all files that Git considers text files.
 * text=auto eol=lf
 
-# Keep dev-only files out of the Asset Library / git archive.
-/addons/gut export-ignore
-/addons/gdstyle export-ignore
-/test export-ignore
-
+# The Asset Library / git archive ships only the addon itself.
+/* export-ignore
+/addons -export-ignore
+/addons/* export-ignore
+/addons/leash -export-ignore
