@@ -15,7 +15,7 @@ static func install() -> void:
 
 	var src: DirAccess = DirAccess.open(TEMPLATE_SRC)
 	if not src:
-		push_warning("DOG_WARNING: script_templates not found at %s" % TEMPLATE_SRC)
+		push_warning("Dog: script_templates not found at %s" % TEMPLATE_SRC)
 		return
 
 	for family in src.get_directories():

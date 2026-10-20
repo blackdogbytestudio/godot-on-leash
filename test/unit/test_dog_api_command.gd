@@ -169,7 +169,7 @@ func test_run_invalid_request_prints_the_error_and_writes_nothing() -> void:
 	var code := _command.run(_args("Player"))
 	assert_eq(code, ERR_INVALID_PARAMETER)
 	assert_eq(_lines.size(), 1)
-	assert_true(_lines[0].begins_with("DOG: api: "))
+	assert_true(_lines[0].begins_with("Dog: api: "))
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
@@ -197,7 +197,7 @@ func test_run_component_that_is_not_a_child_fails_early_and_writes_nothing() -> 
 func test_run_missing_scene_fails_with_the_generator_message() -> void:
 	var code := _command.run(_args("ghost fixture_jump_2d"))
 	assert_eq(code, FAILED)
-	assert_true(_lines[0].begins_with("DOG: api: "))
+	assert_true(_lines[0].begins_with("Dog: api: "))
 	assert_string_contains(_lines[0], "ghost")
 
 

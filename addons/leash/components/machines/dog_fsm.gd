@@ -23,7 +23,7 @@ var _locked: bool = false
 ## Force an immediate transition, bypassing locked.
 func force(state: DogState) -> void:
 	if state == null:
-		push_warning("DOG_WARNING: force() received null state.")
+		push_warning("Dog: force() received null state.")
 		return
 	_transition(state)
 
