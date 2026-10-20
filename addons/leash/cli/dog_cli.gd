@@ -73,8 +73,8 @@ func execute(line: String) -> Error:
 	if tokens.is_empty():
 		return OK
 
-	# Same syntax as in a shell, so the "dog" prefix is optional.
-	if tokens[0] == "dog":
+	# Same syntax as in a shell, so the "leash" prefix is optional.
+	if tokens[0] == "leash":
 		tokens.remove_at(0)
 		if tokens.is_empty():
 			return OK

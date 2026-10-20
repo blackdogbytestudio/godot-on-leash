@@ -9,7 +9,7 @@ var _input := LineEdit.new()
 
 func _init(cli: DogCli) -> void:
 	_cli = cli
-	name = "DOG"
+	name = "Leash"
 
 	_output.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_output.scroll_following = true
