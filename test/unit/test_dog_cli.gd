@@ -59,10 +59,10 @@ func test_execute_dispatches_with_the_remaining_args() -> void:
 	assert_eq(command.received, PackedStringArray(["a", "b"]))
 
 
-func test_execute_accepts_the_dog_prefix() -> void:
+func test_execute_accepts_the_leash_prefix() -> void:
 	var command := FakeCommand.new("go")
 	_cli.register(command)
-	assert_eq(_cli.execute("dog go a"), OK)
+	assert_eq(_cli.execute("leash go a"), OK)
 	assert_true(command.ran)
 	assert_eq(command.received, PackedStringArray(["a"]))
 
@@ -78,7 +78,7 @@ func test_execute_unknown_command_reports_it() -> void:
 func test_execute_blank_line_and_bare_prefix_are_ok() -> void:
 	assert_eq(_cli.execute(""), OK)
 	assert_eq(_cli.execute("   "), OK)
-	assert_eq(_cli.execute("dog"), OK)
+	assert_eq(_cli.execute("leash"), OK)
 
 
 func test_command_output_reaches_the_cli() -> void:
