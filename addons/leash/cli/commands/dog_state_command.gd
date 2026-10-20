@@ -37,12 +37,12 @@ func usage() -> String:
 func run(args: PackedStringArray) -> Error:
 	var request := parse_request(args)
 	if not request.error.is_empty():
-		print_line("DOG: state: %s" % request.error)
+		print_line("Dog: state: %s" % request.error)
 		return ERR_INVALID_PARAMETER
 
 	var result := DogStateGenerator.generate(options_for(request, root))
 	if not result.error.is_empty():
-		print_line("DOG: state: %s" % result.error)
+		print_line("Dog: state: %s" % result.error)
 		return FAILED
 
 	for warning in result.warnings:

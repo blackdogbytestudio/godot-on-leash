@@ -38,13 +38,13 @@ func usage() -> String:
 func run(args: PackedStringArray) -> Error:
 	var request := parse_request(args)
 	if not request.error.is_empty():
-		print_line("DOG: api: %s" % request.error)
+		print_line("Dog: api: %s" % request.error)
 		return ERR_INVALID_PARAMETER
 
 	var result := DogApiGenerator.generate(options_for(request, root))
 	var error: String = result["error"]
 	if not error.is_empty():
-		print_line("DOG: api: %s" % error)
+		print_line("Dog: api: %s" % error)
 		return FAILED
 
 	for line in result["report"]:

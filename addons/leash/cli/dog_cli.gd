@@ -6,10 +6,10 @@ extends RefCounted
 signal printed(text: String)
 
 # Error messages
-const UNNAMED_COMMAND := "DOG: a command has no name and was skipped."
-const DUPLICATE_COMMAND := "DOG: command '%s' is already registered and was skipped."
-const UNLOADABLE_COMMAND := "DOG: could not load command script '%s' (script error?)."
-const UNKNOWN_COMMAND := "DOG: unknown command '%s'. Try 'help'."
+const UNNAMED_COMMAND := "Dog: a command has no name and was skipped."
+const DUPLICATE_COMMAND := "Dog: command '%s' is already registered and was skipped."
+const UNLOADABLE_COMMAND := "Dog: could not load command script '%s' (script error?)."
+const UNKNOWN_COMMAND := "Dog: unknown command '%s'. Try 'help'."
 
 var _commands: Dictionary[String, DogCommand] = {}
 

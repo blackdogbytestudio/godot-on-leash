@@ -6,7 +6,7 @@ extends RefCounted
 signal printed(text: String)
 
 # Error messages
-const RUN_NOT_IMPLEMENTED := "DOG: '%s' does not implement run()."
+const RUN_NOT_IMPLEMENTED := "Dog: '%s' does not implement run()."
 
 var cli: DogCli
 

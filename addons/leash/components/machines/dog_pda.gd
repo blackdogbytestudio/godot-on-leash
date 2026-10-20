@@ -44,7 +44,7 @@ func push(state: DogPDAState) -> void:
 ## Pop the top state. Top is exited, the one below resumes.
 func pop() -> void:
 	if _stack.size() <= 1:
-		push_warning("DOG_WARNING: cannot pop the last state.")
+		push_warning("Dog: cannot pop the last state.")
 		return
 	_current.exit(host)
 	_stack.pop_back()

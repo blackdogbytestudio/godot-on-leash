@@ -402,7 +402,7 @@ func test_run_prints_warnings() -> void:
 func test_run_prints_validation_errors() -> void:
 	var result := _run(PackedStringArray(["hpda", "enemy", "alive"]))
 	assert_eq(result[0], FAILED)
-	assert_string_contains(result[1][0], "DOG: state: ")
+	assert_string_contains(result[1][0], "Dog: state: ")
 
 
 # --- initial state ------------------------------------------------------------
@@ -654,7 +654,7 @@ func test_run_reports_parse_errors() -> void:
 	var result := _run(PackedStringArray(["hdpa", "enemy", "alive"]))
 	assert_eq(result[0], ERR_INVALID_PARAMETER)
 	assert_eq(result[1].size(), 1)
-	assert_string_contains(result[1][0], "DOG: state:")
+	assert_string_contains(result[1][0], "Dog: state:")
 	assert_eq(DirAccess.open(ROOT), null)
 
 
