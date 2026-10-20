@@ -1,7 +1,7 @@
 @tool
 class_name DogStateGenerator
 extends RefCounted
-## Builds actor state scripts from the DOG script_templates.
+## Builds actor state scripts from the leash script_templates.
 ##
 ## The actor base is created from class.gd (its own enter/exit/update
 ## wrappers); every tree node is created from state.gd, extending its

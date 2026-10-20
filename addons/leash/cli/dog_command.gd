@@ -1,7 +1,7 @@
 @tool
 class_name DogCommand
 extends RefCounted
-## Base class for every DOG generator command.
+## Base class for every leash generator command.
 
 signal printed(text: String)
 
