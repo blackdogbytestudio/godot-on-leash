@@ -90,7 +90,7 @@ func test_command_output_reaches_the_cli() -> void:
 
 
 func test_register_folder_finds_the_builtin_commands() -> void:
-	_cli.register_folder("res://addons/dog/cli/commands")
+	_cli.register_folder("res://addons/leash/cli/commands")
 	assert_has(_names(), "hello")
 	assert_has(_names(), "help")
 	assert_has(_names(), "state")

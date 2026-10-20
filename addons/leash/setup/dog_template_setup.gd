@@ -3,7 +3,7 @@ class_name DogTemplateSetup
 extends DogSetup
 
 ## Default templates folder path inside the addon.
-const TEMPLATE_SRC: String = "res://addons/dog/script_templates"
+const TEMPLATE_SRC: String = "res://addons/leash/script_templates"
 ## User-editable templates folder path required by Godot.
 const TEMPLATE_DEST: String = "res://script_templates"
 

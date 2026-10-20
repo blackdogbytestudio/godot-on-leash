@@ -1,14 +1,14 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
 
-const Command := preload("res://addons/dog/cli/commands/dog_state_command.gd")
-const Generator := preload("res://addons/dog/cli/generators/dog_state_generator.gd")
+const Command := preload("res://addons/leash/cli/commands/dog_state_command.gd")
+const Generator := preload("res://addons/leash/cli/generators/dog_state_generator.gd")
 const ROOT := "user://dog_state_command_test"
 const MACHINES := {
-	"DogFSM": "res://addons/dog/components/machines/dog_fsm.gd",
-	"DogPDA": "res://addons/dog/components/machines/dog_pda.gd",
-	"DogHFSM": "res://addons/dog/components/machines/dog_hfsm.gd",
-	"DogHPDA": "res://addons/dog/components/machines/dog_hpda.gd",
+	"DogFSM": "res://addons/leash/components/machines/dog_fsm.gd",
+	"DogPDA": "res://addons/leash/components/machines/dog_pda.gd",
+	"DogHFSM": "res://addons/leash/components/machines/dog_hfsm.gd",
+	"DogHPDA": "res://addons/leash/components/machines/dog_hpda.gd",
 }
 # --- host plumbing --------------------------------------------------------------
 const ENEMY_HOST := """extends Node

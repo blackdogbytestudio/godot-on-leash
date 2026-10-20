@@ -20,7 +20,7 @@ const ROOT := "res://scenes/characters"
 const STATES_DIR := "states"
 const TEMPLATE_ROOTS: PackedStringArray = [
 	"res://script_templates",
-	"res://addons/dog/script_templates",
+	"res://addons/leash/script_templates",
 ]
 const ACTOR_TEMPLATE := "class.gd"
 const NODE_TEMPLATE := "state.gd"
