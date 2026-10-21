@@ -42,8 +42,6 @@ func _write(path: String, text: String) -> void:
 ## Writes `<ROOT>/<dir>/<actor>.tscn` whose root has `<actor>.gd` (with
 ## `host_source`) and one child per entry of `children` ({node name: class}).
 ## dir defaults to the actor. An empty `host_source` leaves the root without script.
-
-
 func _scene(
 	actor: String,
 	children := { "DogHPDA": "DogHPDA" },
@@ -80,9 +78,6 @@ func _scene(
 	var scene_path := actor_dir.path_join(actor + ".tscn")
 	_write(scene_path, text)
 	return scene_path
-
-
-## Every file under `path`, relative to it, sorted.
 
 
 func _remove(path: String) -> void:

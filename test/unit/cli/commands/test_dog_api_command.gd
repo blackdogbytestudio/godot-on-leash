@@ -120,3 +120,23 @@ func test_parse_invalid_component_is_an_error() -> void:
 	assert_string_contains(r.error, "DogJump2D")
 	r = DogApiCommand.parse_request(_args("player --prefix Dog jump"))
 	assert_string_contains(r.error, "Dog_jump")
+
+
+# --- options_for -------------------------------------------------------------
+
+
+func test_options_for_copies_the_request() -> void:
+	var request := DogApiCommand.parse_request(
+		_args("player dog_jump_2d --folder enemies/slime --root res://scenes -f")
+	)
+	var options := DogApiCommand.options_for(request, "res://default")
+	assert_eq(options.actor, "player")
+	assert_eq(options.components, ["dog_jump_2d"])
+	assert_eq(options.folder, "enemies/slime")
+	assert_eq(options.root, "res://scenes")
+	assert_eq(options.mode, DogScriptMerge.Mode.FORCE)
+
+
+func test_options_for_uses_the_default_root_without_root() -> void:
+	var request := DogApiCommand.parse_request(_args("player dog_jump_2d"))
+	assert_eq(DogApiCommand.options_for(request, "res://default").root, "res://default")

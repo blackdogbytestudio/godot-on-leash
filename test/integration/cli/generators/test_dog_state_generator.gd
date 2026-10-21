@@ -67,8 +67,6 @@ func _write(path: String, text: String) -> void:
 ## Writes `<ROOT>/<dir>/<actor>.tscn` whose root has `<actor>.gd` (with
 ## `host_source`) and one child per entry of `children` ({node name: class}).
 ## dir defaults to the actor. An empty `host_source` leaves the root without script.
-
-
 func _scene(
 	actor: String,
 	children := { "DogHPDA": "DogHPDA" },
@@ -108,8 +106,6 @@ func _scene(
 
 
 ## Every file under `path`, relative to it, sorted.
-
-
 func _files(path: String, prefix := "") -> Array:
 	var found := []
 	var dir := DirAccess.open(path)

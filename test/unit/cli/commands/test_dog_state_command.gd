@@ -131,3 +131,22 @@ func test_run_reports_unknown_type() -> void:
 	var result := _run(PackedStringArray(["nope", "enemy", "alive"]))
 	assert_eq(result[0], ERR_INVALID_PARAMETER)
 	assert_string_contains(result[1][0], "unknown type")
+
+
+# --- options_for -------------------------------------------------------------
+
+
+func test_options_for_copies_the_request_and_the_root() -> void:
+	var request := _request(PackedStringArray([
+		"hpda", "slime", "--folder", "enemies/slime", "--extends", "enemy_alive_state",
+		"--initial", "jump", "-u", "jump",
+	]))
+	var options := Command.options_for(request, "user://root")
+	assert_eq(options.type, "hpda")
+	assert_eq(options.actor, "slime")
+	assert_eq(options.folder, "enemies/slime")
+	assert_eq(options.base, "enemy_alive_state")
+	assert_eq(options.initial, "jump")
+	assert_eq(options.mode, DogScriptMerge.Mode.UPDATE)
+	assert_eq(options.root, "user://root")
+	assert_eq(options.tree, request.tree)

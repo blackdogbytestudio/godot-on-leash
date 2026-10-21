@@ -21,8 +21,6 @@ func _host(components: Dictionary) -> Node:
 
 ## plan() with the snake_case class of every classed child, in child order,
 ## unless `names` is given.
-
-
 func _plan(host: Node, names: Array = []) -> Dictionary:
 	if names.is_empty():
 		for child in host.get_children():
@@ -194,3 +192,19 @@ func test_plan_never_forwards_property_accessors() -> void:
 	host.free()
 	for func_name in _names(p.blocks, "func"):
 		assert_false(func_name.begins_with("@"), func_name)
+
+
+# --- candidates --------------------------------------------------------------
+
+
+func test_candidates_are_the_snake_case_classes_of_the_children_sorted() -> void:
+	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
+	assert_eq(DogApiGenerator.candidates(host), ["fixture_dash", "fixture_jump_2d"])
+
+
+func test_candidates_skip_children_without_a_class() -> void:
+	var host := _host({ "Jump": JUMP_SCRIPT, "Plain": "res://test/doubles/api/no_class.gd" })
+	var bare: Node = Node.new()
+	bare.name = "Bare"
+	host.add_child(bare)
+	assert_eq(DogApiGenerator.candidates(host), ["fixture_jump_2d"])
