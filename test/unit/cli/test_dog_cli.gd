@@ -32,6 +32,7 @@ func test_tokenize_blank_line_gives_no_tokens() -> void:
 func test_register_skips_a_command_without_name() -> void:
 	_cli.register(FakeCommand.new(""))
 	assert_eq(_cli.commands().size(), 0)
+	assert_push_warning("has no name")
 
 
 func test_register_skips_a_duplicate_name() -> void:
@@ -40,6 +41,7 @@ func test_register_skips_a_duplicate_name() -> void:
 	_cli.register(FakeCommand.new("same"))
 	assert_eq(_cli.commands().size(), 1)
 	assert_eq(_cli.commands()[0], first)
+	assert_push_warning("already registered")
 
 
 func test_dispose_breaks_the_reference_cycle() -> void:
