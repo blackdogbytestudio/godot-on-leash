@@ -1,5 +1,5 @@
 @tool
-class_name DogApiMerge
+class_name DogScriptMerge
 extends RefCounted
 ## Pure text merge behind the `api` command: no file or editor access here.
 ##

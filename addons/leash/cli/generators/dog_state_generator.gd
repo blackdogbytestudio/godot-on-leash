@@ -177,7 +177,7 @@ static func default_initial(tree: DogStateTree) -> String:
 	return best.name if best != null else ""
 
 
-## The machine plumbing for the host script, as DogApiMerge blocks: one
+## The machine plumbing for the host script, as DogScriptMerge blocks: one
 ## `var <state>_state := <Actor><State>State.new()` per state (tree order), the
 ## `@onready` reference to the machine node, `init(<initial>_state)` in `_ready`
 ## and `update(delta)` at the top of `_physics_process`.
@@ -195,8 +195,8 @@ static func host_blocks(
 			"name": node.name + "_state",
 			"text": "var %s_state := %s.new()" % [node.name, state_class(actor, node.name)],
 		})
-	var machine_var := DogApiRender.var_name(machine_class, machine_node)
-	blocks.append(DogApiRender.ref_block(machine_var, machine_class, machine_node))
+	var machine_var := DogScriptRender.var_name(machine_class, machine_node)
+	blocks.append(DogScriptRender.ref_block(machine_var, machine_class, machine_node))
 	blocks.append({
 		"kind": "func_line",
 		"func": "_ready",
@@ -349,7 +349,7 @@ static func _pick_initial(result: Result, options: Options) -> String:
 ## files in `dropped_files`. Returns an error, or "".
 static func _plan_force(result: Result, options: Options, dropped_files: Array[String]) -> String:
 	var dir := output_dir(options.folder, options.actor, options.root)
-	if options.mode != DogApiMerge.Mode.FORCE or not DirAccess.dir_exists_absolute(dir):
+	if options.mode != DogScriptMerge.Mode.FORCE or not DirAccess.dir_exists_absolute(dir):
 		return ""
 	if not is_safe_states_dir(dir, options.root):
 		return UNSAFE_DELETE % [dir, options.root]
@@ -409,7 +409,7 @@ static func _plan_file(
 ) -> String:
 	var dir := output_dir(options.folder, options.actor, options.root)
 	var path := dir.path_join(file_name(options.actor, node_name))
-	if FileAccess.file_exists(path) and options.mode != DogApiMerge.Mode.FORCE:
+	if FileAccess.file_exists(path) and options.mode != DogScriptMerge.Mode.FORCE:
 		result.skipped.append(path)
 		return ""
 
@@ -435,7 +435,7 @@ static func _merge_host(
 	var blocks := host_blocks(
 		options.actor, options.tree, machine_class, result.machine_node, result.initial
 	)
-	var merged := DogApiMerge.merge(result.host_original, blocks, options.mode)
+	var merged := DogScriptMerge.merge(result.host_original, blocks, options.mode)
 	var merge_error: String = merged["error"]
 	if not merge_error.is_empty():
 		result.files.clear()
@@ -510,7 +510,7 @@ class Options:
 	var folder := ""
 	var base := ""
 	var tree: DogStateTree
-	var mode := DogApiMerge.Mode.ADD
+	var mode := DogScriptMerge.Mode.ADD
 	var root := ROOT
 	var initial := ""
 

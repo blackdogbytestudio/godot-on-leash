@@ -1,6 +1,6 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## Where DogApiMerge puts new members: Godot style guide order. A new member goes
+## Where DogScriptMerge puts new members: Godot style guide order. A new member goes
 ## after the last member of its category; without one, before the first member of
 ## a later category; without one, at the end. What exists is never reordered.
 
@@ -73,12 +73,12 @@ func _compile(source: String) -> int:
 
 
 func test_empty_file_gets_no_leading_blank_lines() -> void:
-	var r := DogApiMerge.merge("", [_func(), _signal()])
+	var r := DogScriptMerge.merge("", [_func(), _signal()])
 	assert_eq(r.source, SIGNAL_LINE + "\n\n\n" + JUMP + "\n")
 
 
 func test_header_only_file_gets_the_style_guide_order() -> void:
-	var r := DogApiMerge.merge(HEAD, _all())
+	var r := DogScriptMerge.merge(HEAD, _all())
 	assert_eq(
 		r.source,
 		(
@@ -91,7 +91,7 @@ func test_header_only_file_gets_the_style_guide_order() -> void:
 
 
 func test_godot_template_keeps_its_funcs_and_comments_in_place() -> void:
-	var r := DogApiMerge.merge(GODOT_TEMPLATE, [_var(), _update_line(), _connect(), _func()])
+	var r := DogScriptMerge.merge(GODOT_TEMPLATE, [_var(), _update_line(), _connect(), _func()])
 	assert_eq(r.source, """extends CharacterBody2D
 
 @onready var _jump: Node = $Jump
@@ -142,7 +142,7 @@ func _physics_process(delta: float) -> void:
 func run() -> void:
 	pass
 """
-	var r := DogApiMerge.merge(source, [_func(), _update_line(), _var(), _signal()])
+	var r := DogScriptMerge.merge(source, [_func(), _update_line(), _var(), _signal()])
 	assert_eq(r.source, """extends CharacterBody2D
 
 signal died
@@ -188,7 +188,7 @@ func test_out_of_order_file_is_not_reordered() -> void:
 		},
 		{ "kind": "func", "name": "jump", "text": "func jump() -> void:\n\t_dog_hpda.jump()" },
 	]
-	var r := DogApiMerge.merge(source, blocks)
+	var r := DogScriptMerge.merge(source, blocks)
 	assert_eq(r.source, """extends CharacterBody2D
 
 var speed := 200
@@ -209,7 +209,7 @@ func jump() -> void:
 
 func test_created_physics_process_goes_after_ready_and_before_custom_funcs() -> void:
 	var source := HEAD + "\n\nfunc _ready() -> void:\n\tpass\n\n\nfunc run() -> void:\n\tpass\n"
-	var r := DogApiMerge.merge(source, [_update_line()])
+	var r := DogScriptMerge.merge(source, [_update_line()])
 	assert_eq(
 		r.source,
 		(
@@ -226,7 +226,7 @@ func test_multiline_enum_and_annotation_on_its_own_line_stay_whole() -> void:
 		{ "kind": "signal", "name": "landed", "text": "signal landed" },
 		{ "kind": "var", "name": "_x", "text": "@onready var _x: Node = $X" },
 	]
-	var r := DogApiMerge.merge(source, blocks)
+	var r := DogScriptMerge.merge(source, blocks)
 	assert_eq(
 		r.source,
 		(
@@ -240,8 +240,8 @@ func test_multiline_enum_and_annotation_on_its_own_line_stay_whole() -> void:
 
 
 func test_running_twice_on_the_template_only_skips() -> void:
-	var first := DogApiMerge.merge(GODOT_TEMPLATE, _all())
-	var second := DogApiMerge.merge(first.source, _all())
+	var first := DogScriptMerge.merge(GODOT_TEMPLATE, _all())
+	var second := DogScriptMerge.merge(first.source, _all())
 	assert_eq(second.source, first.source)
 	assert_eq(
 		second.report,
@@ -260,8 +260,8 @@ func test_force_rebuilds_in_style_guide_order() -> void:
 		HEAD + "\nfunc old() -> void:\n\tpass\nvar x := 1\nsignal s\n\n\nfunc _ready() -> void:\n"
 		+ "\tpass\n"
 	)
-	var forced := DogApiMerge.merge(source, _all(), DogApiMerge.Mode.FORCE)
-	assert_eq(forced.source, DogApiMerge.merge(HEAD, _all()).source)
+	var forced := DogScriptMerge.merge(source, _all(), DogScriptMerge.Mode.FORCE)
+	assert_eq(forced.source, DogScriptMerge.merge(HEAD, _all()).source)
 
 
 func test_generated_text_compiles() -> void:
@@ -270,8 +270,8 @@ func test_generated_text_compiles() -> void:
 		GODOT_TEMPLATE,
 		HEAD + "\nvar speed := 200\nsignal died\n\n\nfunc _ready() -> void:\n\tpass\n",
 	]:
-		for mode in [DogApiMerge.Mode.ADD, DogApiMerge.Mode.FORCE]:
-			var r := DogApiMerge.merge(
+		for mode in [DogScriptMerge.Mode.ADD, DogScriptMerge.Mode.FORCE]:
+			var r := DogScriptMerge.merge(
 				source,
 				[_signal(), _var(), _connect(), _update_line()],
 				mode,

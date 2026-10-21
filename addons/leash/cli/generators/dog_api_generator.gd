@@ -171,7 +171,7 @@ static func _merge_into(
 	host_path: String,
 	scene_path: String,
 	planned: Dictionary,
-	mode: DogApiMerge.Mode,
+	mode: DogScriptMerge.Mode,
 ) -> Dictionary:
 	var file := FileAccess.open(host_path, FileAccess.READ)
 	if file == null:
@@ -179,7 +179,7 @@ static func _merge_into(
 	var original := file.get_as_text()
 	file.close()
 
-	var merged := DogApiMerge.merge(original, planned["blocks"], mode)
+	var merged := DogScriptMerge.merge(original, planned["blocks"], mode)
 	return {
 		"path": host_path,
 		"scene": scene_path,
@@ -219,23 +219,23 @@ static func _plan_component(
 	var script := child.get_script() as Script
 	var class_text := String(script.get_global_name())
 	var node_name := str(child.name)
-	var var_name := DogApiRender.var_name(class_text, node_name)
+	var var_name := DogScriptRender.var_name(class_text, node_name)
 	owners["var " + var_name] = node_name
-	blocks.append(DogApiRender.ref_block(var_name, class_text, node_name))
+	blocks.append(DogScriptRender.ref_block(var_name, class_text, node_name))
 
 	for info in script.get_script_signal_list():
 		var signal_name := String(info["name"])
 		if not _claim(owners, "signal", signal_name, node_name, warnings):
 			continue
-		blocks.append(DogApiRender.signal_block(info))
-		blocks.append(DogApiRender.connect_block(var_name, signal_name))
+		blocks.append(DogScriptRender.signal_block(info))
+		blocks.append(DogScriptRender.connect_block(var_name, signal_name))
 
 	for method in script.get_script_method_list():
 		if (int(method["flags"]) & METHOD_FLAG_STATIC) != 0:
 			continue
 		if not _claim(owners, "func", String(method["name"]), node_name, warnings):
 			continue
-		blocks.append(DogApiRender.func_block(var_name, method))
+		blocks.append(DogScriptRender.func_block(var_name, method))
 
 
 ## Why `actor`, `folder` or `root` can't be used, or "". Checked in that order:
@@ -293,7 +293,7 @@ static func _claim(
 	node_name: String,
 	warnings: Array,
 ) -> bool:
-	if not DogApiRender.is_public(member):
+	if not DogScriptRender.is_public(member):
 		return false
 	var key := "%s %s" % [kind, member]
 	if owners.has(key):
@@ -354,5 +354,5 @@ class Options:
 	var components: Array = []
 	var folder := ""
 	var root := DEFAULT_ROOT
-	var mode := DogApiMerge.Mode.ADD
+	var mode := DogScriptMerge.Mode.ADD
 	var write := true

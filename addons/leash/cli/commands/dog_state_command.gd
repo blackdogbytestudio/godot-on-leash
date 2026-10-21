@@ -157,9 +157,9 @@ static func _read_mode(parser: DogOptParse, request: Request) -> String:
 	if force and update:
 		return FORCE_AND_UPDATE
 	if force:
-		request.mode = DogApiMerge.Mode.FORCE
+		request.mode = DogScriptMerge.Mode.FORCE
 	elif update:
-		request.mode = DogApiMerge.Mode.UPDATE
+		request.mode = DogScriptMerge.Mode.UPDATE
 	return ""
 
 
@@ -180,6 +180,6 @@ class Request:
 	var folder: String = ""
 	var extends_state: String = ""
 	var initial: String = ""
-	var mode: DogApiMerge.Mode = DogApiMerge.Mode.ADD
+	var mode: DogScriptMerge.Mode = DogScriptMerge.Mode.ADD
 	var tree: DogStateTree
 	var error: String = ""

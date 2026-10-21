@@ -21,18 +21,18 @@ func _block_text(func_name: String, text: String) -> Dictionary:
 
 
 func _update(source: String, blocks: Array) -> Dictionary:
-	return DogApiMerge.merge(source, blocks, DogApiMerge.Mode.UPDATE)
+	return DogScriptMerge.merge(source, blocks, DogScriptMerge.Mode.UPDATE)
 
 
 func _force(source: String, blocks: Array) -> Dictionary:
-	return DogApiMerge.merge(source, blocks, DogApiMerge.Mode.FORCE)
+	return DogScriptMerge.merge(source, blocks, DogScriptMerge.Mode.FORCE)
 
 
 # --- ADD (default): add what is missing ------------------------------------
 
 
 func test_adds_missing_func_after_header() -> void:
-	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_block("jump")])
+	var r := DogScriptMerge.merge("extends CharacterBody2D\n", [_block("jump")])
 	assert_eq(
 		r.source,
 		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
@@ -42,7 +42,7 @@ func test_adds_missing_func_after_header() -> void:
 
 
 func test_separates_new_funcs_with_two_blank_lines() -> void:
-	var r := DogApiMerge.merge("extends CharacterBody2D\n", [_block("jump"), _block("run")])
+	var r := DogScriptMerge.merge("extends CharacterBody2D\n", [_block("jump"), _block("run")])
 	assert_eq(
 		r.source,
 		(
@@ -54,14 +54,14 @@ func test_separates_new_funcs_with_two_blank_lines() -> void:
 
 func test_skips_func_that_already_exists() -> void:
 	var source := "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\tprint(\"mine\")\n"
-	var r := DogApiMerge.merge(source, [_block("jump")])
+	var r := DogScriptMerge.merge(source, [_block("jump")])
 	assert_eq(r.source, source)
 	assert_eq(r.report, ["skip func jump"])
 
 
 func test_keeps_edited_body_and_adds_the_other_func() -> void:
 	var source := "extends CharacterBody2D\n\n\nfunc jump() -> void:\n\tprint(\"mine\")\n"
-	var r := DogApiMerge.merge(source, [_block("jump"), _block("run")])
+	var r := DogScriptMerge.merge(source, [_block("jump"), _block("run")])
 	assert_string_contains(r.source, "\tprint(\"mine\")\n")
 	assert_string_contains(r.source, "func run() -> void:")
 	assert_eq(r.report, ["skip func jump", "add func run"])
@@ -69,18 +69,18 @@ func test_keeps_edited_body_and_adds_the_other_func() -> void:
 
 func test_matches_whole_name_not_prefix() -> void:
 	var source := "extends CharacterBody2D\n\n\nfunc jump_high() -> void:\n\tpass\n"
-	var r := DogApiMerge.merge(source, [_block("jump")])
+	var r := DogScriptMerge.merge(source, [_block("jump")])
 	assert_eq(r.report, ["add func jump"])
 
 
 func test_ignores_func_name_inside_a_comment() -> void:
 	var source := "extends CharacterBody2D\n# func jump() was removed\n"
-	var r := DogApiMerge.merge(source, [_block("jump")])
+	var r := DogScriptMerge.merge(source, [_block("jump")])
 	assert_eq(r.report, ["add func jump"])
 
 
 func test_normalizes_trailing_blank_lines_to_two() -> void:
-	var r := DogApiMerge.merge("extends CharacterBody2D\n\n\n\n\n", [_block("jump")])
+	var r := DogScriptMerge.merge("extends CharacterBody2D\n\n\n\n\n", [_block("jump")])
 	assert_eq(
 		r.source,
 		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
@@ -88,7 +88,7 @@ func test_normalizes_trailing_blank_lines_to_two() -> void:
 
 
 func test_handles_source_without_final_newline() -> void:
-	var r := DogApiMerge.merge("extends CharacterBody2D", [_block("jump")])
+	var r := DogScriptMerge.merge("extends CharacterBody2D", [_block("jump")])
 	assert_eq(
 		r.source,
 		"extends CharacterBody2D\n\n\nfunc jump() -> void:\n\t_dog_jump_2d.jump()\n",
@@ -97,21 +97,21 @@ func test_handles_source_without_final_newline() -> void:
 
 func test_no_blocks_leaves_source_alone() -> void:
 	var source := "extends CharacterBody2D\n"
-	var r := DogApiMerge.merge(source, [])
+	var r := DogScriptMerge.merge(source, [])
 	assert_eq(r.source, source)
 	assert_eq(r.report, [])
 
 
 func test_running_twice_changes_nothing_the_second_time() -> void:
-	var first := DogApiMerge.merge("extends CharacterBody2D\n", [_block("jump"), _block("run")])
-	var second := DogApiMerge.merge(first.source, [_block("jump"), _block("run")])
+	var first := DogScriptMerge.merge("extends CharacterBody2D\n", [_block("jump"), _block("run")])
+	var second := DogScriptMerge.merge(first.source, [_block("jump"), _block("run")])
 	assert_eq(second.source, first.source)
 	assert_eq(second.report, ["skip func jump", "skip func run"])
 
 
 func test_add_mode_does_not_validate_bodies() -> void:
 	var source := HEAD + "func jump() -> void:\n\tfoo()\n# bar()\n\tbaz()\n"
-	var r := DogApiMerge.merge(source, [_block("jump")])
+	var r := DogScriptMerge.merge(source, [_block("jump")])
 	assert_eq(r.error, "")
 	assert_eq(r.source, source)
 	assert_eq(r.report, ["skip func jump"])
@@ -287,7 +287,7 @@ func test_update_error_changes_nothing_even_for_the_other_funcs() -> void:
 func test_force_on_header_only_file_matches_default_mode() -> void:
 	var source := "extends CharacterBody2D\n"
 	var forced := _force(source, [_block("jump")])
-	var normal := DogApiMerge.merge(source, [_block("jump")])
+	var normal := DogScriptMerge.merge(source, [_block("jump")])
 	assert_eq(forced.source, normal.source)
 
 
@@ -383,5 +383,5 @@ func test_force_on_header_only_reports_no_drops() -> void:
 
 func test_add_and_update_never_report_drops() -> void:
 	var source := HEAD + "func old() -> void:\n\tpass\n"
-	assert_eq(DogApiMerge.merge(source, [_block("jump")]).report, ["add func jump"])
+	assert_eq(DogScriptMerge.merge(source, [_block("jump")]).report, ["add func jump"])
 	assert_eq(_update(source, [_block("jump")]).report, ["add func jump"])

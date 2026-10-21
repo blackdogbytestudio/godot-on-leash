@@ -1,8 +1,8 @@
 @tool
-class_name DogApiRender
+class_name DogScriptRender
 extends RefCounted
 ## Turns reflection dictionaries (get_script_method_list / get_script_signal_list)
-## into the blocks DogApiMerge understands. Pure: no scene, file or editor access.
+## into the blocks DogScriptMerge understands. Pure: no scene, file or editor access.
 ##
 ## Limitation: default values are written with var_to_str, which is valid GDScript
 ## for the usual types (numbers, strings, bools, vectors, colors, null).
