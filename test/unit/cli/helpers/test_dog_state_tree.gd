@@ -65,3 +65,14 @@ func test_invalid_characters_are_an_error() -> void:
 	assert_ne(DogStateTree.parse(PackedStringArray(["Alive"])).error, "")
 	assert_ne(DogStateTree.parse(PackedStringArray(["al ive"])).error, "")
 	assert_ne(DogStateTree.parse(PackedStringArray(["1alive"])).error, "")
+
+
+func test_is_valid_name_accepts_snake_case_state_names() -> void:
+	for ok in ["alive", "run_ground", "jump2", "a1_b2"]:
+		assert_true(DogStateTree.is_valid_name(ok), ok)
+
+
+func test_is_valid_name_rejects_parts_that_start_with_a_digit() -> void:
+	# Unlike DogNames (actors, components): a state part can't start with a digit.
+	for bad in ["", "Alive", "_alive", "alive_", "a__b", "run_2d", "2run", ".alive", "a-b"]:
+		assert_false(DogStateTree.is_valid_name(bad), bad)

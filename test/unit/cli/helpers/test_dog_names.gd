@@ -34,3 +34,21 @@ func test_to_pascal_keeps_trailing_digits() -> void:
 
 func test_to_pascal_of_empty_is_empty() -> void:
 	assert_eq(DogNames.to_pascal(""), "")
+
+
+func test_actor_error_is_empty_for_a_valid_actor() -> void:
+	assert_eq(DogNames.actor_error("skinny_man"), "")
+
+
+func test_actor_error_names_the_bad_actor() -> void:
+	assert_eq(DogNames.actor_error("Player"), DogNames.INVALID_ACTOR % "Player")
+
+
+func test_folder_error_accepts_empty_and_snake_case_parts() -> void:
+	assert_eq(DogNames.folder_error(""), "")
+	assert_eq(DogNames.folder_error("enemies/slime_2d"), "")
+
+
+func test_folder_error_rejects_bad_parts() -> void:
+	for bad in ["Enemies", "enemies/", "/enemies", "enemies//slime", "../x", "a/../b", "a b"]:
+		assert_eq(DogNames.folder_error(bad), DogNames.INVALID_FOLDER % bad, bad)
