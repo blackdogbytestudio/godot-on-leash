@@ -1,6 +1,6 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## DogApiRender turns reflection dictionaries (as Godot returns them from
+## DogScriptRender turns reflection dictionaries (as Godot returns them from
 ## get_script_method_list / get_script_signal_list) into merge blocks.
 
 
@@ -44,70 +44,71 @@ func _method(
 
 
 func test_underscore_members_are_not_public() -> void:
-	assert_true(DogApiRender.is_public("jump"))
-	assert_false(DogApiRender.is_public("_internal"))
+	assert_true(DogScriptRender.is_public("jump"))
+	assert_false(DogScriptRender.is_public("_internal"))
 
 
 func test_property_accessors_are_not_public() -> void:
-	assert_false(DogApiRender.is_public("@power_setter"))
-	assert_false(DogApiRender.is_public("@host_getter"))
+	assert_false(DogScriptRender.is_public("@power_setter"))
+	assert_false(DogScriptRender.is_public("@host_getter"))
 
 
 func test_var_name_comes_from_the_component_class() -> void:
-	assert_eq(DogApiRender.var_name("DogJump2D", "Jump"), "_dog_jump_2d")
+	assert_eq(DogScriptRender.var_name("DogJump2D", "Jump"), "_dog_jump_2d")
 
 
 func test_var_name_falls_back_to_the_node_name_without_a_class() -> void:
-	assert_eq(DogApiRender.var_name("", "DashTimer"), "_dash_timer")
+	assert_eq(DogScriptRender.var_name("", "DashTimer"), "_dash_timer")
 
 
 # --- type_text -------------------------------------------------------------
 
 
 func test_type_text_for_builtin_types() -> void:
-	assert_eq(DogApiRender.type_text(_info(TYPE_FLOAT)), "float")
-	assert_eq(DogApiRender.type_text(_info(TYPE_VECTOR2)), "Vector2")
-	assert_eq(DogApiRender.type_text(_info(TYPE_STRING)), "String")
+	assert_eq(DogScriptRender.type_text(_info(TYPE_FLOAT)), "float")
+	assert_eq(DogScriptRender.type_text(_info(TYPE_VECTOR2)), "Vector2")
+	assert_eq(DogScriptRender.type_text(_info(TYPE_STRING)), "String")
 
 
 func test_type_text_prefers_the_class_name() -> void:
-	assert_eq(DogApiRender.type_text(_info(TYPE_OBJECT, "Node2D")), "Node2D")
+	assert_eq(DogScriptRender.type_text(_info(TYPE_OBJECT, "Node2D")), "Node2D")
 
 
 func test_type_text_object_without_class_is_object() -> void:
-	assert_eq(DogApiRender.type_text(_info(TYPE_OBJECT)), "Object")
+	assert_eq(DogScriptRender.type_text(_info(TYPE_OBJECT)), "Object")
 
 
 func test_type_text_nil_is_void_unless_flagged_as_variant() -> void:
-	assert_eq(DogApiRender.type_text(_info(TYPE_NIL)), "void")
-	assert_eq(DogApiRender.type_text(_info(TYPE_NIL, "", PROPERTY_USAGE_NIL_IS_VARIANT)), "Variant")
+	assert_eq(DogScriptRender.type_text(_info(TYPE_NIL)), "void")
+	var info := _info(TYPE_NIL, "", PROPERTY_USAGE_NIL_IS_VARIANT)
+	assert_eq(DogScriptRender.type_text(info), "Variant")
 
 
 func test_type_text_typed_and_plain_arrays() -> void:
 	assert_eq(
-		DogApiRender.type_text(_info(TYPE_ARRAY, "", 0, PROPERTY_HINT_ARRAY_TYPE, "int")),
+		DogScriptRender.type_text(_info(TYPE_ARRAY, "", 0, PROPERTY_HINT_ARRAY_TYPE, "int")),
 		"Array[int]",
 	)
-	assert_eq(DogApiRender.type_text(_info(TYPE_ARRAY)), "Array")
+	assert_eq(DogScriptRender.type_text(_info(TYPE_ARRAY)), "Array")
 
 
 # --- ref_block -------------------------------------------------------------
 
 
 func test_ref_block_with_a_class_is_typed() -> void:
-	var b := DogApiRender.ref_block("_dog_jump_2d", "DogJump2D", "Jump")
+	var b := DogScriptRender.ref_block("_dog_jump_2d", "DogJump2D", "Jump")
 	assert_eq(b.kind, "var")
 	assert_eq(b.name, "_dog_jump_2d")
 	assert_eq(b.text, "@onready var _dog_jump_2d: DogJump2D = $Jump")
 
 
 func test_ref_block_without_a_class_is_untyped() -> void:
-	var b := DogApiRender.ref_block("_jump", "", "Jump")
+	var b := DogScriptRender.ref_block("_jump", "", "Jump")
 	assert_eq(b.text, "@onready var _jump = $Jump")
 
 
 func test_ref_block_quotes_node_names_that_are_not_identifiers() -> void:
-	var b := DogApiRender.ref_block("_jump_2", "DogJump2D", "Jump 2")
+	var b := DogScriptRender.ref_block("_jump_2", "DogJump2D", "Jump 2")
 	assert_eq(b.text, "@onready var _jump_2: DogJump2D = $\"Jump 2\"")
 
 
@@ -115,14 +116,14 @@ func test_ref_block_quotes_node_names_that_are_not_identifiers() -> void:
 
 
 func test_func_block_without_args_returning_void() -> void:
-	var b := DogApiRender.func_block("_dog_jump_2d", _method("jump"))
+	var b := DogScriptRender.func_block("_dog_jump_2d", _method("jump"))
 	assert_eq(b.kind, "func")
 	assert_eq(b.name, "jump")
 	assert_eq(b.text, "func jump() -> void:\n\t_dog_jump_2d.jump()")
 
 
 func test_func_block_returning_a_value_uses_return() -> void:
-	var b := DogApiRender.func_block("_dog_jump_2d", _method("get_power", [], _info(TYPE_FLOAT)))
+	var b := DogScriptRender.func_block("_dog_jump_2d", _method("get_power", [], _info(TYPE_FLOAT)))
 	assert_eq(b.text, "func get_power() -> float:\n\treturn _dog_jump_2d.get_power()")
 
 
@@ -133,7 +134,7 @@ func test_func_block_with_args_and_default_values() -> void:
 		_info(TYPE_STRING, "", 0, 0, "", "label"),
 		_info(TYPE_VECTOR2, "", 0, 0, "", "v"),
 	]
-	var b := DogApiRender.func_block(
+	var b := DogScriptRender.func_block(
 		"_x",
 		_method("jump_with", args, _info(TYPE_NIL), [2, "x", Vector2(1, 2)]),
 	)
@@ -153,7 +154,7 @@ func test_func_block_untyped_args_and_return_become_variant() -> void:
 		_info(TYPE_NIL, "", PROPERTY_USAGE_NIL_IS_VARIANT, 0, "", "a"),
 		_info(TYPE_NIL, "", PROPERTY_USAGE_NIL_IS_VARIANT, 0, "", "b"),
 	]
-	var b := DogApiRender.func_block("_x", _method("untyped", args, variant_info, [3]))
+	var b := DogScriptRender.func_block("_x", _method("untyped", args, variant_info, [3]))
 	assert_eq(
 		b.text,
 		"func untyped(a: Variant, b: Variant = 3) -> Variant:\n\treturn _x.untyped(a, b)",
@@ -163,7 +164,7 @@ func test_func_block_untyped_args_and_return_become_variant() -> void:
 func test_func_block_with_class_and_typed_array_types() -> void:
 	var args := [_info(TYPE_OBJECT, "Node", 0, 0, "", "n")]
 	var ret := _info(TYPE_ARRAY, "", 0, PROPERTY_HINT_ARRAY_TYPE, "String")
-	var b := DogApiRender.func_block("_x", _method("find", args, ret))
+	var b := DogScriptRender.func_block("_x", _method("find", args, ret))
 	assert_eq(b.text, "func find(n: Node) -> Array[String]:\n\treturn _x.find(n)")
 
 
@@ -178,24 +179,24 @@ func test_signal_block_with_args() -> void:
 			_info(TYPE_OBJECT, "Node", 0, 0, "", "who"),
 		],
 	}
-	var b := DogApiRender.signal_block(info)
+	var b := DogScriptRender.signal_block(info)
 	assert_eq(b.kind, "signal")
 	assert_eq(b.name, "landed")
 	assert_eq(b.text, "signal landed(speed: float, who: Node)")
 
 
 func test_signal_block_without_args_has_no_parentheses() -> void:
-	var b := DogApiRender.signal_block({ "name": "plain", "args": [] })
+	var b := DogScriptRender.signal_block({ "name": "plain", "args": [] })
 	assert_eq(b.text, "signal plain")
 
 
 func test_signal_block_untyped_arg_is_variant() -> void:
 	var info := { "name": "changed", "args": [_info(TYPE_NIL, "", 0, 0, "", "value")] }
-	assert_eq(DogApiRender.signal_block(info).text, "signal changed(value: Variant)")
+	assert_eq(DogScriptRender.signal_block(info).text, "signal changed(value: Variant)")
 
 
 func test_connect_block_forwards_the_signal_with_emit() -> void:
-	var b := DogApiRender.connect_block("_dog_jump_2d", "landed")
+	var b := DogScriptRender.connect_block("_dog_jump_2d", "landed")
 	assert_eq(b.kind, "ready_line")
 	assert_eq(b.name, "_dog_jump_2d.landed")
 	assert_eq(b.text, "\t_dog_jump_2d.landed.connect(landed.emit)")
