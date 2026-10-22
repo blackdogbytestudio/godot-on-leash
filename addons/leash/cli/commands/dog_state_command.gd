@@ -11,7 +11,6 @@ const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
 const UNKNOWN_TYPE := "unknown type '%s'."
 const INVALID_INITIAL := "'%s' is not a valid --initial (a state name, no dots)."
-const FORCE_AND_UPDATE := "use either -f or -u, not both."
 const NESTED_IN_FLAT := "'%s' is flat: nested states are not allowed."
 
 # Overridable so tests never write into res://.
@@ -155,11 +154,8 @@ static func _read_mode(parser: DogOptParse, request: Request) -> String:
 	var force: bool = parser.get_value("--force")
 	var update: bool = parser.get_value("--update")
 	if force and update:
-		return FORCE_AND_UPDATE
-	if force:
-		request.mode = DogScriptMerge.Mode.FORCE
-	elif update:
-		request.mode = DogScriptMerge.Mode.UPDATE
+		return DogScriptMerge.FORCE_AND_UPDATE
+	request.mode = DogScriptMerge.mode_from(force, update)
 	return ""
 
 

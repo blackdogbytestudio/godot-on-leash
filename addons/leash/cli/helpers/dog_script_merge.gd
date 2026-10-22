@@ -32,6 +32,8 @@ enum Mode {
 	FORCE,
 }
 
+# Error messages
+const FORCE_AND_UPDATE := "use either -f or -u, not both."
 ## A top-level line that starts a new declaration (so it can't be part of a body).
 const DECLARATION := (
 	"^(@|##|(static\\s+func|func|var|const|signal|enum"
@@ -113,6 +115,16 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 	for label in dropped:
 		plan.report.append("drop " + label)
 	return { "source": "\n".join(lines), "report": plan.report, "error": "" }
+
+
+## Turns the -f / -u flags into a Mode. Callers reject both flags at once
+## first (see FORCE_AND_UPDATE); if both arrive anyway, force wins.
+static func mode_from(force: bool, update: bool) -> Mode:
+	if force:
+		return Mode.FORCE
+	if update:
+		return Mode.UPDATE
+	return Mode.ADD
 
 
 ## FORCE keeps only the header, followed by one blank line.
