@@ -12,7 +12,6 @@ extends DogCommand
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
 const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
-const FORCE_AND_UPDATE := "use either -f or -u, not both."
 
 # Overridable so tests never write into res://.
 var root: String = DogApiGenerator.DEFAULT_ROOT
@@ -143,11 +142,8 @@ static func _read_mode(parser: DogOptParse, request: Request) -> String:
 	var force: bool = parser.get_value("--force")
 	var update: bool = parser.get_value("--update")
 	if force and update:
-		return FORCE_AND_UPDATE
-	if force:
-		request.mode = DogScriptMerge.Mode.FORCE
-	elif update:
-		request.mode = DogScriptMerge.Mode.UPDATE
+		return DogScriptMerge.FORCE_AND_UPDATE
+	request.mode = DogScriptMerge.mode_from(force, update)
 	return ""
 
 
