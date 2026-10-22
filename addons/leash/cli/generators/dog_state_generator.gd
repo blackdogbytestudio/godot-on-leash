@@ -29,7 +29,7 @@ const NODE_TEMPLATE := "state.gd"
 const FAMILIES := {
 	"fsm": { "dir": "DogFSMState", "base": "DogFSMState", "machine": "DogFSM" },
 	"pda": { "dir": "DogPDAState", "base": "DogPDAState", "machine": "DogPDA" },
-	"hfsm": { "dir": "DogHState", "base": "DogHFSMState", "machine": "DogHFSM" },
+	"hfsm": { "dir": "DogHFSMState", "base": "DogHFSMState", "machine": "DogHFSM" },
 	"hpda": { "dir": "DogHPDAState", "base": "DogHPDAState", "machine": "DogHPDA" },
 }
 # Error messages
