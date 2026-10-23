@@ -21,6 +21,14 @@ func _names() -> Array:
 	return result
 
 
+func test_executes_a_command_with_its_args() -> void:
+	var fake := FakeCommand.new("fake")
+	_cli.register(fake)
+	_cli.execute("fake command")
+	assert_true(fake.ran)
+	assert_eq(fake.received, PackedStringArray(["command"]))
+
+
 func test_tokenize_splits_on_any_whitespace() -> void:
 	assert_eq(DogCli.tokenize("a\tb\n c  d"), PackedStringArray(["a", "b", "c", "d"]))
 
@@ -83,16 +91,8 @@ func test_execute_blank_line_and_bare_prefix_are_ok() -> void:
 	assert_eq(_cli.execute("leash"), OK)
 
 
-func test_command_output_reaches_the_cli() -> void:
-	var lines: Array[String] = []
-	_cli.printed.connect(func(text: String) -> void: lines.append(text))
-	_cli.register(DogHelloCommand.new())
-	_cli.execute("hello kns")
-	assert_eq(lines, ["Hello, kns!"] as Array[String])
-
-
 func test_register_folder_finds_the_builtin_commands() -> void:
 	_cli.register_folder("res://addons/leash/cli/commands")
-	assert_has(_names(), "hello")
 	assert_has(_names(), "help")
 	assert_has(_names(), "state")
+	assert_has(_names(), "api")
