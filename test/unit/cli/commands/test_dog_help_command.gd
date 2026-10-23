@@ -33,9 +33,9 @@ func test_lists_every_command_with_its_description() -> void:
 
 func test_prints_the_usage_only_when_there_is_one() -> void:
 	_cli.register(DogHelpCommand.new())
-	_cli.register(DogHelloCommand.new())
+	_cli.register(FakeCommand.new("fake", "A fake command.", "fake [arg]"))
 	_cli.execute("help")
 	assert_eq(
 		_lines,
-		["help  -  List all commands.", "hello  -  Say hello.", "    usage: hello [name]"],
+		["help  -  List all commands.", "fake  -  A fake command.", "    usage: fake [arg]"],
 	)

@@ -3,6 +3,8 @@ extends GutTest
 ## files it leaves in user://. state and api are checked apart: running both in
 ## one line is the job of `generate`.
 
+## Every command the addon ships. Update it when a command is added or removed.
+const COMMAND_NAMES := ["api", "help", "state"]
 const COMMANDS := "res://addons/leash/cli/commands"
 const ROOT := "user://dog_cli_e2e"
 const HPDA := "res://addons/leash/components/machines/dog_hpda.gd"
@@ -74,13 +76,13 @@ func test_registers_every_command_of_the_addon() -> void:
 	for command in _cli.commands():
 		names.append(command.command_name())
 	names.sort()
-	assert_eq(names, ["api", "hello", "help", "state"])
+	assert_eq(names, COMMAND_NAMES)
 
 
 func test_help_lists_the_commands() -> void:
 	assert_eq(_cli.execute("help"), OK)
 	var text := "\n".join(_lines)
-	for command_name in ["api", "hello", "help", "state"]:
+	for command_name in COMMAND_NAMES:
 		assert_string_contains(text, command_name + "  -  ")
 
 
