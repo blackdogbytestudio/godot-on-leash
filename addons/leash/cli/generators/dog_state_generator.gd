@@ -505,8 +505,8 @@ static func _scan() -> void:
 ## What to generate. `base` is the --extends state class ("" = none) and
 ## `initial` the state the machine starts in ("" = default_initial).
 class Options:
-	var type := ""
 	var actor := ""
+	var type := ""
 	var folder := ""
 	var base := ""
 	var tree: DogStateTree

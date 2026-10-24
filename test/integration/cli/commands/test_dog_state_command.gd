@@ -96,7 +96,7 @@ func _remove(path: String) -> void:
 
 func test_run_prints_warnings() -> void:
 	_scene("slime")
-	var result := _run(PackedStringArray(["hpda", "slime", "alive"]))
+	var result := _run(PackedStringArray(["slime", "hpda", "alive"]))
 	assert_eq(result[0], OK)
 	assert_has(
 		result[1],
@@ -105,21 +105,21 @@ func test_run_prints_warnings() -> void:
 
 
 func test_run_prints_validation_errors() -> void:
-	var result := _run(PackedStringArray(["hpda", "enemy", "alive"]))
+	var result := _run(PackedStringArray(["enemy", "hpda", "alive"]))
 	assert_eq(result[0], FAILED)
 	assert_string_contains(result[1][0], "Dog: state: ")
 
 
 func test_run_prints_created_and_keeps() -> void:
 	_scene("player", { "DogHPDA": "DogHPDA" }, "", "class_name Player\nextends Node\n")
-	var first = _run(PackedStringArray(["hpda", "player", "alive"]))
+	var first = _run(PackedStringArray(["player", "hpda", "alive"]))
 	assert_eq(first[0], OK)
 	assert_eq(first[1][0], "initial: alive")
 	assert_has(first[1], "created %s" % _states("player").path_join("player_state.gd"))
 	assert_has(first[1], "created %s" % _states("player").path_join("player_alive_state.gd"))
 	assert_has(first[1], "updated %s" % ROOT.path_join("player/player.gd"))
 
-	var second = _run(PackedStringArray(["hpda", "player", "alive", ".grounded"]))
+	var second = _run(PackedStringArray(["player", "hpda", "alive", ".grounded"]))
 	assert_eq(second[0], OK)
 	assert_string_contains(
 		" ".join(second[1]),

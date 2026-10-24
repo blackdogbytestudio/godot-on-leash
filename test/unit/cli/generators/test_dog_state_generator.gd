@@ -24,17 +24,17 @@ func _initial(args: Array) -> String:
 
 func test_initial_defaults_to_the_deepest_state() -> void:
 	assert_eq(
-		_initial(["hpda", "p", "alive", ".grounded", "..run", "...run_ground", "..idle", "dead"]),
+		_initial(["p", "hpda", "alive", ".grounded", "..run", "...run_ground", "..idle", "dead"]),
 		"run_ground",
 	)
 
 
 func test_initial_tie_picks_the_first_declared() -> void:
-	assert_eq(_initial(["hpda", "p", "alive", ".run", ".idle", "dead", ".gone"]), "run")
+	assert_eq(_initial(["p", "hpda", "alive", ".run", ".idle", "dead", ".gone"]), "run")
 
 
 func test_initial_on_a_flat_tree_is_the_first() -> void:
-	assert_eq(_initial(["fsm", "p", "idle", "run"]), "idle")
+	assert_eq(_initial(["p", "fsm", "idle", "run"]), "idle")
 
 
 # --- is_safe_states_dir ------------------------------------------------------

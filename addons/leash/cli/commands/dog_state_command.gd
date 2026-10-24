@@ -1,7 +1,7 @@
 @tool
 class_name DogStateCommand
 extends DogCommand
-## state <type> <actor> <tree...> [--folder f] [--extends State] [--initial state] [-f | -u]
+## state <actor> <type> <tree...> [--folder f] [--extends State] [--initial state] [-f | -u]
 ## The states' host is always the actor's class (actor in PascalCase).
 
 const FLAT_TYPES: PackedStringArray = ["fsm", "pda"]
@@ -27,7 +27,7 @@ func description() -> String:
 
 func usage() -> String:
 	return (
-		"state <fsm|pda|hfsm|hpda> <actor> <tree...>"
+		"state <actor> <fsm|pda|hfsm|hpda> <tree...>"
 		+ " [--folder path] [--extends State]"
 		+ " [--initial state] [-f | -u]"
 	)
@@ -63,8 +63,8 @@ func run(args: PackedStringArray) -> Error:
 ## The generator options for a parsed `request`, writing below `root`.
 static func options_for(request: Request, root: String) -> DogStateGenerator.Options:
 	var options := DogStateGenerator.Options.new()
-	options.type = request.type
 	options.actor = request.actor
+	options.type = request.type
 	options.folder = request.folder
 	options.base = request.extends_state
 	options.tree = request.tree
@@ -91,8 +91,8 @@ static func parse_request(args: PackedStringArray) -> Request:
 
 static func _build_parser() -> DogOptParse:
 	var parser := DogOptParse.new()
-	parser.add_positional_required("type", "", "type: fsm | pda | hfsm | hpda")
 	parser.add_positional_required("actor", "", "actor name (snake_case)")
+	parser.add_positional_required("type", "", "type: fsm | pda | hfsm | hpda")
 	parser.add(
 		"--folder",
 		"",
@@ -117,7 +117,7 @@ static func _build_parser() -> DogOptParse:
 	return parser
 
 
-## Positional arguments: <type> <actor>. Also rejects unknown options.
+## Positional arguments: <actor> <type>. Also rejects unknown options.
 static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 	var missing: Array = parser.get_missing_required_options()
 	if not missing.is_empty():
@@ -127,12 +127,15 @@ static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 		if parser.is_option(token):
 			return UNKNOWN_OPTION % token
 
+	request.actor = parser.get_value("actor")
+	var error := DogNames.actor_error(request.actor)
+	if not error.is_empty():
+		return error
+
 	request.type = parser.get_value("type")
 	if request.type not in FLAT_TYPES and request.type not in TREE_TYPES:
 		return UNKNOWN_TYPE % request.type
-
-	request.actor = parser.get_value("actor")
-	return DogNames.actor_error(request.actor)
+	return ""
 
 
 ## --folder, --extends, --initial and the -f / -u mode.
@@ -171,8 +174,8 @@ static func _read_tree(parser: DogOptParse, request: Request) -> String:
 
 
 class Request:
-	var type: String = ""
 	var actor: String = ""
+	var type: String = ""
 	var folder: String = ""
 	var extends_state: String = ""
 	var initial: String = ""
