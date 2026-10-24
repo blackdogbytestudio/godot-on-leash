@@ -115,7 +115,7 @@ panel to list them.
 Creates actor state scripts from the script templates.
 
 ```
-state <fsm|pda|hfsm|hpda> <actor> <tree...> [--folder path] [--extends State] [--initial state] [-f | -u]
+state <actor> <fsm|pda|hfsm|hpda> <tree...> [--folder path] [--extends State] [--initial state] [-f | -u]
 ```
 
 The tree uses dots to express depth — `alive .grounded ..idle ..run dead`
@@ -132,13 +132,13 @@ doesn't matter). Otherwise nothing is written.
 Files are written under `res://scenes/characters/`:
 
 ```
-state hpda enemy --folder enemies alive .grounded ..idle ..run dead
+state enemy hpda --folder enemies alive .grounded ..idle ..run dead
 ```
 
 creates `res://scenes/characters/enemies/states/enemy_state.gd` (the actor
 base, from `class.gd`) plus one `enemy_<state>_state.gd` per tree node
 (from `state.gd`, extending its parent's class). Without `--folder` the
-actor name is the folder, so `state hpda player run` writes to
+actor name is the folder, so `state player hpda run` writes to
 `res://scenes/characters/player/states/`.
 
 It also wires the machine into the actor's script, in Godot style guide
@@ -149,7 +149,7 @@ created when missing). The initial state is the deepest one (the first on a
 tie) unless `--initial <state>` says otherwise; the command prints it.
 
 Existing files are kept, so adding a state to an actor only writes the new
-one — `state hpda player alive .grounded ..run` leaves `player_state.gd`
+one — `state player hpda alive .grounded ..run` leaves `player_state.gd`
 and `player_alive_state.gd` alone, and the script only gets what is missing.
 `-u` also updates the script (e.g. the `init` line when the initial state
 changed) and never touches state files. `-f` goes back to factory: it
@@ -162,7 +162,7 @@ The states are typed to the actor's class, the actor in PascalCase
 states shared by several actors, run `state` on the parent actor.
 `--extends State` makes the root states inherit that state
 instead of the actor base and skips generating the actor base, e.g.
-`state hpda slime --extends enemy_alive_state --folder enemies/slime jump`.
+`state slime hpda --extends enemy_alive_state --folder enemies/slime jump`.
 
 ## Project Structure (addon)
 
