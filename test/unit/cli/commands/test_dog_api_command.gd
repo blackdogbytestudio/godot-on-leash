@@ -3,10 +3,23 @@ extends GutTest
 ## DogApiCommand metadata and parse_request: no files involved.
 
 var _command: DogApiCommand
+var _saved := {}
 
 
 func before_each() -> void:
 	_command = DogApiCommand.new()
+	_saved.clear()
+	for key in [DogSettings.PREFIX, DogSettings.SUFFIX]:
+		if ProjectSettings.has_setting(key):
+			_saved[key] = ProjectSettings.get_setting(key)
+		ProjectSettings.set_setting(key, DogSettings.DEFAULTS[key])
+
+
+func after_each() -> void:
+	for key in [DogSettings.PREFIX, DogSettings.SUFFIX]:
+		ProjectSettings.clear(key)
+		if _saved.has(key):
+			ProjectSettings.set_setting(key, _saved[key])
 
 
 func _args(line: String) -> PackedStringArray:
@@ -20,6 +33,7 @@ func test_command_name_and_usage() -> void:
 	assert_eq(_command.command_name(), "api")
 	assert_ne(_command.description(), "")
 	assert_string_contains(_command.usage(), "api <actor> <component...>")
+	assert_string_contains(_command.usage(), "--no-fix")
 
 
 # --- parse_request ---------------------------------------------------------
@@ -80,7 +94,7 @@ func test_parse_unknown_option_is_an_error() -> void:
 
 
 func test_parse_components_are_the_tokens_after_the_actor() -> void:
-	var r := DogApiCommand.parse_request(_args("player dog_jump_2d dog_move_2d"))
+	var r := DogApiCommand.parse_request(_args("player --no-fix dog_jump_2d dog_move_2d"))
 	assert_eq(r.error, "")
 	assert_eq(r.components, ["dog_jump_2d", "dog_move_2d"])
 
@@ -99,20 +113,55 @@ func test_parse_prefix_and_suffix_wrap_every_component() -> void:
 
 func test_parse_prefix_alone_and_suffix_alone() -> void:
 	assert_eq(
-		DogApiCommand.parse_request(_args("player --prefix dog jump")).components,
-		["dog_jump"],
+		DogApiCommand.parse_request(_args("player --prefix fx jump")).components,
+		["fx_jump_2d"],
 	)
-	assert_eq(DogApiCommand.parse_request(_args("player --suffix 2d jump")).components, ["jump_2d"])
+	assert_eq(
+		DogApiCommand.parse_request(_args("player --suffix 3d jump")).components,
+		["dog_jump_3d"],
+	)
 
 
 func test_parse_prefix_and_suffix_tolerate_a_stray_underscore() -> void:
 	var r := DogApiCommand.parse_request(_args("player --prefix dog_ --suffix _2d jump"))
 	assert_eq(r.components, ["dog_jump_2d"])
+	ProjectSettings.set_setting(DogSettings.PREFIX, "dog_")
+	ProjectSettings.set_setting(DogSettings.SUFFIX, "_2d")
+	assert_eq(DogApiCommand.parse_request(_args("player jump")).components, ["dog_jump_2d"])
 
 
 func test_parse_prefix_is_not_deduplicated() -> void:
-	var r := DogApiCommand.parse_request(_args("player --prefix dog dog_jump"))
-	assert_eq(r.components, ["dog_dog_jump"])
+	var r := DogApiCommand.parse_request(_args("player dog_jump_2d"))
+	assert_eq(r.components, ["dog_dog_jump_2d_2d"])
+
+
+func test_parse_without_flags_uses_the_settings() -> void:
+	var r := DogApiCommand.parse_request(_args("player jump move"))
+	assert_eq(r.error, "")
+	assert_eq(r.components, ["dog_jump_2d", "dog_move_2d"])
+
+
+func test_parse_uses_a_changed_setting() -> void:
+	ProjectSettings.set_setting(DogSettings.PREFIX, "my")
+	ProjectSettings.set_setting(DogSettings.SUFFIX, "")
+	assert_eq(DogApiCommand.parse_request(_args("player jump")).components, ["my_jump"])
+
+
+func test_parse_empty_prefix_or_suffix_drops_only_that_side() -> void:
+	assert_eq(DogApiCommand.parse_request(_args("player --prefix= jump")).components, ["jump_2d"])
+	assert_eq(DogApiCommand.parse_request(_args("player --suffix= jump")).components, ["dog_jump"])
+
+
+func test_parse_no_fix_drops_prefix_and_suffix() -> void:
+	var r := DogApiCommand.parse_request(_args("player --no-fix jump dog_move_2d"))
+	assert_eq(r.error, "")
+	assert_eq(r.components, ["jump", "dog_move_2d"])
+
+
+func test_parse_no_fix_with_prefix_or_suffix_is_an_error() -> void:
+	for line in ["player --no-fix --prefix dog jump", "player --no-fix --suffix= jump"]:
+		var r := DogApiCommand.parse_request(_args(line))
+		assert_string_contains(r.error, "--no-fix", line)
 
 
 func test_parse_invalid_component_is_an_error() -> void:
@@ -127,7 +176,7 @@ func test_parse_invalid_component_is_an_error() -> void:
 
 func test_options_for_copies_the_request() -> void:
 	var request := DogApiCommand.parse_request(
-		_args("player dog_jump_2d --folder enemies/slime --root res://scenes -f")
+		_args("player dog_jump_2d --no-fix --folder enemies/slime --root res://scenes -f")
 	)
 	var options := DogApiCommand.options_for(request, "res://default")
 	assert_eq(options.actor, "player")
@@ -138,5 +187,5 @@ func test_options_for_copies_the_request() -> void:
 
 
 func test_options_for_uses_the_default_root_without_root() -> void:
-	var request := DogApiCommand.parse_request(_args("player dog_jump_2d"))
+	var request := DogApiCommand.parse_request(_args("player jump"))
 	assert_eq(DogApiCommand.options_for(request, "res://default").root, "res://default")

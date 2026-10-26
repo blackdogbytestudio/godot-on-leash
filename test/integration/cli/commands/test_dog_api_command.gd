@@ -18,9 +18,15 @@ script = ExtResource("2")
 
 var _command: DogApiCommand
 var _lines: Array = []
+var _saved := {}
 
 
 func before_each() -> void:
+	_saved.clear()
+	for key in [DogSettings.PREFIX, DogSettings.SUFFIX]:
+		if ProjectSettings.has_setting(key):
+			_saved[key] = ProjectSettings.get_setting(key)
+		ProjectSettings.set_setting(key, DogSettings.DEFAULTS[key])
 	DirAccess.make_dir_recursive_absolute(TMP + "/actor")
 	_write(TMP + "/actor/actor.gd", ACTOR_GD)
 	_write(TMP + "/actor/actor.tscn", ACTOR_TSCN)
@@ -35,6 +41,10 @@ func after_each() -> void:
 		DirAccess.remove_absolute(path)
 	DirAccess.remove_absolute(TMP + "/actor")
 	DirAccess.remove_absolute(TMP)
+	for key in [DogSettings.PREFIX, DogSettings.SUFFIX]:
+		ProjectSettings.clear(key)
+		if _saved.has(key):
+			ProjectSettings.set_setting(key, _saved[key])
 
 
 func _write(path: String, text: String) -> void:
@@ -80,21 +90,35 @@ func test_run_with_prefix_and_suffix_finds_the_component() -> void:
 
 
 func test_run_component_that_is_not_a_child_fails_early_and_writes_nothing() -> void:
-	var code := _command.run(_args("actor fixture_dash"))
+	var code := _command.run(_args("actor --no-fix fixture_dash"))
 	assert_eq(code, FAILED)
 	assert_string_contains(_lines[0], "not a child")
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
+func test_run_full_name_without_no_fix_gets_the_settings_and_fails_early() -> void:
+	var code := _command.run(_args("actor fixture_jump_2d"))
+	assert_eq(code, FAILED)
+	assert_string_contains(_lines[0], "dog_fixture_jump_2d_2d")
+	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
+
+
+func test_run_short_names_with_the_prefix_setting() -> void:
+	ProjectSettings.set_setting(DogSettings.PREFIX, "fixture")
+	var code := _command.run(_args("actor jump"))
+	assert_eq(code, OK)
+	assert_has(_lines, "add func jump")
+
+
 func test_run_missing_scene_fails_with_the_generator_message() -> void:
-	var code := _command.run(_args("ghost fixture_jump_2d"))
+	var code := _command.run(_args("ghost --no-fix fixture_jump_2d"))
 	assert_eq(code, FAILED)
 	assert_true(_lines[0].begins_with("Dog: api: "))
 	assert_string_contains(_lines[0], "ghost")
 
 
 func test_run_fills_the_script_and_reports_each_item() -> void:
-	var code := _command.run(_args("actor fixture_jump_2d"))
+	var code := _command.run(_args("actor --no-fix fixture_jump_2d"))
 	assert_eq(code, OK)
 	assert_has(_lines, "add var _fixture_jump_2d")
 	assert_has(_lines, "add func jump")
@@ -104,10 +128,10 @@ func test_run_fills_the_script_and_reports_each_item() -> void:
 
 
 func test_run_twice_keeps_the_file_the_second_time() -> void:
-	_command.run(_args("actor fixture_jump_2d"))
+	_command.run(_args("actor --no-fix fixture_jump_2d"))
 	var first := _read(TMP + "/actor/actor.gd")
 	_lines.clear()
-	var code := _command.run(_args("actor fixture_jump_2d"))
+	var code := _command.run(_args("actor --no-fix fixture_jump_2d"))
 	assert_eq(code, OK)
 	assert_eq(_read(TMP + "/actor/actor.gd"), first)
 	assert_has(_lines, "skip func jump")
@@ -118,13 +142,13 @@ func test_run_twice_keeps_the_file_the_second_time() -> void:
 func test_run_root_flag_overrides_the_default_root() -> void:
 	var plain := DogApiCommand.new()
 	plain.printed.connect(func(text: String): _lines.append(text))
-	var code := plain.run(_args("actor fixture_jump_2d --root " + TMP))
+	var code := plain.run(_args("actor --no-fix fixture_jump_2d --root " + TMP))
 	assert_eq(code, OK)
 	assert_has(_lines, "updated " + TMP + "/actor/actor.gd")
 
 
 func test_run_update_restores_an_edited_func_and_force_rewrites_below_the_header() -> void:
-	_command.run(_args("actor fixture_jump_2d"))
+	_command.run(_args("actor --no-fix fixture_jump_2d"))
 	var edited := _read(TMP + "/actor/actor.gd").replace(
 		"\t_fixture_jump_2d.jump()\n",
 		"\tprint(1)\n\t_fixture_jump_2d.jump()\n",
@@ -132,18 +156,18 @@ func test_run_update_restores_an_edited_func_and_force_rewrites_below_the_header
 	_write(TMP + "/actor/actor.gd", edited)
 
 	_lines.clear()
-	_command.run(_args("actor fixture_jump_2d -u"))
+	_command.run(_args("actor --no-fix fixture_jump_2d -u"))
 	assert_has(_lines, "update func jump")
 	assert_false(_read(TMP + "/actor/actor.gd").contains("print(1)"))
 
 	_write(TMP + "/actor/actor.gd", "extends CharacterBody2D\n\nvar my_counter := 1\n")
-	_command.run(_args("actor fixture_jump_2d -f"))
+	_command.run(_args("actor --no-fix fixture_jump_2d -f"))
 	assert_false(_read(TMP + "/actor/actor.gd").contains("my_counter"))
 
 
 func test_run_prints_generator_errors_without_writing() -> void:
 	_write(TMP + "/actor/actor.gd", "extends CharacterBody2D\n\n\nfunc _ready(): pass\n")
-	var code := _command.run(_args("actor fixture_jump_2d"))
+	var code := _command.run(_args("actor --no-fix fixture_jump_2d"))
 	assert_eq(code, FAILED)
 	assert_string_contains(_lines[0], "_ready")
 	assert_eq(_read(TMP + "/actor/actor.gd"), "extends CharacterBody2D\n\n\nfunc _ready(): pass\n")
