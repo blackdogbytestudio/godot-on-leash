@@ -14,7 +14,7 @@ const UNKNOWN_OPTION := "unknown option '%s'."
 const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
 
 # Overridable so tests never write into res://.
-var root: String = DogApiGenerator.DEFAULT_ROOT
+var root: String = DogSettings.actors_root()
 
 
 func command_name() -> String:

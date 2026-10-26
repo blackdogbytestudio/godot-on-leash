@@ -16,7 +16,6 @@ extends RefCounted
 ## deleted (only that computed folder, see is_safe_states_dir), the states are
 ## recreated and the host script is rewritten below its header.
 
-const ROOT := "res://scenes/characters"
 const STATES_DIR := "states"
 const TEMPLATE_ROOTS: PackedStringArray = [
 	"res://script_templates",
@@ -214,12 +213,20 @@ static func host_blocks(
 	return blocks
 
 
-static func output_dir(folder: String, actor: String, root: String = ROOT) -> String:
+static func output_dir(
+	folder: String,
+	actor: String,
+	root: String = DogSettings.actors_root(),
+) -> String:
 	var category := folder if not folder.is_empty() else actor
 	return root.path_join(category).path_join(STATES_DIR)
 
 
-static func scene_path(folder: String, actor: String, root: String = ROOT) -> String:
+static func scene_path(
+	folder: String,
+	actor: String,
+	root: String = DogSettings.actors_root(),
+) -> String:
 	return output_dir(folder, actor, root).get_base_dir().path_join(actor + ".tscn")
 
 
@@ -511,7 +518,7 @@ class Options:
 	var base := ""
 	var tree: DogStateTree
 	var mode := DogScriptMerge.Mode.ADD
-	var root := ROOT
+	var root := DogSettings.actors_root()
 	var initial := ""
 
 

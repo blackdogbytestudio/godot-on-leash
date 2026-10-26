@@ -6,6 +6,7 @@ var _panel: DogPanel
 
 
 func _enter_tree() -> void:
+	DogSettings.register()
 	_cli = DogCli.new()
 	_cli.register_folder("res://addons/leash/cli/commands")
 	_panel = DogPanel.new(_cli)
