@@ -1,17 +1,21 @@
 @tool
 class_name DogApiCommand
 extends DogCommand
-## api <actor> <component...> [--prefix p] [--suffix s] [--folder path] [--root path] [-f | -u]
+## api <actor> <component...> [--prefix p] [--suffix s | --no-fix] [--folder path] [--root path]
+##     [-f | -u]
 ##
 ## Fills the script on the root node of <actor>.tscn with an API that forwards to
 ## the components you list, which must be direct children of the root. Attach the
-## script in Godot first. Components are snake_case class names (dog_jump_2d);
-## --prefix / --suffix are added around each one (--prefix dog --suffix 2d jump).
+## script in Godot first. Components are snake_case class names; the prefix and
+## suffix settings are added around each one (dog, 2d: jump -> dog_jump_2d).
+## --prefix / --suffix replace a setting (empty, as in --prefix=, drops that side)
+## and --no-fix drops both, for full names (--no-fix dog_jump_2d).
 
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
 const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
+const NO_FIX_AND_FIX := "use either --no-fix or --prefix / --suffix, not both."
 
 # Overridable so tests never write into res://.
 var root: String = DogSettings.actors_root()
@@ -28,7 +32,7 @@ func description() -> String:
 func usage() -> String:
 	return (
 		"api <actor> <component...>"
-		+ " [--prefix p] [--suffix s]"
+		+ " [--prefix p] [--suffix s | --no-fix]"
 		+ " [--folder path] [--root path]"
 		+ " [-f | -u]"
 	)
@@ -87,8 +91,9 @@ static func parse_request(args: PackedStringArray) -> Request:
 static func _build_parser() -> DogOptParse:
 	var parser := DogOptParse.new()
 	parser.add_positional_required("actor", "", "actor name (snake_case)")
-	parser.add("--prefix", "", "put before every component, e.g. dog")
-	parser.add("--suffix", "", "put after every component, e.g. 2d")
+	parser.add("--prefix", "", "put before every component (default: the prefix setting)")
+	parser.add("--suffix", "", "put after every component (default: the suffix setting)")
+	parser.add("--no-fix", false, "no prefix and no suffix: components are full names")
 	parser.add("--folder", "", "actor directory below the root, e.g. enemies/slime")
 	parser.add("--root", "", "where to look, e.g. res://scenes (default: scenes/characters)")
 	parser.add(["--force", "-f"], false, "keep the header, rewrite everything below it")
@@ -110,16 +115,30 @@ static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 	return DogNames.actor_error(request.actor)
 
 
-## The remaining tokens as components, with --prefix / --suffix around each one.
+## The remaining tokens as components, with the prefix and suffix around each one.
 static func _read_components(parser: DogOptParse, request: Request) -> String:
-	var prefix: String = String(parser.get_value("--prefix")).trim_suffix("_")
-	var suffix: String = String(parser.get_value("--suffix")).trim_prefix("_")
+	var given_prefix: Variant = parser.get_value_or_null("--prefix")
+	var given_suffix: Variant = parser.get_value_or_null("--suffix")
+	var no_fix: bool = parser.get_value("--no-fix")
+	if no_fix and (given_prefix != null or given_suffix != null):
+		return NO_FIX_AND_FIX
+
+	var prefix := ""
+	var suffix := ""
+	if not no_fix:
+		prefix = _given_or(given_prefix, DogSettings.prefix()).trim_suffix("_")
+		suffix = _given_or(given_suffix, DogSettings.suffix()).trim_prefix("_")
 	for token in parser.unused:
 		var component := _component_name(String(token), prefix, suffix)
 		if not DogNames.is_valid_name(component):
 			return INVALID_COMPONENT % component
 		request.components.append(component)
 	return ""
+
+
+## `given` when the flag was passed (even empty), otherwise `setting`.
+static func _given_or(given: Variant, setting: String) -> String:
+	return setting if given == null else String(given)
 
 
 static func _component_name(token: String, prefix: String, suffix: String) -> String:
