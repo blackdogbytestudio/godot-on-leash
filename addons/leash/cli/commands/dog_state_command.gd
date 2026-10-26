@@ -14,7 +14,7 @@ const INVALID_INITIAL := "'%s' is not a valid --initial (a state name, no dots).
 const NESTED_IN_FLAT := "'%s' is flat: nested states are not allowed."
 
 # Overridable so tests never write into res://.
-var root: String = DogStateGenerator.ROOT
+var root: String = DogSettings.actors_root()
 
 
 func command_name() -> String:

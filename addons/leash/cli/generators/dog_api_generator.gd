@@ -10,7 +10,6 @@ extends RefCounted
 ## attached to the root node (create it in Godot first, so `extends` is right).
 ## Members starting with `_` are internal and never forwarded.
 
-const DEFAULT_ROOT := "res://scenes/characters"
 # Error messages
 const COULD_NOT_WRITE := "could not write %s"
 const COULD_NOT_READ := "could not read %s"
@@ -117,7 +116,11 @@ static func candidates(host: Node) -> Array:
 ## scene is `<actor>.tscn` inside it. When it isn't exactly there, searches below
 ## `<root>/<folder>` (or all of `<root>`) for `<actor>.tscn`. More than one match
 ## is an error listing them. Returns {path, error}.
-static func find_scene(actor: String, folder := "", root := DEFAULT_ROOT) -> Dictionary:
+static func find_scene(
+	actor: String,
+	folder := "",
+	root := DogSettings.actors_root(),
+) -> Dictionary:
 	var base := normalize_root(root)
 	var error := _scene_input_error(actor, folder, root, base)
 	if not error.is_empty():
@@ -353,6 +356,6 @@ class Options:
 	var actor := ""
 	var components: Array = []
 	var folder := ""
-	var root := DEFAULT_ROOT
+	var root := DogSettings.actors_root()
 	var mode := DogScriptMerge.Mode.ADD
 	var write := true
