@@ -50,6 +50,7 @@ func test_creates_every_scaffold_folder() -> void:
 	_generate()
 	for dir in _folders():
 		assert_true(DirAccess.dir_exists_absolute(dir), dir)
+	assert_true(DirAccess.dir_exists_absolute(ROOT + "/scenes/objects"))
 
 
 func test_creates_only_the_missing_folders() -> void:
