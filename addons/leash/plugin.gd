@@ -19,10 +19,5 @@ func _exit_tree() -> void:
 	_cli.dispose()
 
 
-func _enable_plugin() -> void:
-	DogScaffoldSetup.install()
-	DogTemplateSetup.install()
-
-
 func _disable_plugin() -> void:
 	pass

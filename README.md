@@ -94,22 +94,36 @@ func _on_hitbox_area_entered(_area: Area2D) -> void:
 
 1. Copy `addons/leash/` into your project's `addons/` folder.
 2. Enable **Godot On Leash** under **Project → Project Settings → Plugins**.
-3. Enabling the plugin automatically:
-   - Scaffolds your project's folder structure from
-     `config/scaffold.json` (copied from `addons/leash/config/scaffold.json`;
-     assets, scenes, scripts, components — editable after first install,
-     idempotent on re-enable)
-   - Installs the script templates into `res://script_templates`
+3. Run `init` in the **Leash** bottom panel to create the project folders
+   and the script templates (see [init](#init)).
 
-> **Note:** Disabling the plugin does not remove anything it installed —
-> the scaffolded folders, `config/scaffold.json`, and
-> `res://script_templates` are left untouched. Removing them is a manual
-> step.
+Enabling the plugin creates nothing in your project; only `init` does.
 
 ## Generators
 
 The plugin's bottom panel runs generator commands. Type `help` in the
 panel to list them.
+
+### init
+
+Sets up the project for leash.
+
+```
+init [--skip-templates]
+```
+
+It creates the folders listed in `addons/leash/config/scaffold.json`
+(assets, scenes, scripts, components) below `res://` and copies the
+script templates to `res://script_templates`, with a `.gdignore` so Godot
+doesn't parse them. Only what is missing is created and nothing is ever
+overwritten, so it is safe to run again. `--skip-templates` leaves the
+templates out. It prints one line per item, `create <path>` or
+`exist <path>`, and a warning when GUT is not installed
+(`addons/gut/plugin.cfg`).
+
+The scaffold's `scenes` folder is always `res://scenes`, whatever the
+`leash/generators/scenes` setting says. The generators read templates from
+`res://script_templates` first and fall back to the addon's own.
 
 ### state
 
@@ -191,8 +205,9 @@ addons/leash/
     third_party/               # vendored code (optparse from GUT)
   config/
     dog_settings.gd            # the leash/ project settings
-    scaffold.json              # default project scaffold
-  setup/                       # scaffolding + template installers
+    scaffold.json              # the folders init creates
+  script_templates/            # the templates init copies to res://script_templates
+  plugin.cfg  plugin.gd  LICENSE
 ```
 
 ## License
