@@ -96,3 +96,4 @@ func test_register_folder_finds_the_builtin_commands() -> void:
 	assert_has(_names(), "help")
 	assert_has(_names(), "state")
 	assert_has(_names(), "api")
+	assert_has(_names(), "init")
