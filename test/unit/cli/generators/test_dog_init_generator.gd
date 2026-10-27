@@ -32,6 +32,7 @@ func test_the_addon_scaffold_is_read_in_place() -> void:
 	var scaffold := _scaffold()
 	assert_true(scaffold.has("scenes"))
 	assert_true(scaffold["scenes"].has("characters"))
+	assert_true(scaffold["scenes"].has("objects"))
 
 
 func test_template_files_skip_the_gdignore() -> void:

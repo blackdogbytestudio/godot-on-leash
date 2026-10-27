@@ -44,6 +44,7 @@ func test_prints_one_create_line_per_item() -> void:
 	assert_eq(ran[0], OK)
 	assert_eq(lines[0], "create %s/assets" % ROOT)
 	assert_has(lines, "create %s/scenes/characters/player" % ROOT)
+	assert_has(lines, "create %s/scenes/objects" % ROOT)
 	assert_has(lines, "create %s/script_templates/.gdignore" % ROOT)
 	assert_has(lines, "create %s/script_templates/DogHPDAState/state.gd" % ROOT)
 	assert_eq(_lines_starting(lines, "exist "), [])
