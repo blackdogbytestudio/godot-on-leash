@@ -3,7 +3,7 @@ class_name DogScaffoldSetup
 extends DogSetup
 
 ## Default scaffold. Copied out on first install.
-const SCAFFOLD_SRC := "res://addons/leash/scaffold.json"
+const SCAFFOLD_SRC := "res://addons/leash/config/scaffold.json"
 const CONFIG_DIR := "res://config"
 ## User-editable copy. The one actually read to build the folder tree.
 const SCAFFOLD_DEST := "res://config/scaffold.json"

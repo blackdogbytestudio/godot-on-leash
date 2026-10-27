@@ -96,8 +96,9 @@ func _on_hitbox_area_entered(_area: Area2D) -> void:
 2. Enable **Godot On Leash** under **Project → Project Settings → Plugins**.
 3. Enabling the plugin automatically:
    - Scaffolds your project's folder structure from
-     `config/scaffold.json` (assets, scenes, scripts, components —
-     editable after first install, idempotent on re-enable)
+     `config/scaffold.json` (copied from `addons/leash/config/scaffold.json`;
+     assets, scenes, scripts, components — editable after first install,
+     idempotent on re-enable)
    - Installs the script templates into `res://script_templates`
 
 > **Note:** Disabling the plugin does not remove anything it installed —
@@ -188,8 +189,10 @@ addons/leash/
     generators/                # build + write the files a command produces
     helpers/                   # pure helpers: script merge, render, names, state tree
     third_party/               # vendored code (optparse from GUT)
+  config/
+    dog_settings.gd            # the leash/ project settings
+    scaffold.json              # default project scaffold
   setup/                       # scaffolding + template installers
-  scaffold.json                # default project scaffold
 ```
 
 ## License
