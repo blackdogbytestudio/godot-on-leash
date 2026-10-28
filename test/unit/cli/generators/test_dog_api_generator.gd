@@ -90,15 +90,11 @@ func test_plan_forwards_public_methods_including_inherited_ones() -> void:
 
 func test_plan_forwards_the_parent_funcs_of_an_inherited_component() -> void:
 	var host := _host({ "Platformer": PLATFORMER_SCRIPT })
-	var platformer := host.get_node("Platformer")
 	var funcs := _names(_plan(host).blocks, "func")
-	# Outside the tree the facade never adopts its components, so free them here.
-	for component in [platformer._jump, platformer._move, platformer._gravity]:
-		component.free()
 	assert_has(funcs, "boost")
 	assert_has(funcs, "jump")
 	assert_has(funcs, "can_jump")
-	for internal in ["_host_type", "_dog_leash", "host_type", "dog_leash"]:
+	for internal in ["_host_type", "_own_components", "host_type"]:
 		assert_does_not_have(funcs, internal)
 
 

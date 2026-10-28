@@ -20,37 +20,46 @@ extends DogComponent
 ## var _jump: JumpComponent = JumpComponent.new()
 ## [/codeblock]
 ##
+## Every [DogComponent] held in a script variable is registered on its own:
+## when the facade enters the tree it becomes an internal child, owned by
+## [method DogComponent._host_type]. If the facade is freed without ever
+## entering the tree, it frees them too.
+##
 ## [b]Note:[/b] don't use @onready for component vars, the var must
 ## exist before the @export setter runs, and @onready only resolves
 ## after _ready():
 
+# Error messages
+const NO_COMPONENTS := "Dog: %s has no DogComponent variables."
+
 
 func _enter_tree() -> void:
-	_dog_leash()
-
-
-## Registers components to the facade.
-## The components host/owner is assings as [method DogComponent._host_type]
-##
-## [codeblock]
-## func _dog_leash() -> void:
-##     super._dog_leash(_jump, _move, _gravity)
-## [/codeblock]
-func _dog_leash(...components: Array) -> void:
+	var components := _own_components()
 	if components.is_empty():
-		push_error(
-			"%s: must override _dog_leash() and register its components"
-			% [get_script().get_global_name()]
-		)
+		push_error(NO_COMPONENTS % get_script().get_global_name())
 		return
 	for c in components:
-		if not c is DogComponent:
-			push_error(
-				"%s: _dog_leash() received a non-DogComponent (%s)"
-				% [get_script().get_global_name(), c]
-			)
-			continue
 		if not c.get_parent():
 			add_child(c, false, Node.INTERNAL_MODE_BACK)
 			c.owner = _host_type()
 			c.name = c.get_script().get_global_name()
+
+
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_PREDELETE:
+		return
+	for c in _own_components():
+		if not c.get_parent():
+			c.free()
+
+
+## The DogComponents held in this script's variables, in declaration order.
+func _own_components() -> Array[DogComponent]:
+	var found: Array[DogComponent] = []
+	for property in get_property_list():
+		if property["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE == 0:
+			continue
+		var value: Variant = get(property["name"])
+		if is_instance_valid(value) and value is DogComponent:
+			found.append(value)
+	return found
