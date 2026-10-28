@@ -157,16 +157,10 @@ static func _component_name(token: String, prefix: String, suffix: String) -> St
 static func _read_options(parser: DogOptParse, request: Request) -> String:
 	request.folder = parser.get_value("--folder")
 	request.root = parser.get_value("--root")
-	return _read_mode(parser, request)
-
-
-static func _read_mode(parser: DogOptParse, request: Request) -> String:
 	var force: bool = parser.get_value("--force")
 	var update: bool = parser.get_value("--update")
-	if force and update:
-		return DogScriptMerge.FORCE_AND_UPDATE
 	request.mode = DogScriptMerge.mode_from(force, update)
-	return ""
+	return DogScriptMerge.mode_error(force, update)
 
 
 class Request:

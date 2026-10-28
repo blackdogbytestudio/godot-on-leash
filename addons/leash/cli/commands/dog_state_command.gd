@@ -153,16 +153,10 @@ static func _read_options(parser: DogOptParse, request: Request) -> String:
 	if not request.initial.is_empty() and not DogStateTree.is_valid_name(request.initial):
 		return INVALID_INITIAL % request.initial
 
-	return _read_mode(parser, request)
-
-
-static func _read_mode(parser: DogOptParse, request: Request) -> String:
 	var force: bool = parser.get_value("--force")
 	var update: bool = parser.get_value("--update")
-	if force and update:
-		return DogScriptMerge.FORCE_AND_UPDATE
 	request.mode = DogScriptMerge.mode_from(force, update)
-	return ""
+	return DogScriptMerge.mode_error(force, update)
 
 
 ## The remaining tokens as the state tree; flat types reject nesting.

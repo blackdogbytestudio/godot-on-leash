@@ -118,13 +118,18 @@ static func merge(source: String, blocks: Array, mode := Mode.ADD) -> Dictionary
 
 
 ## Turns the -f / -u flags into a Mode. Callers reject both flags at once
-## first (see FORCE_AND_UPDATE); if both arrive anyway, force wins.
+## first (see mode_error); if both arrive anyway, force wins.
 static func mode_from(force: bool, update: bool) -> Mode:
 	if force:
 		return Mode.FORCE
 	if update:
 		return Mode.UPDATE
 	return Mode.ADD
+
+
+## FORCE_AND_UPDATE when both -f and -u were given, otherwise "".
+static func mode_error(force: bool, update: bool) -> String:
+	return FORCE_AND_UPDATE if force and update else ""
 
 
 ## FORCE keeps only the header, followed by one blank line.
