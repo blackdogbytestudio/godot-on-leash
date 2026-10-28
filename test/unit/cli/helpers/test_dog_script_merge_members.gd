@@ -92,6 +92,12 @@ func test_var_matches_without_onready() -> void:
 	assert_eq(r.report, ["skip var _jump"])
 
 
+func test_var_matches_a_static_var() -> void:
+	var source := "extends CharacterBody2D\n\nstatic var _jump = null\n"
+	var r := DogScriptMerge.merge(source, [_var()])
+	assert_eq(r.report, ["skip var _jump"])
+
+
 func test_update_replaces_a_var_line_that_differs() -> void:
 	var source := (
 		"extends CharacterBody2D\n\n@onready var _jump = $Other\n\n\nfunc a() -> void:\n\tpass\n"
