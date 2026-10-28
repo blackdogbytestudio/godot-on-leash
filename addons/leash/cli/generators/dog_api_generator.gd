@@ -150,7 +150,11 @@ static func normalize_root(root: String) -> String:
 ## Loads the scene and checks its root script. Returns {host, path, error}:
 ## `host` is null on error, otherwise the caller must free it.
 static func _load_host(scene_path: String) -> Dictionary:
-	var packed := load(scene_path) as PackedScene
+	var packed := ResourceLoader.load(
+		scene_path,
+		"PackedScene",
+		ResourceLoader.CACHE_MODE_IGNORE,
+	) as PackedScene
 	if packed == null:
 		return { "host": null, "path": "", "error": COULD_NOT_LOAD % scene_path }
 	var host := packed.instantiate()
