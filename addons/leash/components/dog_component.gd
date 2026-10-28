@@ -6,14 +6,14 @@ extends Node
 ## Dog is your best friend. It can encapsulate a specific behavior
 ## for its host. The host has to be of a type other than null.
 ## [br][br]
-## It is expected that subclasses override [method host_type] with a strict type,
+## It is expected that subclasses override [method _host_type] with a strict type,
 ## allowing the framework to validate the host structure automatically.
 ##
 ## [codeblock]
 ## var host: CharacterBody2D:
-##     get: return host_type()
+##     get: return _host_type()
 ##
-## func host_type() -> CharacterBody2D:
+## func _host_type() -> CharacterBody2D:
 ##     return owner
 ## [/codeblock]
 ##
@@ -28,16 +28,16 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 
 ## Override to define the type of expected host/owner.
-func host_type() -> Node:
+func _host_type() -> Node:
 	return owner
 
 
 func _validate_host() -> PackedStringArray:
-	if not host_type():
+	if not _host_type():
 		var expected_type: String = "Node"
 
 		for method in get_method_list():
-			if method.name == "host_type":
+			if method.name == "_host_type":
 				var return_info: Dictionary = method["return"]
 				if return_info.has("class_name") and return_info["class_name"] != &"":
 					expected_type = return_info["class_name"]

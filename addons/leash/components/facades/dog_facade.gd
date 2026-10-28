@@ -26,31 +26,31 @@ extends DogComponent
 
 
 func _enter_tree() -> void:
-	dog_leash()
+	_dog_leash()
 
 
 ## Registers components to the facade.
-## The components host/owner is assings as [member DogComponent.host_type]
+## The components host/owner is assings as [method DogComponent._host_type]
 ##
 ## [codeblock]
-## func dog_leash() -> void:
-##     super.dog_leash(_jump, _move, _gravity)
+## func _dog_leash() -> void:
+##     super._dog_leash(_jump, _move, _gravity)
 ## [/codeblock]
-func dog_leash(...components: Array) -> void:
+func _dog_leash(...components: Array) -> void:
 	if components.is_empty():
 		push_error(
-			"%s: must override dog_leash() and register its components"
+			"%s: must override _dog_leash() and register its components"
 			% [get_script().get_global_name()]
 		)
 		return
 	for c in components:
 		if not c is DogComponent:
 			push_error(
-				"%s: dog_leash() received a non-DogComponent (%s)"
+				"%s: _dog_leash() received a non-DogComponent (%s)"
 				% [get_script().get_global_name(), c]
 			)
 			continue
 		if not c.get_parent():
 			add_child(c, false, Node.INTERNAL_MODE_BACK)
-			c.owner = host_type()
+			c.owner = _host_type()
 			c.name = c.get_script().get_global_name()

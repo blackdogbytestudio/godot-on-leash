@@ -49,11 +49,11 @@ A `DogFacade` orchestrates several components and exposes them as a
 single, flattened `@export` surface — so your Inspector shows one clean
 set of grouped properties instead of five separate component nodes
 cluttering your scene tree. Facades register their components in
-`dog_leash()`:
+`_dog_leash()`:
 
 ```gdscript
-func dog_leash(...components: Array) -> void:
-    super.dog_leash(_jump, _move, _gravity)
+func _dog_leash(...components: Array) -> void:
+    super._dog_leash(_jump, _move, _gravity)
 ```
 
 `DogPlatformerFacade2D` ships out of the box, wrapping `DogJump2D`

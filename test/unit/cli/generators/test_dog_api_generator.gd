@@ -6,6 +6,7 @@ extends GutTest
 const JUMP_SCRIPT := "res://test/doubles/api/fixture_jump.gd"
 const DASH_SCRIPT := "res://test/doubles/api/fixture_dash.gd"
 const BASE_SCRIPT := "res://test/doubles/api/fixture_base.gd"
+const PLATFORMER_SCRIPT := "res://test/doubles/api/fixture_platformer.gd"
 
 
 func _host(components: Dictionary) -> Node:
@@ -85,6 +86,20 @@ func test_plan_forwards_public_methods_including_inherited_ones() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host)
 	assert_eq(_names(p.blocks, "func"), ["disable", "enable", "get_power", "jump", "jump_with"])
+
+
+func test_plan_forwards_the_parent_funcs_of_an_inherited_component() -> void:
+	var host := _host({ "Platformer": PLATFORMER_SCRIPT })
+	var platformer := host.get_node("Platformer")
+	var funcs := _names(_plan(host).blocks, "func")
+	# Outside the tree the facade never adopts its components, so free them here.
+	for component in [platformer._jump, platformer._move, platformer._gravity]:
+		component.free()
+	assert_has(funcs, "boost")
+	assert_has(funcs, "jump")
+	assert_has(funcs, "can_jump")
+	for internal in ["_host_type", "_dog_leash", "host_type", "dog_leash"]:
+		assert_does_not_have(funcs, internal)
 
 
 func test_plan_skips_internal_and_static_members() -> void:
