@@ -43,7 +43,7 @@ static func generate(options: Options) -> Dictionary:
 		return result
 	file.store_string(result["source"])
 	file.close()
-	_refresh_editor()
+	DogEditor.refresh(PackedStringArray([result["path"]]))
 	return result
 
 
@@ -326,15 +326,6 @@ static func _find_files(dir_path: String, file_name: String, found: Array) -> vo
 			found.append(dir_path + "/" + entry)
 		entry = dir.get_next()
 	dir.list_dir_end()
-
-
-## Lets the editor notice the rewritten script (and offer to reload it if open).
-static func _refresh_editor() -> void:
-	if not Engine.is_editor_hint():
-		return
-	var fs := EditorInterface.get_resource_filesystem()
-	if fs != null and not fs.is_scanning():
-		fs.scan()
 
 
 static func _failure(message: String) -> Dictionary:
