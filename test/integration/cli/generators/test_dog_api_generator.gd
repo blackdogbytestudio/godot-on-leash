@@ -209,6 +209,14 @@ func test_build_reads_the_scene_from_disk_even_when_it_is_cached() -> void:
 	assert_string_contains(r.source, "$Sprint")
 
 
+func test_build_and_generate_return_a_result_even_on_error() -> void:
+	assert_true(DogApiGenerator.build(_options("actor", BOTH, ROOT)) is DogApiGenerator.Result)
+	var failed := DogApiGenerator.generate(_options("ghost", BOTH, ROOT))
+	assert_true(failed is DogApiGenerator.Result)
+	assert_eq(failed.source, "")
+	assert_eq(failed.report, [])
+
+
 # --- generate (writes, on a copy in user://) -------------------------------
 
 

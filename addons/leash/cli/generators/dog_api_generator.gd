@@ -32,24 +32,23 @@ const MEMBER_SKIPPED := "%s %s of %s was skipped: %s already provides it"
 
 ## build + write. Nothing is written on error, when `options.write` is false, or
 ## when the merged source equals the file.
-static func generate(options: Options) -> Dictionary:
+static func generate(options: Options) -> Result:
 	var result := build(options)
-	var error: String = result["error"]
-	if not error.is_empty() or not options.write or result["source"] == result["original"]:
+	if not result.error.is_empty() or not options.write or result.source == result.original:
 		return result
-	var file := FileAccess.open(result["path"], FileAccess.WRITE)
+	var file := FileAccess.open(result.path, FileAccess.WRITE)
 	if file == null:
-		result["error"] = COULD_NOT_WRITE % result["path"]
+		result.error = COULD_NOT_WRITE % result.path
 		return result
-	file.store_string(result["source"])
+	file.store_string(result.source)
 	file.close()
-	DogEditor.refresh(PackedStringArray([result["path"]]))
+	DogEditor.refresh(PackedStringArray([result.path]))
 	return result
 
 
-## Everything except the write. Returns {path, scene, original, source, report,
-## warnings, blocks, error}; `path` is the host script.
-static func build(options: Options) -> Dictionary:
+## Everything except the write. Returns a Result whose `source` is what generate
+## writes to `path`, the host script.
+static func build(options: Options) -> Result:
 	var found := find_scene(options.actor, options.folder, options.root)
 	var find_error: String = found["error"]
 	if not find_error.is_empty():
@@ -179,7 +178,7 @@ static func _merge_into(
 	scene_path: String,
 	planned: Dictionary,
 	mode: DogScriptMerge.Mode,
-) -> Dictionary:
+) -> Result:
 	var file := FileAccess.open(host_path, FileAccess.READ)
 	if file == null:
 		return _failure(COULD_NOT_READ % host_path)
@@ -187,16 +186,16 @@ static func _merge_into(
 	file.close()
 
 	var merged := DogScriptMerge.merge(original, planned["blocks"], mode)
-	return {
-		"path": host_path,
-		"scene": scene_path,
-		"original": original,
-		"source": merged["source"],
-		"report": merged["report"],
-		"warnings": planned["warnings"],
-		"blocks": planned["blocks"],
-		"error": merged["error"],
-	}
+	var result := Result.new()
+	result.path = host_path
+	result.scene = scene_path
+	result.original = original
+	result.source = merged["source"]
+	result.report.assign(merged["report"])
+	result.warnings.assign(planned["warnings"])
+	result.blocks = planned["blocks"]
+	result.error = merged["error"]
+	return result
 
 
 ## Why `component_name` can't be planned for `host`, or "".
@@ -328,17 +327,10 @@ static func _find_files(dir_path: String, file_name: String, found: Array) -> vo
 	dir.list_dir_end()
 
 
-static func _failure(message: String) -> Dictionary:
-	return {
-		"path": "",
-		"scene": "",
-		"original": "",
-		"source": "",
-		"report": [],
-		"warnings": [],
-		"blocks": [],
-		"error": message,
-	}
+static func _failure(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+	return result
 
 
 static func _scene_error(message: String) -> Dictionary:
@@ -354,3 +346,19 @@ class Options:
 	var root := DogSettings.actors_root()
 	var mode := DogScriptMerge.Mode.ADD
 	var write := true
+
+
+## What build and generate return. `error` is empty on success.
+class Result:
+	## The host script: the root script of `scene`.
+	var path := ""
+	var scene := ""
+	## The host script as read, and as merged.
+	var original := ""
+	var source := ""
+	## What the merge did, one line per item ("add func jump", ...).
+	var report: Array[String] = []
+	var warnings: Array[String] = []
+	## The planned blocks (see DogScriptMerge).
+	var blocks: Array = []
+	var error := ""
