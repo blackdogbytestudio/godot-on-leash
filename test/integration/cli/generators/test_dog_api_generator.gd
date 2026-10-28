@@ -199,6 +199,16 @@ func test_build_error_when_the_scene_is_missing() -> void:
 	assert_string_contains(r.error, "ghost")
 
 
+func test_build_reads_the_scene_from_disk_even_when_it_is_cached() -> void:
+	# Holding the scene keeps it in the resource cache, as an open editor would.
+	var cached := load(TMP + "/actor/actor.tscn") as PackedScene
+	_write(TMP + "/actor/actor.tscn", ACTOR_TSCN.replace("Dash", "Sprint"))
+	var r := DogApiGenerator.build(_options("actor", BOTH, TMP))
+	assert_not_null(cached)
+	assert_eq(r.error, "")
+	assert_string_contains(r.source, "$Sprint")
+
+
 # --- generate (writes, on a copy in user://) -------------------------------
 
 
