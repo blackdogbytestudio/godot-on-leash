@@ -126,3 +126,26 @@ func test_run_prints_created_and_keeps() -> void:
 		"kept %s" % _states("player").path_join("player_state.gd"),
 	)
 	assert_string_contains(" ".join(second[1]), "created")
+
+
+func test_run_reads_the_folder_setting_on_each_run() -> void:
+	var saved := {}
+	for key in [DogSettings.SCENES, DogSettings.FOLDER]:
+		if ProjectSettings.has_setting(key):
+			saved[key] = ProjectSettings.get_setting(key)
+	var command := Command.new()
+	var lines: Array[String] = []
+	command.printed.connect(func(text: String) -> void: lines.append(text))
+	ProjectSettings.set_setting(DogSettings.SCENES, "user://")
+	ProjectSettings.set_setting(DogSettings.FOLDER, ROOT.get_file().path_join("first"))
+	command.run(PackedStringArray(["hero", "hpda", "alive"]))
+	ProjectSettings.set_setting(DogSettings.FOLDER, ROOT.get_file().path_join("second"))
+	command.run(PackedStringArray(["hero", "hpda", "alive"]))
+
+	for key in [DogSettings.SCENES, DogSettings.FOLDER]:
+		ProjectSettings.clear(key)
+		if saved.has(key):
+			ProjectSettings.set_setting(key, saved[key])
+	assert_eq(lines.size(), 2)
+	assert_string_contains(lines[0], ROOT.path_join("first"))
+	assert_string_contains(lines[1], ROOT.path_join("second"))

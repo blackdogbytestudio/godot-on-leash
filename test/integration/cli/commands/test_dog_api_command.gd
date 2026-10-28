@@ -147,6 +147,29 @@ func test_run_root_flag_overrides_the_default_root() -> void:
 	assert_has(_lines, "updated " + TMP + "/actor/actor.gd")
 
 
+func test_run_reads_the_folder_setting_on_each_run() -> void:
+	var saved := {}
+	for key in [DogSettings.SCENES, DogSettings.FOLDER]:
+		if ProjectSettings.has_setting(key):
+			saved[key] = ProjectSettings.get_setting(key)
+	var plain := DogApiCommand.new()
+	plain.printed.connect(func(text: String): _lines.append(text))
+	ProjectSettings.set_setting(DogSettings.SCENES, "user://")
+	ProjectSettings.set_setting(DogSettings.FOLDER, "api_cmd_missing")
+	var first := plain.run(_args("actor --no-fix fixture_jump_2d"))
+	ProjectSettings.set_setting(DogSettings.FOLDER, TMP.get_file())
+	var second := plain.run(_args("actor --no-fix fixture_jump_2d"))
+
+	for key in [DogSettings.SCENES, DogSettings.FOLDER]:
+		ProjectSettings.clear(key)
+		if saved.has(key):
+			ProjectSettings.set_setting(key, saved[key])
+	assert_eq(first, FAILED)
+	assert_string_contains(_lines[0], "user://api_cmd_missing")
+	assert_eq(second, OK)
+	assert_has(_lines, "updated " + TMP + "/actor/actor.gd")
+
+
 func test_run_update_restores_an_edited_func_and_force_rewrites_below_the_header() -> void:
 	_command.run(_args("actor --no-fix fixture_jump_2d"))
 	var edited := _read(TMP + "/actor/actor.gd").replace(

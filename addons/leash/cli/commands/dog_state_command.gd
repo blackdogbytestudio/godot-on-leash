@@ -13,8 +13,11 @@ const UNKNOWN_TYPE := "unknown type '%s'."
 const INVALID_INITIAL := "'%s' is not a valid --initial (a state name, no dots)."
 const NESTED_IN_FLAT := "'%s' is flat: nested states are not allowed."
 
-# Overridable so tests never write into res://.
-var root: String = DogSettings.actors_root()
+# Overridable so tests never write into res://. While empty, it reads
+# DogSettings.actors_root() each time, so a changed setting applies on the next run.
+var root := "":
+	get:
+		return root if not root.is_empty() else DogSettings.actors_root()
 
 
 func command_name() -> String:

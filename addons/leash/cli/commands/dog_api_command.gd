@@ -17,8 +17,11 @@ const UNKNOWN_OPTION := "unknown option '%s'."
 const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
 const NO_FIX_AND_FIX := "use either --no-fix or --prefix / --suffix, not both."
 
-# Overridable so tests never write into res://.
-var root: String = DogSettings.actors_root()
+# Overridable so tests never write into res://. While empty, it reads
+# DogSettings.actors_root() each time, so a changed setting applies on the next run.
+var root := "":
+	get:
+		return root if not root.is_empty() else DogSettings.actors_root()
 
 
 func command_name() -> String:
