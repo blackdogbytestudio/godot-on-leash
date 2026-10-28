@@ -9,7 +9,6 @@ extends DogComponent
 ## This centralizes and simplifies the interface of components
 ## that converge with one another. It prevents polluting
 ## the host/owner tree with dozens of exposed nodes.
-## after _ready():
 ##
 ## [codeblock]
 ## @export var max_jumps: int = 1:
