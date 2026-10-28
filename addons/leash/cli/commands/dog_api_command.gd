@@ -48,19 +48,18 @@ func run(args: PackedStringArray) -> Error:
 		return ERR_INVALID_PARAMETER
 
 	var result := DogApiGenerator.generate(options_for(request, root))
-	var error: String = result["error"]
-	if not error.is_empty():
-		print_line("Dog: api: %s" % error)
+	if not result.error.is_empty():
+		print_line("Dog: api: %s" % result.error)
 		return FAILED
 
-	for line in result["report"]:
+	for line in result.report:
 		print_line(line)
-	for warning in result["warnings"]:
+	for warning in result.warnings:
 		print_line("warning: %s" % warning)
-	if result["source"] == result["original"]:
-		print_line("kept %s" % result["path"])
+	if result.source == result.original:
+		print_line("kept %s" % result.path)
 	else:
-		print_line("updated %s" % result["path"])
+		print_line("updated %s" % result.path)
 	return OK
 
 
