@@ -5,7 +5,7 @@ extends DogComponent
 
 ## Reference to the host/owner. Passed to the state on enter/exit/update.
 var host: Node:
-	get: return host_type()
+	get: return _host_type()
 var _current: DogState
 
 
