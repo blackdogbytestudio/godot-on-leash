@@ -36,7 +36,7 @@ enum Mode {
 const FORCE_AND_UPDATE := "use either -f or -u, not both."
 ## A top-level line that starts a new declaration (so it can't be part of a body).
 const DECLARATION := (
-	"^(@|##|(static\\s+func|func|var|const|signal|enum"
+	"^(@|##|(static\\s+(func|var)|func|var|const|signal|enum"
 	+ "|class_name|class|extends)\\b)"
 )
 ## Signatures for funcs that "func_line" creates; others get `func name() -> void:`.
@@ -423,14 +423,14 @@ static func _find(lines: PackedStringArray, kind: String, block_name: String) ->
 	if kind == "func":
 		var prefix := "func %s(" % block_name
 		for i in lines.size():
-			if lines[i].begins_with(prefix):
+			if lines[i].begins_with(prefix) or lines[i].begins_with("static " + prefix):
 				return i
 		return -1
 	if not block_name.is_valid_identifier():
 		return -1
 	var pattern := "^signal\\s+%s\\b" % block_name
 	if kind == "var":
-		pattern = "^(@\\w+(\\([^)]*\\))?\\s+)*var\\s+%s\\b" % block_name
+		pattern = "^(@\\w+(\\([^)]*\\))?\\s+)*(static\\s+)?var\\s+%s\\b" % block_name
 	var re := RegEx.new()
 	re.compile(pattern)
 	for i in lines.size():

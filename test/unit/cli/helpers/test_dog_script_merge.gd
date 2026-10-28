@@ -175,6 +175,29 @@ func test_update_stops_before_a_following_onready_var() -> void:
 	assert_eq(r.source, HEAD + JUMP + "\n\n\n@onready var _x = $X\n")
 
 
+func test_update_stops_before_a_following_static_var() -> void:
+	var source := HEAD + "func jump() -> void:\n\tprint(\"x\")\n\n\nstatic var count := 0\n"
+	var r := _update(source, [_block("jump")])
+	assert_eq(r.error, "")
+	assert_eq(r.source, HEAD + JUMP + "\n\n\nstatic var count := 0\n")
+
+
+func test_update_stops_before_a_following_static_func() -> void:
+	var source := (
+		HEAD + "func jump() -> void:\n\tprint(\"x\")\n\n\nstatic func make() -> void:\n\tpass\n"
+	)
+	var r := _update(source, [_block("jump")])
+	assert_eq(r.error, "")
+	assert_eq(r.source, HEAD + JUMP + "\n\n\nstatic func make() -> void:\n\tpass\n")
+
+
+func test_skips_func_that_already_exists_as_static_func() -> void:
+	var source := HEAD + "static func jump() -> void:\n\tprint(\"mine\")\n"
+	var r := DogScriptMerge.merge(source, [_block("jump")])
+	assert_eq(r.source, source)
+	assert_eq(r.report, ["skip func jump"])
+
+
 func test_update_stops_before_the_doc_comment_of_the_next_func() -> void:
 	var source := (
 		HEAD + "func jump() -> void:\n\tprint(\"x\")\n\n\n## Runs.\nfunc run() -> void:\n\tpass\n"
