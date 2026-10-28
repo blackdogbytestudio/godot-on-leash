@@ -46,7 +46,7 @@ static func generate(options: Options) -> Result:
 			result.error = COULD_NOT_COPY % [dest, copy_error]
 			return result
 
-	_scan()
+	DogEditor.refresh(PackedStringArray(result.files.keys()))
 	return result
 
 
@@ -156,14 +156,6 @@ static func _write_empty(path: String) -> Error:
 		return FileAccess.get_open_error()
 	file.close()
 	return OK
-
-
-static func _scan() -> void:
-	if not Engine.is_editor_hint():
-		return
-	var fs := EditorInterface.get_resource_filesystem()
-	if fs != null and not fs.is_scanning():
-		fs.scan()
 
 
 ## Where to set up. `root` is the project the folders, the templates and the GUT

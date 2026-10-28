@@ -82,7 +82,7 @@ static func generate(options: Options) -> Result:
 			result.error = COULD_NOT_WRITE % [result.host_path, host_error]
 			return result
 
-	_scan()
+	DogEditor.refresh(_written_paths(result))
 	return result
 
 
@@ -501,12 +501,12 @@ static func _write_text(path: String, text: String) -> Error:
 	return OK
 
 
-static func _scan() -> void:
-	if not Engine.is_editor_hint():
-		return
-	var fs := EditorInterface.get_resource_filesystem()
-	if fs != null and not fs.is_scanning():
-		fs.scan()
+## The state files written and, when it changed, the host script.
+static func _written_paths(result: Result) -> PackedStringArray:
+	var paths := PackedStringArray(result.written)
+	if result.host_source != result.host_original:
+		paths.append(result.host_path)
+	return paths
 
 
 ## What to generate. `base` is the --extends state class ("" = none) and
