@@ -408,3 +408,22 @@ func test_add_and_update_never_report_drops() -> void:
 	var source := HEAD + "func old() -> void:\n\tpass\n"
 	assert_eq(DogScriptMerge.merge(source, [_block("jump")]).report, ["add func jump"])
 	assert_eq(_update(source, [_block("jump")]).report, ["add func jump"])
+
+
+# --- mode_from / mode_error: the -f / -u flags ------------------------------
+
+
+func test_mode_from_maps_the_flags() -> void:
+	assert_eq(DogScriptMerge.mode_from(false, false), DogScriptMerge.Mode.ADD)
+	assert_eq(DogScriptMerge.mode_from(false, true), DogScriptMerge.Mode.UPDATE)
+	assert_eq(DogScriptMerge.mode_from(true, false), DogScriptMerge.Mode.FORCE)
+
+
+func test_mode_error_is_empty_unless_both_flags_are_given() -> void:
+	assert_eq(DogScriptMerge.mode_error(false, false), "")
+	assert_eq(DogScriptMerge.mode_error(false, true), "")
+	assert_eq(DogScriptMerge.mode_error(true, false), "")
+
+
+func test_mode_error_rejects_force_with_update() -> void:
+	assert_eq(DogScriptMerge.mode_error(true, true), DogScriptMerge.FORCE_AND_UPDATE)
