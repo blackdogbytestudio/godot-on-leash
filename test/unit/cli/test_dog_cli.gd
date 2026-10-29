@@ -95,5 +95,5 @@ func test_register_folder_finds_the_builtin_commands() -> void:
 	_cli.register_folder("res://addons/leash/cli/commands")
 	assert_has(_names(), "help")
 	assert_has(_names(), "state")
-	assert_has(_names(), "api")
+	assert_has(_names(), "bind")
 	assert_has(_names(), "init")

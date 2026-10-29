@@ -1,16 +1,16 @@
 extends GutTest
 ## DogCli end to end: the real commands of the addon, a typed line, and the
-## files it leaves in res://scenes/tmp, removed by every test. state and api are
+## files it leaves in res://scenes/tmp, removed by every test. state and bind are
 ## checked apart: running both in one line is the job of `generate`.
 
 ## Every command the addon ships. Update it when a command is added or removed.
-const COMMAND_NAMES := ["api", "help", "init", "state"]
+const COMMAND_NAMES := ["bind", "help", "init", "state"]
 const COMMANDS := "res://addons/leash/cli/commands"
 const ROOT_DIR := "scenes/tmp/dog_cli_e2e"
 const ROOT := "res://" + ROOT_DIR
 const KEYS := [DogSettings.IMPLICIT_FOLDER, DogSettings.EXPLICIT_FOLDER]
 const HPDA := "res://addons/leash/components/machines/dog_hpda.gd"
-const JUMP := "res://test/doubles/api/fixture_jump.gd"
+const JUMP := "res://test/doubles/bind/fixture_jump.gd"
 
 var _cli: DogCli
 var _lines: Array[String] = []
@@ -117,9 +117,9 @@ func test_state_line_writes_the_states_and_wires_the_host() -> void:
 	assert_has(_lines, "initial: grounded")
 
 
-func test_api_line_fills_the_host_with_the_component_api() -> void:
+func test_bind_line_fills_the_host_with_the_component_api() -> void:
 	_scene("actor", "Jump", JUMP)
-	assert_eq(_cli.execute("leash api actor --no-fix fixture_jump_2d"), OK)
+	assert_eq(_cli.execute("leash bind actor --no-fix fixture_jump_2d"), OK)
 
 	var host := _text(ROOT.path_join("actor/actor.gd"))
 	assert_string_contains(host, "@onready var _fixture_jump_2d: FixtureJump2D = $Jump")

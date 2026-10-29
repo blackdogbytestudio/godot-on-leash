@@ -1,12 +1,12 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## The pure parts of DogApiGenerator: plan and candidates, on nodes built in
-## memory from the fixture scripts in test/doubles/api/.
+## The pure parts of DogBindGenerator: plan and candidates, on nodes built in
+## memory from the fixture scripts in test/doubles/bind/.
 
-const JUMP_SCRIPT := "res://test/doubles/api/fixture_jump.gd"
-const DASH_SCRIPT := "res://test/doubles/api/fixture_dash.gd"
-const BASE_SCRIPT := "res://test/doubles/api/fixture_base.gd"
-const PLATFORMER_SCRIPT := "res://test/doubles/api/fixture_platformer.gd"
+const JUMP_SCRIPT := "res://test/doubles/bind/fixture_jump.gd"
+const DASH_SCRIPT := "res://test/doubles/bind/fixture_dash.gd"
+const BASE_SCRIPT := "res://test/doubles/bind/fixture_base.gd"
+const PLATFORMER_SCRIPT := "res://test/doubles/bind/fixture_platformer.gd"
 
 
 func _host(components: Dictionary) -> Node:
@@ -28,7 +28,7 @@ func _plan(host: Node, names: Array = []) -> Dictionary:
 			var script := child.get_script() as Script
 			if script != null and not String(script.get_global_name()).is_empty():
 				names.append(String(script.get_global_name()).to_snake_case())
-	return DogApiGenerator.plan(host, names)
+	return DogBindGenerator.plan(host, names)
 
 
 func _names(blocks: Array, kind: String) -> Array:
@@ -195,12 +195,12 @@ func test_plan_never_forwards_property_accessors() -> void:
 
 func test_candidates_are_the_snake_case_classes_of_the_children_sorted() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
-	assert_eq(DogApiGenerator.candidates(host), ["fixture_dash", "fixture_jump_2d"])
+	assert_eq(DogBindGenerator.candidates(host), ["fixture_dash", "fixture_jump_2d"])
 
 
 func test_candidates_skip_children_without_a_class() -> void:
-	var host := _host({ "Jump": JUMP_SCRIPT, "Plain": "res://test/doubles/api/no_class.gd" })
+	var host := _host({ "Jump": JUMP_SCRIPT, "Plain": "res://test/doubles/bind/no_class.gd" })
 	var bare: Node = Node.new()
 	bare.name = "Bare"
 	host.add_child(bare)
-	assert_eq(DogApiGenerator.candidates(host), ["fixture_jump_2d"])
+	assert_eq(DogBindGenerator.candidates(host), ["fixture_jump_2d"])

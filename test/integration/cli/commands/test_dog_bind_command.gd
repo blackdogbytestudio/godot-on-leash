@@ -1,9 +1,9 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## DogApiCommand.run against a copy of the actor in res://scenes/tmp, removed by
+## DogBindCommand.run against a copy of the actor in res://scenes/tmp, removed by
 ## every test. The folder settings are pointed at it.
 
-const TMP_DIR := "scenes/tmp/api_cmd_test"
+const TMP_DIR := "scenes/tmp/bind_cmd_test"
 const TMP := "res://" + TMP_DIR
 const KEYS := [
 	DogSettings.PREFIX,
@@ -14,8 +14,8 @@ const KEYS := [
 const ACTOR_GD := "extends CharacterBody2D\n\n\nfunc _ready() -> void:\n\tpass\n"
 const ACTOR_TSCN := """[gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scenes/tmp/api_cmd_test/actor/actor.gd" id="1"]
-[ext_resource type="Script" path="res://test/doubles/api/fixture_jump.gd" id="2"]
+[ext_resource type="Script" path="res://scenes/tmp/bind_cmd_test/actor/actor.gd" id="1"]
+[ext_resource type="Script" path="res://test/doubles/bind/fixture_jump.gd" id="2"]
 
 [node name="Actor" type="CharacterBody2D"]
 script = ExtResource("1")
@@ -24,7 +24,7 @@ script = ExtResource("1")
 script = ExtResource("2")
 """
 
-var _command: DogApiCommand
+var _command: DogBindCommand
 var _lines: Array = []
 var _saved := {}
 
@@ -42,7 +42,7 @@ func before_each() -> void:
 	_write(TMP + "/actor/actor.gd", ACTOR_GD)
 	_write(TMP + "/actor/actor.tscn", ACTOR_TSCN)
 	_lines = []
-	_command = DogApiCommand.new()
+	_command = DogBindCommand.new()
 	_command.printed.connect(func(text: String): _lines.append(text))
 
 
@@ -91,7 +91,7 @@ func test_run_invalid_request_prints_the_error_and_writes_nothing() -> void:
 	var code := _command.run(_args("Player"))
 	assert_eq(code, ERR_INVALID_PARAMETER)
 	assert_eq(_lines.size(), 1)
-	assert_true(_lines[0].begins_with("Dog: api: "))
+	assert_true(_lines[0].begins_with("Dog: bind: "))
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
@@ -133,7 +133,7 @@ func test_run_short_names_with_the_prefix_setting() -> void:
 func test_run_missing_scene_fails_with_the_generator_message() -> void:
 	var code := _command.run(_args("ghost --no-fix fixture_jump_2d"))
 	assert_eq(code, FAILED)
-	assert_true(_lines[0].begins_with("Dog: api: "))
+	assert_true(_lines[0].begins_with("Dog: bind: "))
 	assert_string_contains(_lines[0], "ghost")
 
 
@@ -174,12 +174,12 @@ func test_run_root_is_not_an_option_anymore() -> void:
 
 
 func test_run_reads_the_implicit_folder_setting_on_each_run() -> void:
-	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "scenes/tmp/api_cmd_missing")
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "scenes/tmp/bind_cmd_missing")
 	var first := _command.run(_args("actor --no-fix fixture_jump_2d"))
 	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, TMP_DIR)
 	var second := _command.run(_args("actor --no-fix fixture_jump_2d"))
 	assert_eq(first, FAILED)
-	assert_string_contains(_lines[0], "res://scenes/tmp/api_cmd_missing")
+	assert_string_contains(_lines[0], "res://scenes/tmp/bind_cmd_missing")
 	assert_eq(second, OK)
 	assert_has(_lines, "updated " + TMP + "/actor/actor.gd")
 
@@ -188,7 +188,7 @@ func test_run_invalid_folder_setting_fails_naming_it_and_writes_nothing() -> voi
 	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "res://scenes")
 	var code := _command.run(_args("actor --no-fix fixture_jump_2d"))
 	assert_eq(code, FAILED)
-	assert_true(_lines[0].begins_with("Dog: api: "))
+	assert_true(_lines[0].begins_with("Dog: bind: "))
 	assert_string_contains(_lines[0], DogSettings.IMPLICIT_FOLDER)
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 

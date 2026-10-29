@@ -1,7 +1,7 @@
 @tool
 class_name DogScriptMerge
 extends RefCounted
-## Pure text merge behind the `api` command: no file or editor access here.
+## Pure text merge behind the `bind` command: no file or editor access here.
 ##
 ## `blocks` is an Array of Dictionaries {"kind", "name", "text"}:
 ## - "func" (default when "kind" is missing): `text` is the full func, no trailing newline.

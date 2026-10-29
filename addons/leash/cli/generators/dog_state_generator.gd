@@ -218,7 +218,7 @@ static func output_dir(folder: String, actor: String) -> String:
 
 ## Fills result.scene, host_path, machine_node and warnings, or result.error.
 static func _inspect_scene(result: Result, options: Options, machine_class: String) -> void:
-	var found := DogApiGenerator.find_scene(options.actor, options.folder)
+	var found := DogBindGenerator.find_scene(options.actor, options.folder)
 	var find_error: String = found["error"]
 	if not find_error.is_empty():
 		result.error = find_error

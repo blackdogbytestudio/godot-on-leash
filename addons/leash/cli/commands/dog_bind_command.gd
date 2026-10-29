@@ -1,7 +1,7 @@
 @tool
-class_name DogApiCommand
+class_name DogBindCommand
 extends DogCommand
-## api <actor> <component...> [--prefix p] [--suffix s | --no-fix] [--folder path] [-f | -u]
+## bind <actor> <component...> [--prefix p] [--suffix s | --no-fix] [--folder path] [-f | -u]
 ##
 ## Fills the script on the root node of <actor>.tscn with an API that forwards to
 ## the components you list, which must be direct children of the root. Attach the
@@ -21,7 +21,7 @@ const NO_FIX_AND_FIX := "use either --no-fix or --prefix / --suffix, not both."
 
 
 func command_name() -> String:
-	return "api"
+	return "bind"
 
 
 func description() -> String:
@@ -30,7 +30,7 @@ func description() -> String:
 
 func usage() -> String:
 	return (
-		"api <actor> <component...>"
+		"bind <actor> <component...>"
 		+ " [--prefix p] [--suffix s | --no-fix]"
 		+ " [--folder path]"
 		+ " [-f | -u]"
@@ -40,12 +40,12 @@ func usage() -> String:
 func run(args: PackedStringArray) -> Error:
 	var request := parse_request(args)
 	if not request.error.is_empty():
-		print_line("Dog: api: %s" % request.error)
+		print_line("Dog: bind: %s" % request.error)
 		return ERR_INVALID_PARAMETER
 
-	var result := DogApiGenerator.generate(options_for(request))
+	var result := DogBindGenerator.generate(options_for(request))
 	if not result.error.is_empty():
-		print_line("Dog: api: %s" % result.error)
+		print_line("Dog: bind: %s" % result.error)
 		return FAILED
 
 	for line in result.report:
@@ -60,8 +60,8 @@ func run(args: PackedStringArray) -> Error:
 
 
 ## The generator options for a parsed `request`.
-static func options_for(request: Request) -> DogApiGenerator.Options:
-	var options := DogApiGenerator.Options.new()
+static func options_for(request: Request) -> DogBindGenerator.Options:
+	var options := DogBindGenerator.Options.new()
 	options.actor = request.actor
 	options.components = request.components
 	options.folder = request.folder
