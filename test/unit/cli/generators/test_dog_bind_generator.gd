@@ -7,6 +7,7 @@ const JUMP_SCRIPT := "res://test/doubles/bind/fixture_jump.gd"
 const DASH_SCRIPT := "res://test/doubles/bind/fixture_dash.gd"
 const BASE_SCRIPT := "res://test/doubles/bind/fixture_base.gd"
 const PLATFORMER_SCRIPT := "res://test/doubles/bind/fixture_platformer.gd"
+const FSM_SCRIPT := "res://addons/leash/components/machines/dog_fsm.gd"
 
 
 func _host(components: Dictionary) -> Node:
@@ -160,6 +161,20 @@ func test_plan_a_class_that_is_not_a_child_is_an_error_listing_the_children() ->
 	assert_string_contains(p.error, "fixture_jump_2d")
 
 
+func test_plan_naming_a_machine_is_an_error_pointing_to_state() -> void:
+	var host := _host({ "Jump": JUMP_SCRIPT, "Brain": FSM_SCRIPT })
+	var p := _plan(host, ["dog_fsm"])
+	assert_string_contains(p.error, "dog_fsm")
+	assert_string_contains(p.error, "state command")
+	assert_eq(p.blocks, [])
+
+
+func test_plan_naming_a_machine_that_is_not_a_child_is_still_a_machine_error() -> void:
+	var host := _host({ "Jump": JUMP_SCRIPT })
+	var p := _plan(host, ["dog_hpda"])
+	assert_string_contains(p.error, "state command")
+
+
 func test_plan_a_name_that_matches_no_class_is_an_error() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT })
 	var p := _plan(host, ["fixture_nothing"])
@@ -203,4 +218,9 @@ func test_candidates_skip_children_without_a_class() -> void:
 	var bare: Node = Node.new()
 	bare.name = "Bare"
 	host.add_child(bare)
+	assert_eq(DogBindGenerator.candidates(host), ["fixture_jump_2d"])
+
+
+func test_candidates_skip_state_machines() -> void:
+	var host := _host({ "Jump": JUMP_SCRIPT, "Brain": FSM_SCRIPT })
 	assert_eq(DogBindGenerator.candidates(host), ["fixture_jump_2d"])

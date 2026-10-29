@@ -1,10 +1,14 @@
 @tool
 class_name DogBindGenerator
 extends RefCounted
-## Fills the root script of a scene with an API that forwards to the components
-## you name (direct children of the root, found by their class_name in snake_case:
+## Fills the root script of a scene with an API that forwards to its components
+## (direct children of the root, found by their class_name in snake_case:
 ## `dog_jump_2d` -> DogJump2D): one `@onready` reference per component, a forwarding
 ## func per public method, and a re-declared + connected signal per public signal.
+##
+## Without a list it binds every direct child that has a class and is not a state
+## machine (automatic). With a list it binds only those (explicit); naming a machine
+## is an error, the state command owns machines.
 ##
 ## Convention: the scene is `<actor>.tscn` inside the actor's directory (see
 ## DogSettings.actor_dir), with a script already attached to the root node (create
@@ -18,14 +22,15 @@ const COULD_NOT_LOAD := "could not load %s"
 const COULD_NOT_INSTANTIATE := "could not instantiate %s"
 const NO_HOST_SCRIPT := "the root node of %s has no script: attach one in Godot first"
 const BUILT_IN_SCRIPT := "the script of %s is built into the scene: save it as a .gd file first"
-const NO_COMPONENTS := "no components given. components in %s: %s"
+const MACHINE_COMPONENT := "%s is a state machine, not a component: the state command handles it."
 const NOT_A_CHILD := (
 	"%s is not a child of %s: add the node to the scene first"
-	+ " (children with a class: %s)."
+	+ " (components in the scene: %s)."
 )
 const UNKNOWN_CLASS := "no class in the project matches '%s'."
 const REPEATED_COMPONENT := "more than one %s under %s: %s. A component class must appear once."
 const SCENE_NOT_FOUND := "no scene at %s (use --folder if the actor lives somewhere else)."
+const NOTHING_TO_BIND := "no components in %s: nothing to bind."
 const MEMBER_SKIPPED := "%s %s of %s was skipped: %s already provides it"
 
 
@@ -60,17 +65,20 @@ static func build(options: Options) -> Result:
 		return _failure(load_error)
 	var host: Node = loaded["host"]
 
-	if options.components.is_empty():
-		var message := NO_COMPONENTS % [scene_path, ", ".join(candidates(host))]
-		host.free()
-		return _failure(message)
+	var components := options.components
+	var extra_warnings: Array = []
+	if components.is_empty():
+		components = _bindable(host)
+		if components.is_empty():
+			extra_warnings.append(NOTHING_TO_BIND % scene_path)
 
-	var planned := plan(host, options.components)
+	var planned := plan(host, components)
 	host.free()
 	var plan_error: String = planned["error"]
 	if not plan_error.is_empty():
 		return _failure(plan_error)
 
+	planned["warnings"] = extra_warnings + planned["warnings"]
 	return _merge_into(loaded["path"], scene_path, planned, options.mode)
 
 
@@ -102,9 +110,10 @@ static func plan(host: Node, components: Array) -> Dictionary:
 
 
 ## snake_case class names of the direct children of `host` that have a script with
-## a class_name: what can be named in `components`.
+## a class_name and are not state machines, sorted: what can be named in
+## `components`.
 static func candidates(host: Node) -> Array:
-	var names := _children_by_class(host).keys()
+	var names := _bindable(host)
 	names.sort()
 	return names
 
@@ -175,10 +184,25 @@ static func _merge_into(
 	return result
 
 
+## What the automatic mode binds: the classes of `_bindable` children, in child
+## order.
+static func _bindable(host: Node) -> Array:
+	var names := []
+	var children := _children_by_class(host)
+	for key in children:
+		if not _is_machine(children[key][0].get_script() as Script):
+			names.append(key)
+	return names
+
+
 ## Why `component_name` can't be planned for `host`, or "".
 static func _component_error(host: Node, children: Dictionary, component_name: String) -> String:
+	var class_script := _class_script(component_name)
+	if class_script != null and _is_machine(class_script):
+		return MACHINE_COMPONENT % component_name
+
 	if not children.has(component_name):
-		if not _class_exists(component_name):
+		if class_script == null:
 			return UNKNOWN_CLASS % component_name
 		var available := ", ".join(candidates(host))
 		return NOT_A_CHILD % [component_name, host.name, available]
@@ -250,10 +274,21 @@ static func _children_by_class(host: Node) -> Dictionary:
 	return result
 
 
-static func _class_exists(snake_name: String) -> bool:
+## The script of the project class named `snake_name`, or null when none matches.
+static func _class_script(snake_name: String) -> Script:
 	for entry in ProjectSettings.get_global_class_list():
 		if String(entry["class"]).to_snake_case() == snake_name:
+			return load(String(entry["path"])) as Script
+	return null
+
+
+## Whether `script` is DogMachine or extends it, directly or not.
+static func _is_machine(script: Script) -> bool:
+	var current := script
+	while current != null:
+		if current.get_global_name() == &"DogMachine":
 			return true
+		current = current.get_base_script()
 	return false
 
 

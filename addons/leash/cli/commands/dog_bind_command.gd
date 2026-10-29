@@ -1,14 +1,16 @@
 @tool
 class_name DogBindCommand
 extends DogCommand
-## bind <actor> <component...> [--prefix p] [--suffix s | --no-fix] [--folder path] [-f | -u]
+## bind <actor> [component...] [--prefix p] [--suffix s | --no-fix] [--folder path] [-f | -u]
 ##
 ## Fills the script on the root node of <actor>.tscn with an API that forwards to
-## the components you list, which must be direct children of the root. Attach the
-## script in Godot first. Components are snake_case class names; the prefix and
-## suffix settings are added around each one (dog, 2d: jump -> dog_jump_2d).
+## its components, which are direct children of the root. Attach the script in
+## Godot first. Without a list it binds every child that has a class and is not a
+## state machine. With a list it binds only those: snake_case class names, with the
+## prefix and suffix settings added around each one (dog, 2d: jump -> dog_jump_2d).
 ## --prefix / --suffix replace a setting (empty, as in --prefix=, drops that side)
-## and --no-fix drops both, for full names (--no-fix dog_jump_2d).
+## and --no-fix drops both, for full names (--no-fix dog_jump_2d); all three need
+## a list to apply to.
 ## --folder is the actor's directory, written in full from the explicit_folder
 ## setting (--folder characters/enemies/slime); without it the actor is looked for
 ## under the implicit_folder setting.
@@ -18,6 +20,7 @@ const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
 const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
 const NO_FIX_AND_FIX := "use either --no-fix or --prefix / --suffix, not both."
+const FIX_WITHOUT_COMPONENTS := "--prefix, --suffix and --no-fix need components to apply to."
 
 
 func command_name() -> String:
@@ -30,7 +33,7 @@ func description() -> String:
 
 func usage() -> String:
 	return (
-		"bind <actor> <component...>"
+		"bind <actor> [component...]"
 		+ " [--prefix p] [--suffix s | --no-fix]"
 		+ " [--folder path]"
 		+ " [-f | -u]"
@@ -111,12 +114,16 @@ static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 
 
 ## The remaining tokens as components, with the prefix and suffix around each one.
+## No tokens means the automatic mode.
 static func _read_components(parser: DogOptParse, request: Request) -> String:
 	var given_prefix: Variant = parser.get_value_or_null("--prefix")
 	var given_suffix: Variant = parser.get_value_or_null("--suffix")
 	var no_fix: bool = parser.get_value("--no-fix")
+	var fix_given := no_fix or given_prefix != null or given_suffix != null
 	if no_fix and (given_prefix != null or given_suffix != null):
 		return NO_FIX_AND_FIX
+	if fix_given and parser.unused.is_empty():
+		return FIX_WITHOUT_COMPONENTS
 
 	var prefix := ""
 	var suffix := ""
