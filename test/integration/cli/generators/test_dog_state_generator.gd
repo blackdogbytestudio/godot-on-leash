@@ -431,7 +431,7 @@ func test_running_twice_changes_nothing_the_second_time() -> void:
 		assert_true(line.begins_with("skip "), line)
 
 
-func test_reference_already_written_by_api_is_not_duplicated() -> void:
+func test_reference_already_written_by_bind_is_not_duplicated() -> void:
 	_scene(
 		"enemy",
 		{ "DogHPDA": "DogHPDA" },

@@ -195,7 +195,7 @@ and `player_alive_state.gd` alone, and the script only gets what is missing.
 changed) and never touches state files. `-f` goes back to factory: it
 deletes the actor's whole `states/` folder, recreates it from the tree and
 rewrites the script below its header (the report lists every dropped file
-and member; run `api` again afterwards if you use it).
+and member; run `bind` again afterwards if you use it).
 
 The states are typed to the actor's class, the actor in PascalCase
 (`skinny_man` → `SkinnyMan`, `character_body_2d` → `CharacterBody2D`); for
@@ -224,7 +224,7 @@ addons/leash/
     dog_pda_state.gd  dog_h_pda_state.gd
   cli/                         # editor CLI behind the bottom panel
     dog_cli.gd  dog_command.gd  dog_panel.gd
-    commands/                  # one file per command (state, api, help, ...)
+    commands/                  # one file per command (state, bind, help, ...)
     generators/                # build + write the files a command produces
     helpers/                   # pure helpers: script merge, render, names, state tree
     third_party/               # vendored code (optparse from GUT)

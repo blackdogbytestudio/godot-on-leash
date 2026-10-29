@@ -1,5 +1,5 @@
 @tool
-class_name DogApiGenerator
+class_name DogBindGenerator
 extends RefCounted
 ## Fills the root script of a scene with an API that forwards to the components
 ## you name (direct children of the root, found by their class_name in snake_case:

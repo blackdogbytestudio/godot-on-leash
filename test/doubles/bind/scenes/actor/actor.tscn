@@ -1,9 +1,9 @@
 [gd_scene load_steps=5 format=3]
 
-[ext_resource type="Script" path="res://test/doubles/api/scenes/actor/actor.gd" id="1"]
-[ext_resource type="Script" path="res://test/doubles/api/fixture_jump.gd" id="2"]
-[ext_resource type="Script" path="res://test/doubles/api/fixture_dash.gd" id="3"]
-[ext_resource type="Script" path="res://test/doubles/api/no_class.gd" id="4"]
+[ext_resource type="Script" path="res://test/doubles/bind/scenes/actor/actor.gd" id="1"]
+[ext_resource type="Script" path="res://test/doubles/bind/fixture_jump.gd" id="2"]
+[ext_resource type="Script" path="res://test/doubles/bind/fixture_dash.gd" id="3"]
+[ext_resource type="Script" path="res://test/doubles/bind/no_class.gd" id="4"]
 
 [node name="Actor" type="CharacterBody2D"]
 script = ExtResource("1")
