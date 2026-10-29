@@ -105,6 +105,29 @@ Enabling the plugin creates nothing in your project; only `init` does.
 The plugin's bottom panel runs generator commands. Type `help` in the
 panel to list them.
 
+### Where actors live
+
+Every generator looks for an actor in one place, so its scene, script and
+states are always where you expect. Two project settings under
+`leash/generators/` decide it. They are written without the `res://`, which
+is always the root:
+
+| Setting           | Default             | Used for                                      |
+| ----------------- | ------------------- | --------------------------------------------- |
+| `implicit_folder` | `scenes/characters` | where an actor is when there is no `--folder` |
+| `explicit_folder` | `scenes`            | where `--folder` starts from                  |
+
+So `player` is `res://scenes/characters/player/player.tscn`. `--folder` is
+the actor's own directory, written in full from `explicit_folder`:
+`--folder characters/enemies/slime` is
+`res://scenes/characters/enemies/slime/slime.tscn`. The scene is looked up
+at that exact path, never searched for.
+
+A folder is snake_case names separated by `/`, and an empty value means
+`res://` itself. Anything else (`res://`, `..`, `//`, `,`) is an error, and
+for a setting the message names it. The two settings don't depend on each
+other, so changing one doesn't move the other.
+
 ### init
 
 Sets up the project for leash.
@@ -122,9 +145,10 @@ templates out. It prints one line per item, `create <path>` or
 `exist <path>`, and a warning when GUT is not installed
 (`addons/gut/plugin.cfg`).
 
-The scaffold's `scenes` folder is always `res://scenes`, whatever the
-`leash/generators/scenes` setting says. The generators read templates from
-`res://script_templates` first and fall back to the addon's own.
+The scaffold is fixed: it doesn't follow the folder settings above, so if
+you change them, adjusting the folders is up to you. The generators read
+templates from `res://script_templates` first and fall back to the addon's
+own.
 
 ### state
 
@@ -139,16 +163,16 @@ makes `grounded` a child of `alive`, `idle` and `run` children of
 `grounded`, and `dead` another root. `fsm`/`pda` are flat (no nesting) and
 every state extends the actor base.
 
-The actor's scene must exist first: `<folder or actor>/<actor>.tscn` under
-`res://scenes/characters/`, with a saved `.gd` script on its root and one
-direct child whose script is the machine of the type (`fsm` → `DogFSM`,
-`pda` → `DogPDA`, `hfsm` → `DogHFSM`, `hpda` → `DogHPDA`; the node name
-doesn't matter). Otherwise nothing is written.
+The actor's scene must exist first: `<actor>.tscn` in the actor's directory
+(see [Where actors live](#where-actors-live)), with a saved `.gd` script on
+its root and one direct child whose script is the machine of the type
+(`fsm` → `DogFSM`, `pda` → `DogPDA`, `hfsm` → `DogHFSM`, `hpda` →
+`DogHPDA`; the node name doesn't matter). Otherwise nothing is written.
 
-Files are written under `res://scenes/characters/`:
+The states go in the `states/` folder of the actor's directory:
 
 ```
-state enemy hpda --folder enemies alive .grounded ..idle ..run dead
+state enemy hpda --folder characters/enemies alive .grounded ..idle ..run dead
 ```
 
 creates `res://scenes/characters/enemies/states/enemy_state.gd` (the actor
@@ -178,7 +202,7 @@ The states are typed to the actor's class, the actor in PascalCase
 states shared by several actors, run `state` on the parent actor.
 `--extends State` makes the root states inherit that state
 instead of the actor base and skips generating the actor base, e.g.
-`state slime hpda --extends enemy_alive_state --folder enemies/slime jump`.
+`state slime hpda --extends enemy_alive_state --folder characters/enemies/slime jump`.
 
 ## Project Structure (addon)
 
