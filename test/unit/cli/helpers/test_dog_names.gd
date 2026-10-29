@@ -49,6 +49,30 @@ func test_folder_error_accepts_empty_and_snake_case_parts() -> void:
 	assert_eq(DogNames.folder_error("enemies/slime_2d"), "")
 
 
+func test_folder_error_accepts_res_as_a_name() -> void:
+	assert_eq(DogNames.folder_error("res"), "")
+	assert_eq(DogNames.folder_error("res/scenes"), "")
+
+
 func test_folder_error_rejects_bad_parts() -> void:
-	for bad in ["Enemies", "enemies/", "/enemies", "enemies//slime", "../x", "a/../b", "a b"]:
+	var bad_folders := [
+		"Enemies",  # upper case letter
+		"enemies/",  # trailing slash leaves an empty part
+		"/enemies",  # leading slash leaves an empty part
+		"enemies//slime",  # double slash leaves an empty part
+		"../x",  # dots, no going up
+		"a/../b",  # dots in the middle
+		"a b",  # space
+		"a.b",  # dot
+		"a,b",  # comma
+		"res://scenes",  # res:// is added for you, colon and double slash
+	]
+	for bad in bad_folders:
 		assert_eq(DogNames.folder_error(bad), DogNames.INVALID_FOLDER % bad, bad)
+
+
+func test_folder_error_names_the_setting_when_given() -> void:
+	var key := "leash/generators/explicit_folder"
+	var error: String = DogNames.INVALID_FOLDER % "res://scenes"
+	assert_eq(DogNames.folder_error("res://scenes", key), DogNames.INVALID_SETTING % [key, error])
+	assert_eq(DogNames.folder_error("scenes", key), "")

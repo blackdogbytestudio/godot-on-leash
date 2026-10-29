@@ -6,6 +6,7 @@ extends RefCounted
 # Error messages
 const INVALID_ACTOR := "'%s' is not a valid actor name (use snake_case)."
 const INVALID_FOLDER := "'%s' is not a valid folder (snake_case names separated by /)."
+const INVALID_SETTING := "Setting %s: %s"
 
 # snake_case where a part may start with a digit (character_body_2d), unlike
 # DogStateTree's rule, which is meant for state names. "\z" (not "$") because
@@ -25,12 +26,13 @@ static func actor_error(actor: String) -> String:
 
 ## The error for an invalid `--folder` (snake_case parts separated by /), or "".
 ## An empty folder is valid: it means "no folder".
-static func folder_error(folder: String) -> String:
+static func folder_error(folder: String, setting := "") -> String:
 	if folder.is_empty():
 		return ""
 	for part in folder.split("/"):
 		if not is_valid_name(part):
-			return INVALID_FOLDER % folder
+			var error: String = INVALID_FOLDER % folder
+			return error if setting.is_empty() else INVALID_SETTING % [setting, error]
 	return ""
 
 
