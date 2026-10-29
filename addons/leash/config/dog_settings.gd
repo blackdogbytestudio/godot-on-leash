@@ -30,7 +30,7 @@ static func register() -> void:
 			ProjectSettings.set_setting(key, DEFAULTS[key])
 		ProjectSettings.set_initial_value(key, DEFAULTS[key])
 		ProjectSettings.set_as_basic(key, true)
-		ProjectSettings.add_property_info({"name": key, "type": TYPE_STRING})
+		ProjectSettings.add_property_info({ "name": key, "type": TYPE_STRING })
 
 
 ## Where an actor goes when a command gets no --folder, below res://.
