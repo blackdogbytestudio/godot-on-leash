@@ -10,6 +10,7 @@ const TMP_DIR := "scenes/tmp/bind_test"
 const TMP := "res://" + TMP_DIR
 const BOTH := ["fixture_jump_2d", "fixture_dash"]
 const KEYS := [DogSettings.IMPLICIT_FOLDER, DogSettings.EXPLICIT_FOLDER]
+const FSM_SCRIPT := "res://addons/leash/components/machines/dog_fsm.gd"
 const ACTOR_GD := "extends CharacterBody2D\n\n\nfunc _ready() -> void:\n\tpass\n"
 const ACTOR_TSCN := """[gd_scene load_steps=4 format=3]
 
@@ -54,12 +55,31 @@ func _use(dir: String) -> void:
 		ProjectSettings.set_setting(key, dir)
 
 
-## Creates the actor in TMP and points the settings at it.
-func _use_tmp() -> void:
+## Creates the actor in TMP (with `scene` as its scene) and points the settings at it.
+func _use_tmp(scene := ACTOR_TSCN) -> void:
 	DirAccess.make_dir_recursive_absolute(TMP + "/actor")
 	_write(TMP + "/actor/actor.gd", ACTOR_GD)
-	_write(TMP + "/actor/actor.tscn", ACTOR_TSCN)
+	_write(TMP + "/actor/actor.tscn", scene)
 	_use(TMP_DIR)
+
+
+## ACTOR_TSCN plus a DogFSM child.
+func _with_machine() -> String:
+	var machine := '[ext_resource type="Script" path="%s" id="4"]\n' % FSM_SCRIPT
+	var actor_node := "\n[node name=\"Actor\""
+	var scene := ACTOR_TSCN.replace(actor_node, machine + actor_node)
+	var brain := "\n[node name=\"Brain\" type=\"Node\" parent=\".\"]\n"
+	return scene + brain + "script = ExtResource(\"4\")\n"
+
+
+## The actor script and a DogFSM child, and nothing else.
+func _only_a_machine() -> String:
+	var scene := _with_machine()
+	for node in ["Jump", "Dash"]:
+		var start := scene.find("\n[node name=\"%s\"" % node)
+		var end := scene.find("\n[node name=", start + 1)
+		scene = scene.erase(start, end - start)
+	return scene
 
 
 func _remove_tree(path: String) -> void:
@@ -221,12 +241,40 @@ func test_build_error_when_the_root_node_has_no_script() -> void:
 	assert_eq(r.source, "")
 
 
-func test_build_without_components_is_an_error_listing_the_candidates() -> void:
+func test_build_without_components_binds_every_component_in_child_order() -> void:
+	var auto := DogBindGenerator.build(_options("actor", []))
+	var explicit := DogBindGenerator.build(_options("actor", BOTH))
+	assert_eq(auto.error, "")
+	assert_eq(auto.warnings, [])
+	assert_string_contains(auto.source, "func jump() -> void:")
+	assert_string_contains(auto.source, "func dash() -> void:")
+	assert_eq(auto.source, explicit.source)
+
+
+func test_build_without_components_skips_the_state_machines() -> void:
+	_use_tmp(_with_machine())
 	var r := DogBindGenerator.build(_options("actor", []))
-	assert_string_contains(r.error, "no components")
-	assert_string_contains(r.error, "fixture_jump_2d")
-	assert_string_contains(r.error, "fixture_dash")
+	assert_eq(r.error, "")
+	assert_string_contains(r.source, "_fixture_jump_2d")
+	assert_false(r.source.contains("DogFSM"))
+	assert_eq(_compile(r.source), OK)
+
+
+func test_build_without_components_and_nothing_to_bind_is_a_warning() -> void:
+	_use_tmp(_only_a_machine())
+	var r := DogBindGenerator.build(_options("actor", []))
+	assert_eq(r.error, "")
+	assert_eq(r.warnings.size(), 1)
+	assert_string_contains(r.warnings[0], "nothing to bind")
+	assert_eq(r.source, r.original)
+
+
+func test_build_naming_a_machine_is_an_error_and_writes_nothing() -> void:
+	_use_tmp(_with_machine())
+	var r := DogBindGenerator.generate(_options("actor", ["dog_fsm"]))
+	assert_string_contains(r.error, "state command")
 	assert_eq(r.source, "")
+	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
 func test_build_only_forwards_the_listed_components() -> void:

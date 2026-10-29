@@ -32,7 +32,7 @@ func _args(line: String) -> PackedStringArray:
 func test_command_name_and_usage() -> void:
 	assert_eq(_command.command_name(), "bind")
 	assert_ne(_command.description(), "")
-	assert_string_contains(_command.usage(), "bind <actor> <component...>")
+	assert_string_contains(_command.usage(), "bind <actor> [component...]")
 	assert_string_contains(_command.usage(), "--no-fix")
 	assert_string_contains(_command.usage(), "--folder")
 
@@ -166,6 +166,14 @@ func test_parse_no_fix_drops_prefix_and_suffix() -> void:
 	var r := DogBindCommand.parse_request(_args("player --no-fix jump dog_move_2d"))
 	assert_eq(r.error, "")
 	assert_eq(r.components, ["jump", "dog_move_2d"])
+
+
+func test_parse_fix_flags_without_components_are_an_error() -> void:
+	var lines := ["player --prefix dog", "player --suffix 2d", "player --prefix="]
+	lines.append("player --no-fix")
+	for line in lines:
+		var r := DogBindCommand.parse_request(_args(line))
+		assert_string_contains(r.error, "need components", line)
 
 
 func test_parse_no_fix_with_prefix_or_suffix_is_an_error() -> void:

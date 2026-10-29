@@ -95,11 +95,25 @@ func test_run_invalid_request_prints_the_error_and_writes_nothing() -> void:
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
-func test_run_without_components_fails_listing_the_candidates() -> void:
+func test_run_without_components_binds_every_component() -> void:
 	var code := _command.run(_args("actor"))
+	assert_eq(code, OK)
+	assert_has(_lines, "add var _fixture_jump_2d")
+	assert_has(_lines, "add func jump")
+	assert_string_contains(_read(TMP + "/actor/actor.gd"), "func jump() -> void:")
+
+
+func test_run_naming_a_machine_fails_pointing_to_state_and_writes_nothing() -> void:
+	var code := _command.run(_args("actor --no-fix dog_fsm"))
 	assert_eq(code, FAILED)
-	assert_string_contains(_lines[0], "no components")
-	assert_string_contains(_lines[0], "fixture_jump_2d")
+	assert_string_contains(_lines[0], "state command")
+	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
+
+
+func test_run_fix_flags_without_components_fail_and_write_nothing() -> void:
+	var code := _command.run(_args("actor --no-fix"))
+	assert_eq(code, ERR_INVALID_PARAMETER)
+	assert_string_contains(_lines[0], "need components")
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
