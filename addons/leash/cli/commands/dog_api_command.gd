@@ -1,8 +1,7 @@
 @tool
 class_name DogApiCommand
 extends DogCommand
-## api <actor> <component...> [--prefix p] [--suffix s | --no-fix] [--folder path] [--root path]
-##     [-f | -u]
+## api <actor> <component...> [--prefix p] [--suffix s | --no-fix] [--folder path] [-f | -u]
 ##
 ## Fills the script on the root node of <actor>.tscn with an API that forwards to
 ## the components you list, which must be direct children of the root. Attach the
@@ -10,18 +9,15 @@ extends DogCommand
 ## suffix settings are added around each one (dog, 2d: jump -> dog_jump_2d).
 ## --prefix / --suffix replace a setting (empty, as in --prefix=, drops that side)
 ## and --no-fix drops both, for full names (--no-fix dog_jump_2d).
+## --folder is the actor's directory, written in full from the explicit_folder
+## setting (--folder characters/enemies/slime); without it the actor is looked for
+## under the implicit_folder setting.
 
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
 const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
 const NO_FIX_AND_FIX := "use either --no-fix or --prefix / --suffix, not both."
-
-# Overridable so tests never write into res://. While empty, it reads
-# DogSettings.actors_root() each time, so a changed setting applies on the next run.
-var root := "":
-	get:
-		return root if not root.is_empty() else DogSettings.actors_root()
 
 
 func command_name() -> String:
@@ -36,7 +32,7 @@ func usage() -> String:
 	return (
 		"api <actor> <component...>"
 		+ " [--prefix p] [--suffix s | --no-fix]"
-		+ " [--folder path] [--root path]"
+		+ " [--folder path]"
 		+ " [-f | -u]"
 	)
 
@@ -47,7 +43,7 @@ func run(args: PackedStringArray) -> Error:
 		print_line("Dog: api: %s" % request.error)
 		return ERR_INVALID_PARAMETER
 
-	var result := DogApiGenerator.generate(options_for(request, root))
+	var result := DogApiGenerator.generate(options_for(request))
 	if not result.error.is_empty():
 		print_line("Dog: api: %s" % result.error)
 		return FAILED
@@ -63,14 +59,12 @@ func run(args: PackedStringArray) -> Error:
 	return OK
 
 
-## The generator options for a parsed `request`; `default_root` is used when
-## --root wasn't given.
-static func options_for(request: Request, default_root: String) -> DogApiGenerator.Options:
+## The generator options for a parsed `request`.
+static func options_for(request: Request) -> DogApiGenerator.Options:
 	var options := DogApiGenerator.Options.new()
 	options.actor = request.actor
 	options.components = request.components
 	options.folder = request.folder
-	options.root = request.root if not request.root.is_empty() else default_root
 	options.mode = request.mode
 	return options
 
@@ -96,8 +90,7 @@ static func _build_parser() -> DogOptParse:
 	parser.add("--prefix", "", "put before every component (default: the prefix setting)")
 	parser.add("--suffix", "", "put after every component (default: the suffix setting)")
 	parser.add("--no-fix", false, "no prefix and no suffix: components are full names")
-	parser.add("--folder", "", "actor directory below the root, e.g. enemies/slime")
-	parser.add("--root", "", "where to look, e.g. res://scenes (default: scenes/characters)")
+	parser.add("--folder", "", "actor directory in full, e.g. characters/enemies/slime")
 	parser.add(["--force", "-f"], false, "keep the header, rewrite everything below it")
 	parser.add(["--update", "-u"], false, "also rewrite generated funcs whose text changed")
 	return parser
@@ -152,10 +145,9 @@ static func _component_name(token: String, prefix: String, suffix: String) -> St
 	return component
 
 
-## --folder, --root and the -f / -u mode.
+## --folder and the -f / -u mode.
 static func _read_options(parser: DogOptParse, request: Request) -> String:
 	request.folder = parser.get_value("--folder")
-	request.root = parser.get_value("--root")
 	var force: bool = parser.get_value("--force")
 	var update: bool = parser.get_value("--update")
 	request.mode = DogScriptMerge.mode_from(force, update)
@@ -165,7 +157,6 @@ static func _read_options(parser: DogOptParse, request: Request) -> String:
 class Request:
 	var actor: String = ""
 	var folder: String = ""
-	var root: String = ""
 	var components: Array = []
 	var mode: DogScriptMerge.Mode = DogScriptMerge.Mode.ADD
 	var error: String = ""

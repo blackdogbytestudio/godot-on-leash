@@ -1,6 +1,6 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## The pure parts of DogApiGenerator: normalize_root and plan, on nodes built in
+## The pure parts of DogApiGenerator: plan and candidates, on nodes built in
 ## memory from the fixture scripts in test/doubles/api/.
 
 const JUMP_SCRIPT := "res://test/doubles/api/fixture_jump.gd"
@@ -45,21 +45,6 @@ func _block(blocks: Array, kind: String, block_name: String) -> Dictionary:
 		if block["kind"] == kind and block["name"] == block_name:
 			return block
 	return {}
-
-
-# --- normalize_root --------------------------------------------------------
-
-
-func test_normalize_root_adds_res_and_drops_the_trailing_slash() -> void:
-	assert_eq(DogApiGenerator.normalize_root("scenes"), "res://scenes")
-	assert_eq(DogApiGenerator.normalize_root("res://scenes/"), "res://scenes")
-	assert_eq(DogApiGenerator.normalize_root("user://x"), "user://x")
-
-
-func test_normalize_root_rejects_parent_traversal_and_empty() -> void:
-	assert_eq(DogApiGenerator.normalize_root("res://a/../b"), "")
-	assert_eq(DogApiGenerator.normalize_root(".."), "")
-	assert_eq(DogApiGenerator.normalize_root(""), "")
 
 
 # --- plan ------------------------------------------------------------------

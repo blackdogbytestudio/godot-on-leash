@@ -32,41 +32,44 @@ func _put(key: String, value: String) -> void:
 
 
 func test_unregistered_settings_give_the_defaults() -> void:
-	assert_eq(DogSettings.scenes(), "res://scenes")
-	assert_eq(DogSettings.folder(), "characters")
-	assert_eq(DogSettings.actors_root(), "res://scenes/characters")
+	assert_eq(DogSettings.implicit_folder(), "scenes/characters")
+	assert_eq(DogSettings.explicit_folder(), "scenes")
+	assert_eq(DogSettings.implicit_root(), "res://scenes/characters")
+	assert_eq(DogSettings.explicit_root(), "res://scenes")
 	assert_eq(DogSettings.prefix(), "dog")
 	assert_eq(DogSettings.suffix(), "2d")
 
 
 func test_a_changed_setting_is_read() -> void:
-	_put(DogSettings.SCENES, "res://game")
-	_put(DogSettings.FOLDER, "actors")
-	assert_eq(DogSettings.actors_root(), "res://game/actors")
+	_put(DogSettings.IMPLICIT_FOLDER, "game/actors")
+	_put(DogSettings.EXPLICIT_FOLDER, "game")
+	assert_eq(DogSettings.implicit_root(), "res://game/actors")
+	assert_eq(DogSettings.explicit_root(), "res://game")
+
+
+func test_the_two_folders_do_not_depend_on_each_other() -> void:
+	_put(DogSettings.EXPLICIT_FOLDER, "")
+	assert_eq(DogSettings.explicit_root(), "res://")
+	assert_eq(DogSettings.implicit_root(), "res://scenes/characters")
 
 
 # --- _read --------------------------------------------------------------------
 
 
 func test_spaces_and_edge_slashes_are_dropped() -> void:
-	_put(DogSettings.SCENES, " res://scenes/ ")
-	_put(DogSettings.FOLDER, "/characters/")
+	_put(DogSettings.EXPLICIT_FOLDER, " /scenes/ ")
+	_put(DogSettings.IMPLICIT_FOLDER, " scenes/characters/ ")
 	_put(DogSettings.PREFIX, " dog ")
-	assert_eq(DogSettings.scenes(), "res://scenes")
-	assert_eq(DogSettings.folder(), "characters")
+	assert_eq(DogSettings.explicit_folder(), "scenes")
+	assert_eq(DogSettings.implicit_folder(), "scenes/characters")
 	assert_eq(DogSettings.prefix(), "dog")
 
 
-func test_the_project_root_keeps_its_slashes() -> void:
-	_put(DogSettings.SCENES, "res://")
-	assert_eq(DogSettings.scenes(), "res://")
-	assert_eq(DogSettings.actors_root(), "res://characters")
-
-
-func test_empty_folders_fall_back_to_the_default() -> void:
-	_put(DogSettings.SCENES, "")
-	_put(DogSettings.FOLDER, "  ")
-	assert_eq(DogSettings.actors_root(), "res://scenes/characters")
+func test_an_empty_folder_is_the_project_root() -> void:
+	_put(DogSettings.EXPLICIT_FOLDER, "")
+	_put(DogSettings.IMPLICIT_FOLDER, "  ")
+	assert_eq(DogSettings.explicit_root(), "res://")
+	assert_eq(DogSettings.implicit_root(), "res://")
 
 
 func test_empty_prefix_and_suffix_mean_none() -> void:
@@ -74,6 +77,39 @@ func test_empty_prefix_and_suffix_mean_none() -> void:
 	_put(DogSettings.SUFFIX, " ")
 	assert_eq(DogSettings.prefix(), "")
 	assert_eq(DogSettings.suffix(), "")
+
+
+# --- error --------------------------------------------------------------------
+
+
+func test_error_is_empty_for_the_defaults_and_for_the_root() -> void:
+	assert_eq(DogSettings.error(), "")
+	_put(DogSettings.EXPLICIT_FOLDER, "")
+	assert_eq(DogSettings.error(), "")
+
+
+func test_error_accepts_res_as_a_folder_name() -> void:
+	_put(DogSettings.EXPLICIT_FOLDER, "res")
+	assert_eq(DogSettings.error(), "")
+
+
+func test_error_names_the_explicit_setting() -> void:
+	_put(DogSettings.EXPLICIT_FOLDER, "res://scenes")
+	var key := DogSettings.EXPLICIT_FOLDER
+	assert_eq(DogSettings.error(), DogNames.folder_error("res://scenes", key))
+	assert_string_contains(DogSettings.error(), key)
+
+
+func test_error_names_the_implicit_setting() -> void:
+	_put(DogSettings.IMPLICIT_FOLDER, "Scenes/characters")
+	var key := DogSettings.IMPLICIT_FOLDER
+	assert_eq(DogSettings.error(), DogNames.folder_error("Scenes/characters", key))
+	assert_string_contains(DogSettings.error(), key)
+
+
+func test_error_shows_what_was_typed() -> void:
+	_put(DogSettings.EXPLICIT_FOLDER, "scenes//game")
+	assert_string_contains(DogSettings.error(), "'scenes//game'")
 
 
 # --- register -----------------------------------------------------------------
@@ -87,18 +123,6 @@ func test_register_adds_every_setting_with_its_default() -> void:
 
 
 func test_register_keeps_a_value_already_set() -> void:
-	_put(DogSettings.SCENES, "res://game")
+	_put(DogSettings.EXPLICIT_FOLDER, "game")
 	DogSettings.register()
-	assert_eq(DogSettings.scenes(), "res://game")
-
-
-# --- users --------------------------------------------------------------------
-
-
-func test_generators_and_commands_default_to_the_setting() -> void:
-	_put(DogSettings.SCENES, "res://game")
-	assert_eq(DogStateGenerator.Options.new().root, "res://game/characters")
-	assert_eq(DogStateGenerator.output_dir("", "player"), "res://game/characters/player/states")
-	assert_eq(DogApiGenerator.Options.new().root, "res://game/characters")
-	assert_eq(DogStateCommand.new().root, "res://game/characters")
-	assert_eq(DogApiCommand.new().root, "res://game/characters")
+	assert_eq(DogSettings.explicit_folder(), "game")

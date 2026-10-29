@@ -59,10 +59,12 @@ func test_build_plans_every_folder_and_template_and_writes_nothing() -> void:
 	assert_false(DirAccess.dir_exists_absolute(ROOT))
 
 
-func test_build_creates_scenes_below_the_root_not_the_scenes_setting() -> void:
-	ProjectSettings.set_setting(DogSettings.SCENES, "res://elsewhere")
+func test_build_creates_scenes_below_the_root_not_the_folder_settings() -> void:
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "elsewhere/actors")
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "elsewhere")
 	var result := Generator.build(_options())
-	ProjectSettings.set_setting(DogSettings.SCENES, null)
+	ProjectSettings.clear(DogSettings.IMPLICIT_FOLDER)
+	ProjectSettings.clear(DogSettings.EXPLICIT_FOLDER)
 	assert_has(result.dirs, ROOT + "/scenes/characters")
 	assert_false(result.dirs.any(func(dir: String) -> bool: return "elsewhere" in dir))
 

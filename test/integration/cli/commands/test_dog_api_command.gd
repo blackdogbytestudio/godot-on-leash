@@ -1,12 +1,20 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## DogApiCommand.run against a copy of the actor in user://.
+## DogApiCommand.run against a copy of the actor in res://scenes/tmp, removed by
+## every test. The folder settings are pointed at it.
 
-const TMP := "user://api_cmd_test"
+const TMP_DIR := "scenes/tmp/api_cmd_test"
+const TMP := "res://" + TMP_DIR
+const KEYS := [
+	DogSettings.PREFIX,
+	DogSettings.SUFFIX,
+	DogSettings.IMPLICIT_FOLDER,
+	DogSettings.EXPLICIT_FOLDER,
+]
 const ACTOR_GD := "extends CharacterBody2D\n\n\nfunc _ready() -> void:\n\tpass\n"
 const ACTOR_TSCN := """[gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="user://api_cmd_test/actor/actor.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/tmp/api_cmd_test/actor/actor.gd" id="1"]
 [ext_resource type="Script" path="res://test/doubles/api/fixture_jump.gd" id="2"]
 
 [node name="Actor" type="CharacterBody2D"]
@@ -23,28 +31,40 @@ var _saved := {}
 
 func before_each() -> void:
 	_saved.clear()
-	for key in [DogSettings.PREFIX, DogSettings.SUFFIX]:
+	for key in KEYS:
 		if ProjectSettings.has_setting(key):
 			_saved[key] = ProjectSettings.get_setting(key)
-		ProjectSettings.set_setting(key, DogSettings.DEFAULTS[key])
+	ProjectSettings.set_setting(DogSettings.PREFIX, DogSettings.DEFAULTS[DogSettings.PREFIX])
+	ProjectSettings.set_setting(DogSettings.SUFFIX, DogSettings.DEFAULTS[DogSettings.SUFFIX])
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, TMP_DIR)
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, TMP_DIR)
 	DirAccess.make_dir_recursive_absolute(TMP + "/actor")
 	_write(TMP + "/actor/actor.gd", ACTOR_GD)
 	_write(TMP + "/actor/actor.tscn", ACTOR_TSCN)
 	_lines = []
 	_command = DogApiCommand.new()
-	_command.root = TMP
 	_command.printed.connect(func(text: String): _lines.append(text))
 
 
 func after_each() -> void:
-	for path in [TMP + "/actor/actor.gd", TMP + "/actor/actor.tscn"]:
-		DirAccess.remove_absolute(path)
-	DirAccess.remove_absolute(TMP + "/actor")
-	DirAccess.remove_absolute(TMP)
-	for key in [DogSettings.PREFIX, DogSettings.SUFFIX]:
-		ProjectSettings.clear(key)
+	_remove_tree(TMP)
+	DirAccess.remove_absolute("res://scenes/tmp")  # only succeeds when empty
+	for key in KEYS:
 		if _saved.has(key):
 			ProjectSettings.set_setting(key, _saved[key])
+		elif ProjectSettings.has_setting(key):
+			ProjectSettings.clear(key)
+
+
+func _remove_tree(path: String) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	for sub in dir.get_directories():
+		_remove_tree(path.path_join(sub))
+	for file in dir.get_files():
+		dir.remove(file)
+	DirAccess.remove_absolute(path)
 
 
 func _write(path: String, text: String) -> void:
@@ -139,35 +159,38 @@ func test_run_twice_keeps_the_file_the_second_time() -> void:
 	assert_does_not_have(_lines, "updated " + TMP + "/actor/actor.gd")
 
 
-func test_run_root_flag_overrides_the_default_root() -> void:
-	var plain := DogApiCommand.new()
-	plain.printed.connect(func(text: String): _lines.append(text))
-	var code := plain.run(_args("actor --no-fix fixture_jump_2d --root " + TMP))
+func test_run_folder_starts_at_the_explicit_root() -> void:
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "somewhere/else")
+	var code := _command.run(_args("actor --no-fix fixture_jump_2d --folder actor"))
 	assert_eq(code, OK)
 	assert_has(_lines, "updated " + TMP + "/actor/actor.gd")
 
 
-func test_run_reads_the_folder_setting_on_each_run() -> void:
-	var saved := {}
-	for key in [DogSettings.SCENES, DogSettings.FOLDER]:
-		if ProjectSettings.has_setting(key):
-			saved[key] = ProjectSettings.get_setting(key)
-	var plain := DogApiCommand.new()
-	plain.printed.connect(func(text: String): _lines.append(text))
-	ProjectSettings.set_setting(DogSettings.SCENES, "user://")
-	ProjectSettings.set_setting(DogSettings.FOLDER, "api_cmd_missing")
-	var first := plain.run(_args("actor --no-fix fixture_jump_2d"))
-	ProjectSettings.set_setting(DogSettings.FOLDER, TMP.get_file())
-	var second := plain.run(_args("actor --no-fix fixture_jump_2d"))
+func test_run_root_is_not_an_option_anymore() -> void:
+	var code := _command.run(_args("actor --no-fix fixture_jump_2d --root " + TMP))
+	assert_eq(code, ERR_INVALID_PARAMETER)
+	assert_string_contains(_lines[0], "--root")
+	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
-	for key in [DogSettings.SCENES, DogSettings.FOLDER]:
-		ProjectSettings.clear(key)
-		if saved.has(key):
-			ProjectSettings.set_setting(key, saved[key])
+
+func test_run_reads_the_implicit_folder_setting_on_each_run() -> void:
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "scenes/tmp/api_cmd_missing")
+	var first := _command.run(_args("actor --no-fix fixture_jump_2d"))
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, TMP_DIR)
+	var second := _command.run(_args("actor --no-fix fixture_jump_2d"))
 	assert_eq(first, FAILED)
-	assert_string_contains(_lines[0], "user://api_cmd_missing")
+	assert_string_contains(_lines[0], "res://scenes/tmp/api_cmd_missing")
 	assert_eq(second, OK)
 	assert_has(_lines, "updated " + TMP + "/actor/actor.gd")
+
+
+func test_run_invalid_folder_setting_fails_naming_it_and_writes_nothing() -> void:
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "res://scenes")
+	var code := _command.run(_args("actor --no-fix fixture_jump_2d"))
+	assert_eq(code, FAILED)
+	assert_true(_lines[0].begins_with("Dog: api: "))
+	assert_string_contains(_lines[0], DogSettings.IMPLICIT_FOLDER)
+	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
 func test_run_update_restores_an_edited_func_and_force_rewrites_below_the_header() -> void:

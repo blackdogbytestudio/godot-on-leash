@@ -1,13 +1,17 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## DogStateGenerator.generate / build with real scenes: writes in user://, and
-## builds against the hero fixture in test/doubles/state.
+## DogStateGenerator.generate / build with real scenes: writes in res://scenes/tmp
+## (removed by every test), and builds against the hero fixture in
+## test/doubles/state. The folder settings are pointed at those folders.
 
 const Command := preload("res://addons/leash/cli/commands/dog_state_command.gd")
 const Generator := preload("res://addons/leash/cli/generators/dog_state_generator.gd")
-const ROOT := "user://dog_state_command_test"
-const HERO_ROOT := "res://test/doubles/state/scenes"
+const ROOT_DIR := "scenes/tmp/state_gen_test"
+const ROOT := "res://" + ROOT_DIR
+const HERO_DIR := "test/doubles/state/scenes"
+const HERO_ROOT := "res://" + HERO_DIR
 const HERO_ARGS := ["hero", "hpda", "alive", ".grounded", "dead"]
+const KEYS := [DogSettings.IMPLICIT_FOLDER, DogSettings.EXPLICIT_FOLDER]
 const MACHINES := {
 	"DogFSM": "res://addons/leash/components/machines/dog_fsm.gd",
 	"DogPDA": "res://addons/leash/components/machines/dog_pda.gd",
@@ -31,13 +35,32 @@ func _physics_process(delta: float) -> void:
 	_dog_hpda.update(delta)
 """
 
+var _saved := {}
+
 
 func before_each() -> void:
+	_saved.clear()
+	for key in KEYS:
+		if ProjectSettings.has_setting(key):
+			_saved[key] = ProjectSettings.get_setting(key)
+	_use(ROOT_DIR)
 	_remove(ROOT)
 
 
 func after_each() -> void:
 	_remove(ROOT)
+	DirAccess.remove_absolute("res://scenes/tmp")  # only succeeds when empty
+	for key in KEYS:
+		if _saved.has(key):
+			ProjectSettings.set_setting(key, _saved[key])
+		elif ProjectSettings.has_setting(key):
+			ProjectSettings.clear(key)
+
+
+## Points both folder settings at `dir` (below res://).
+func _use(dir: String) -> void:
+	for key in KEYS:
+		ProjectSettings.set_setting(key, dir)
 
 
 func _request(args: PackedStringArray) -> DogStateCommand.Request:
@@ -47,7 +70,7 @@ func _request(args: PackedStringArray) -> DogStateCommand.Request:
 func _generate(args: PackedStringArray) -> DogStateGenerator.Result:
 	var request := _request(args)
 	assert_eq(request.error, "", "unexpected parse error: %s" % request.error)
-	return Generator.generate(Command.options_for(request, ROOT))
+	return Generator.generate(Command.options_for(request))
 
 
 func _states(folder: String) -> String:
@@ -269,11 +292,20 @@ func test_missing_scene_is_an_error() -> void:
 	)
 
 
-func test_scene_elsewhere_is_an_error_that_suggests_folder() -> void:
+func test_scene_elsewhere_is_not_found_and_the_error_suggests_folder() -> void:
 	_scene("slime", { "DogHPDA": "DogHPDA" }, "enemies/slime")
 	_fails_without_writing(
 		PackedStringArray(["slime", "hpda", "alive"]),
-		["enemies/slime/slime.tscn", "--folder enemies/slime"],
+		[ROOT + "/slime/slime.tscn", "--folder"],
+	)
+
+
+func test_invalid_folder_setting_is_an_error_naming_it() -> void:
+	_scene("enemy")
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "res://scenes")
+	_fails_without_writing(
+		PackedStringArray(["enemy", "hpda", "alive"]),
+		[DogSettings.EXPLICIT_FOLDER],
 	)
 
 
@@ -504,9 +536,10 @@ func test_add_never_deletes_files_in_states() -> void:
 
 
 func _build_hero(extra: Array = []) -> DogStateGenerator.Result:
+	_use(HERO_DIR)
 	var request := DogStateCommand.parse_request(PackedStringArray(HERO_ARGS + extra))
 	assert_eq(request.error, "", "unexpected parse error: %s" % request.error)
-	return DogStateGenerator.build(DogStateCommand.options_for(request, HERO_ROOT))
+	return DogStateGenerator.build(DogStateCommand.options_for(request))
 
 
 ## The host is the global class Hero already, so compile it without its class_name.

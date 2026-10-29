@@ -3,6 +3,9 @@ class_name DogStateCommand
 extends DogCommand
 ## state <actor> <type> <tree...> [--folder f] [--extends State] [--initial state] [-f | -u]
 ## The states' host is always the actor's class (actor in PascalCase).
+## --folder is the actor's directory, written in full from the explicit_folder
+## setting (--folder characters/enemies/slime); without it the actor is looked for
+## under the implicit_folder setting. The states go in its `states` folder.
 
 const FLAT_TYPES: PackedStringArray = ["fsm", "pda"]
 const TREE_TYPES: PackedStringArray = ["hfsm", "hpda"]
@@ -12,12 +15,6 @@ const UNKNOWN_OPTION := "unknown option '%s'."
 const UNKNOWN_TYPE := "unknown type '%s'."
 const INVALID_INITIAL := "'%s' is not a valid --initial (a state name, no dots)."
 const NESTED_IN_FLAT := "'%s' is flat: nested states are not allowed."
-
-# Overridable so tests never write into res://. While empty, it reads
-# DogSettings.actors_root() each time, so a changed setting applies on the next run.
-var root := "":
-	get:
-		return root if not root.is_empty() else DogSettings.actors_root()
 
 
 func command_name() -> String:
@@ -42,7 +39,7 @@ func run(args: PackedStringArray) -> Error:
 		print_line("Dog: state: %s" % request.error)
 		return ERR_INVALID_PARAMETER
 
-	var result := DogStateGenerator.generate(options_for(request, root))
+	var result := DogStateGenerator.generate(options_for(request))
 	if not result.error.is_empty():
 		print_line("Dog: state: %s" % result.error)
 		return FAILED
@@ -63,8 +60,8 @@ func run(args: PackedStringArray) -> Error:
 	return OK
 
 
-## The generator options for a parsed `request`, writing below `root`.
-static func options_for(request: Request, root: String) -> DogStateGenerator.Options:
+## The generator options for a parsed `request`.
+static func options_for(request: Request) -> DogStateGenerator.Options:
 	var options := DogStateGenerator.Options.new()
 	options.actor = request.actor
 	options.type = request.type
@@ -72,7 +69,6 @@ static func options_for(request: Request, root: String) -> DogStateGenerator.Opt
 	options.base = request.extends_state
 	options.tree = request.tree
 	options.mode = request.mode
-	options.root = root
 	options.initial = request.initial
 	return options
 
@@ -99,7 +95,7 @@ static func _build_parser() -> DogOptParse:
 	parser.add(
 		"--folder",
 		"",
-		"category folder, e.g. enemies/slime -> scenes/characters/enemies/slime/states",
+		"actor directory in full, e.g. characters/enemies/slime (states go inside it)",
 	)
 	parser.add("--extends", "", "state class the root states inherit from")
 	parser.add(
