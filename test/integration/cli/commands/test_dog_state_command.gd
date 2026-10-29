@@ -1,9 +1,12 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## DogStateCommand.run end to end: what it prints after generating in user://.
+## DogStateCommand.run end to end: what it prints after generating in
+## res://scenes/tmp, which every test removes. The folder settings are pointed at it.
 
 const Command := preload("res://addons/leash/cli/commands/dog_state_command.gd")
-const ROOT := "user://dog_state_command_test"
+const ROOT_DIR := "scenes/tmp/state_cmd_test"
+const ROOT := "res://" + ROOT_DIR
+const KEYS := [DogSettings.IMPLICIT_FOLDER, DogSettings.EXPLICIT_FOLDER]
 const MACHINES := {
 	"DogFSM": "res://addons/leash/components/machines/dog_fsm.gd",
 	"DogPDA": "res://addons/leash/components/machines/dog_pda.gd",
@@ -11,18 +14,30 @@ const MACHINES := {
 	"DogHPDA": "res://addons/leash/components/machines/dog_hpda.gd",
 }
 
+var _saved := {}
+
 
 func before_each() -> void:
+	_saved.clear()
+	for key in KEYS:
+		if ProjectSettings.has_setting(key):
+			_saved[key] = ProjectSettings.get_setting(key)
+		ProjectSettings.set_setting(key, ROOT_DIR)
 	_remove(ROOT)
 
 
 func after_each() -> void:
 	_remove(ROOT)
+	DirAccess.remove_absolute("res://scenes/tmp")  # only succeeds when empty
+	for key in KEYS:
+		if _saved.has(key):
+			ProjectSettings.set_setting(key, _saved[key])
+		elif ProjectSettings.has_setting(key):
+			ProjectSettings.clear(key)
 
 
 func _run(args: PackedStringArray) -> Array:
 	var command := Command.new()
-	command.root = ROOT
 	var lines: Array[String] = []
 	command.printed.connect(func(text: String) -> void: lines.append(text))
 	var error := command.run(args)
@@ -128,24 +143,33 @@ func test_run_prints_created_and_keeps() -> void:
 	assert_string_contains(" ".join(second[1]), "created")
 
 
-func test_run_reads_the_folder_setting_on_each_run() -> void:
-	var saved := {}
-	for key in [DogSettings.SCENES, DogSettings.FOLDER]:
-		if ProjectSettings.has_setting(key):
-			saved[key] = ProjectSettings.get_setting(key)
+func test_run_folder_starts_at_the_explicit_root() -> void:
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "somewhere/else")
+	_scene("slime", { "DogHPDA": "DogHPDA" }, "enemies/slime")
+	var result := _run(PackedStringArray(["slime", "hpda", "--folder", "enemies/slime", "alive"]))
+	assert_eq(result[0], OK)
+	var states := _states("enemies/slime")
+	assert_has(result[1], "created %s" % states.path_join("slime_alive_state.gd"))
+
+
+func test_run_reads_the_implicit_folder_setting_on_each_run() -> void:
 	var command := Command.new()
 	var lines: Array[String] = []
 	command.printed.connect(func(text: String) -> void: lines.append(text))
-	ProjectSettings.set_setting(DogSettings.SCENES, "user://")
-	ProjectSettings.set_setting(DogSettings.FOLDER, ROOT.get_file().path_join("first"))
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, ROOT_DIR.path_join("first"))
 	command.run(PackedStringArray(["hero", "hpda", "alive"]))
-	ProjectSettings.set_setting(DogSettings.FOLDER, ROOT.get_file().path_join("second"))
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, ROOT_DIR.path_join("second"))
 	command.run(PackedStringArray(["hero", "hpda", "alive"]))
-
-	for key in [DogSettings.SCENES, DogSettings.FOLDER]:
-		ProjectSettings.clear(key)
-		if saved.has(key):
-			ProjectSettings.set_setting(key, saved[key])
 	assert_eq(lines.size(), 2)
 	assert_string_contains(lines[0], ROOT.path_join("first"))
 	assert_string_contains(lines[1], ROOT.path_join("second"))
+
+
+func test_run_invalid_folder_setting_fails_naming_it_and_writes_nothing() -> void:
+	_scene("player")
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "res://scenes")
+	var result := _run(PackedStringArray(["player", "hpda", "alive"]))
+	assert_eq(result[0], FAILED)
+	assert_true(result[1][0].begins_with("Dog: state: "))
+	assert_string_contains(result[1][0], DogSettings.EXPLICIT_FOLDER)
+	assert_false(DirAccess.dir_exists_absolute(_states("player")))

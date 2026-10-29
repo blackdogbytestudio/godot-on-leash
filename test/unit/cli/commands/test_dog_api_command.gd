@@ -34,6 +34,11 @@ func test_command_name_and_usage() -> void:
 	assert_ne(_command.description(), "")
 	assert_string_contains(_command.usage(), "api <actor> <component...>")
 	assert_string_contains(_command.usage(), "--no-fix")
+	assert_string_contains(_command.usage(), "--folder")
+
+
+func test_usage_has_no_root_option() -> void:
+	assert_false(_command.usage().contains("--root"))
 
 
 # --- parse_request ---------------------------------------------------------
@@ -44,7 +49,6 @@ func test_parse_actor_only_defaults_to_add_mode() -> void:
 	assert_eq(r.error, "")
 	assert_eq(r.actor, "player")
 	assert_eq(r.folder, "")
-	assert_eq(r.root, "")
 	assert_eq(r.mode, DogScriptMerge.Mode.ADD)
 
 
@@ -65,11 +69,15 @@ func test_parse_force_and_update_together_is_an_error() -> void:
 	assert_string_contains(r.error, "-u")
 
 
-func test_parse_folder_and_root_values() -> void:
-	var r := DogApiCommand.parse_request(_args("slime --folder enemies/slime --root res://scenes"))
+func test_parse_folder_value() -> void:
+	var r := DogApiCommand.parse_request(_args("slime --folder characters/enemies/slime"))
 	assert_eq(r.error, "")
-	assert_eq(r.folder, "enemies/slime")
-	assert_eq(r.root, "res://scenes")
+	assert_eq(r.folder, "characters/enemies/slime")
+
+
+func test_parse_root_is_not_an_option_anymore() -> void:
+	var r := DogApiCommand.parse_request(_args("slime --root res://scenes"))
+	assert_string_contains(r.error, "--root")
 
 
 func test_parse_actor_with_a_digit_part_is_valid() -> void:
@@ -176,16 +184,10 @@ func test_parse_invalid_component_is_an_error() -> void:
 
 func test_options_for_copies_the_request() -> void:
 	var request := DogApiCommand.parse_request(
-		_args("player dog_jump_2d --no-fix --folder enemies/slime --root res://scenes -f")
+		_args("player dog_jump_2d --no-fix --folder characters/enemies/slime -f")
 	)
-	var options := DogApiCommand.options_for(request, "res://default")
+	var options := DogApiCommand.options_for(request)
 	assert_eq(options.actor, "player")
 	assert_eq(options.components, ["dog_jump_2d"])
-	assert_eq(options.folder, "enemies/slime")
-	assert_eq(options.root, "res://scenes")
+	assert_eq(options.folder, "characters/enemies/slime")
 	assert_eq(options.mode, DogScriptMerge.Mode.FORCE)
-
-
-func test_options_for_uses_the_default_root_without_root() -> void:
-	var request := DogApiCommand.parse_request(_args("player jump"))
-	assert_eq(DogApiCommand.options_for(request, "res://default").root, "res://default")

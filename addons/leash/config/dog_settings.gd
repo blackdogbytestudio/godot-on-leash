@@ -6,14 +6,18 @@ extends RefCounted
 ## The plugin registers them with their defaults. A value is saved to
 ## project.godot only when it differs from the default. Reading a setting that
 ## was never registered returns its default, so nothing here needs the plugin.
+##
+## The folder settings hold only what comes after res://, which is always the
+## root and is never typed. An empty folder means res:// itself.
 
-const SCENES := "leash/generators/scenes"
-const FOLDER := "leash/generators/folder"
+const ROOT := "res://"
+const IMPLICIT_FOLDER := "leash/generators/implicit_folder"
+const EXPLICIT_FOLDER := "leash/generators/explicit_folder"
 const PREFIX := "leash/generators/prefix"
 const SUFFIX := "leash/generators/suffix"
 const DEFAULTS := {
-	SCENES: "res://scenes",
-	FOLDER: "characters",
+	IMPLICIT_FOLDER: "scenes/characters",
+	EXPLICIT_FOLDER: "scenes",
 	PREFIX: "dog",
 	SUFFIX: "2d",
 }
@@ -26,45 +30,64 @@ static func register() -> void:
 			ProjectSettings.set_setting(key, DEFAULTS[key])
 		ProjectSettings.set_initial_value(key, DEFAULTS[key])
 		ProjectSettings.set_as_basic(key, true)
-		ProjectSettings.add_property_info({
-			"name": key,
-			"type": TYPE_STRING,
-			"hint": PROPERTY_HINT_DIR if key == SCENES else PROPERTY_HINT_NONE,
-		})
+		ProjectSettings.add_property_info({"name": key, "type": TYPE_STRING})
 
 
-## Where every actor scene lives, e.g. res://scenes.
-static func scenes() -> String:
-	return _read(SCENES)
+## Where an actor goes when a command gets no --folder, below res://.
+static func implicit_folder() -> String:
+	return _read_folder(IMPLICIT_FOLDER)
 
 
-## The folder below scenes() used when a command gets no --folder.
-static func folder() -> String:
-	return _read(FOLDER)
+## Where --folder starts from, below res://.
+static func explicit_folder() -> String:
+	return _read_folder(EXPLICIT_FOLDER)
 
 
-## Where a command looks for the actor when it gets no --folder.
-static func actors_root() -> String:
-	return scenes().path_join(folder())
+## implicit_folder() as a full path, e.g. res://scenes/characters.
+static func implicit_root() -> String:
+	return ROOT + implicit_folder()
+
+
+## explicit_folder() as a full path, e.g. res://scenes.
+static func explicit_root() -> String:
+	return ROOT + explicit_folder()
+
+
+## The directory of an actor, the same for every command. Without a folder it is
+## <implicit_root>/<actor>; with one it is <explicit_root>/<folder>, written in
+## full (characters/enemies/slime), the actor's own directory included.
+static func actor_dir(actor: String, folder := "") -> String:
+	if folder.is_empty():
+		return implicit_root().path_join(actor)
+	return explicit_root().path_join(folder)
 
 
 ## Put before every component name (dog -> dog_jump). Empty means none.
 static func prefix() -> String:
-	return _read(PREFIX, true)
+	return _read(PREFIX)
 
 
 ## Put after every component name (2d -> jump_2d). Empty means none.
 static func suffix() -> String:
-	return _read(SUFFIX, true)
+	return _read(SUFFIX)
 
 
-## The setting without surrounding spaces or edge slashes (a root like res://
-## keeps its own). Empty gives the default unless `allow_empty`.
-static func _read(key: String, allow_empty := false) -> String:
-	var value := str(ProjectSettings.get_setting(key, DEFAULTS[key])).strip_edges()
-	value = value.trim_prefix("/")
-	if not value.ends_with("://"):
-		value = value.trim_suffix("/")
-	if value.is_empty() and not allow_empty:
-		return DEFAULTS[key]
-	return value
+## The error for a folder setting that isn't a valid folder, naming the setting,
+## or "". Commands check it before they touch any file.
+static func error() -> String:
+	for key in [IMPLICIT_FOLDER, EXPLICIT_FOLDER]:
+		var problem := DogNames.folder_error(_read_folder(key), key)
+		if not problem.is_empty():
+			return problem
+	return ""
+
+
+## The setting without surrounding spaces. Empty stays empty.
+static func _read(key: String) -> String:
+	return str(ProjectSettings.get_setting(key, DEFAULTS[key])).strip_edges()
+
+
+## A folder setting without spaces or edge slashes. Anything else is left for
+## error() to report, so the message shows what was really typed.
+static func _read_folder(key: String) -> String:
+	return _read(key).lstrip("/").rstrip("/")

@@ -7,10 +7,10 @@ extends RefCounted
 ## wrappers); every tree node is created from state.gd, extending its
 ## parent state's class. Existing files are kept unless force is set.
 ##
-## The actor's scene is required: `<root>/<folder or actor>/<actor>.tscn`, with a
-## saved .gd script on its root and exactly one direct child whose script is the
-## machine class of `type` (see FAMILIES). Everything is checked before any file
-## is written.
+## The actor's scene is required: `<actor>.tscn` inside the actor's directory (see
+## DogSettings.actor_dir), with a saved .gd script on its root and exactly one
+## direct child whose script is the machine class of `type` (see FAMILIES).
+## Everything is checked before any file is written.
 ##
 ## FORCE puts things back to factory: the whole `states/` folder of the actor is
 ## deleted (only that computed folder, see is_safe_states_dir), the states are
@@ -41,8 +41,6 @@ const TEMPLATE_DIR_NOT_FOUND := "template folder '%s' not found."
 const TEMPLATE_MISSING := "template '%s' is missing or empty."
 const UNSAFE_DELETE := "refusing to delete '%s': not an actor states folder inside %s."
 const HOST_MERGE_FAILED := "%s: %s."
-const SCENE_NOT_FOUND := "no %s.tscn in %s."
-const SCENE_ELSEWHERE := " found %s: use --folder %s."
 const NO_HOST_SCRIPT := "the root node of %s has no script: attach one in Godot first."
 const BUILT_IN_SCRIPT := "the script of %s is built into the scene: save it as a .gd file first."
 const NO_MACHINE := "no %s child in %s. children with a class: %s."
@@ -64,7 +62,7 @@ static func generate(options: Options) -> Result:
 			return result
 
 	if not result.files.is_empty():
-		var dir := output_dir(options.folder, options.actor, options.root)
+		var dir := output_dir(options.folder, options.actor)
 		var make_error := DirAccess.make_dir_recursive_absolute(dir)
 		if make_error != OK:
 			result.error = COULD_NOT_CREATE % [dir, make_error]
@@ -122,7 +120,7 @@ static func build(options: Options) -> Result:
 
 ## True only for `<root>/<actor dir>/states`: inside `root`, no `..`, with at
 ## least one folder between the root and `states`.
-static func is_safe_states_dir(dir: String, root: String) -> bool:
+static func is_safe_states_dir(dir: String, root: String = DogSettings.ROOT) -> bool:
 	var base := root.trim_suffix("/") + "/"
 	if not dir.begins_with(base):
 		return false
@@ -213,29 +211,19 @@ static func host_blocks(
 	return blocks
 
 
-static func output_dir(
-	folder: String,
-	actor: String,
-	root: String = DogSettings.actors_root(),
-) -> String:
-	var category := folder if not folder.is_empty() else actor
-	return root.path_join(category).path_join(STATES_DIR)
-
-
-static func scene_path(
-	folder: String,
-	actor: String,
-	root: String = DogSettings.actors_root(),
-) -> String:
-	return output_dir(folder, actor, root).get_base_dir().path_join(actor + ".tscn")
+## Where the states of an actor go: the `states` folder of its directory.
+static func output_dir(folder: String, actor: String) -> String:
+	return DogSettings.actor_dir(actor, folder).path_join(STATES_DIR)
 
 
 ## Fills result.scene, host_path, machine_node and warnings, or result.error.
 static func _inspect_scene(result: Result, options: Options, machine_class: String) -> void:
-	var path := scene_path(options.folder, options.actor, options.root)
-	if not FileAccess.file_exists(path):
-		result.error = _missing_scene_error(options, path)
+	var found := DogApiGenerator.find_scene(options.actor, options.folder)
+	var find_error: String = found["error"]
+	if not find_error.is_empty():
+		result.error = find_error
 		return
+	var path: String = found["path"]
 
 	var packed := ResourceLoader.load(
 		path,
@@ -259,17 +247,6 @@ static func _inspect_scene(result: Result, options: Options, machine_class: Stri
 	result.host_path = host_script.resource_path
 	result.machine_node = children["machines"][0]
 	_check_host_class(result, _pascal(options.actor))
-
-
-## "no <actor>.tscn in <dir>.", plus where it is when it lives in another folder.
-static func _missing_scene_error(options: Options, path: String) -> String:
-	var error := SCENE_NOT_FOUND % [options.actor, path.get_base_dir()]
-	var found := DogApiGenerator.find_scene(options.actor, "", options.root)
-	var elsewhere: String = found["path"]
-	if not elsewhere.is_empty():
-		var actor_dir := elsewhere.get_base_dir().trim_prefix(options.root.trim_suffix("/") + "/")
-		error += SCENE_ELSEWHERE % [elsewhere, actor_dir]
-	return error
 
 
 ## The direct children of `host` that have a class_name: {"machines": names of the
@@ -355,11 +332,11 @@ static func _pick_initial(result: Result, options: Options) -> String:
 ## With FORCE and an existing states folder: marks it for deletion and lists its
 ## files in `dropped_files`. Returns an error, or "".
 static func _plan_force(result: Result, options: Options, dropped_files: Array[String]) -> String:
-	var dir := output_dir(options.folder, options.actor, options.root)
+	var dir := output_dir(options.folder, options.actor)
 	if options.mode != DogScriptMerge.Mode.FORCE or not DirAccess.dir_exists_absolute(dir):
 		return ""
-	if not is_safe_states_dir(dir, options.root):
-		return UNSAFE_DELETE % [dir, options.root]
+	if not is_safe_states_dir(dir):
+		return UNSAFE_DELETE % [dir, DogSettings.ROOT]
 	result.delete_dir = dir
 	for file in _files_below(dir):
 		dropped_files.append("drop file %s/%s" % [STATES_DIR, file])
@@ -414,7 +391,7 @@ static func _plan_file(
 	node_name: String,
 	parent: String,
 ) -> String:
-	var dir := output_dir(options.folder, options.actor, options.root)
+	var dir := output_dir(options.folder, options.actor)
 	var path := dir.path_join(file_name(options.actor, node_name))
 	if FileAccess.file_exists(path) and options.mode != DogScriptMerge.Mode.FORCE:
 		result.skipped.append(path)
@@ -518,7 +495,6 @@ class Options:
 	var base := ""
 	var tree: DogStateTree
 	var mode := DogScriptMerge.Mode.ADD
-	var root := DogSettings.actors_root()
 	var initial := ""
 
 

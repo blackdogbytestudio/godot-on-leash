@@ -3,15 +3,6 @@ extends GutTest
 ## DogStateCommand.parse_request and the run paths that stop before generating.
 
 const Command := preload("res://addons/leash/cli/commands/dog_state_command.gd")
-const ROOT := "user://dog_state_command_test"
-
-
-func before_each() -> void:
-	_remove(ROOT)
-
-
-func after_each() -> void:
-	_remove(ROOT)
 
 
 func _request(args: PackedStringArray) -> DogStateCommand.Request:
@@ -20,22 +11,10 @@ func _request(args: PackedStringArray) -> DogStateCommand.Request:
 
 func _run(args: PackedStringArray) -> Array:
 	var command := Command.new()
-	command.root = ROOT
 	var lines: Array[String] = []
 	command.printed.connect(func(text: String) -> void: lines.append(text))
 	var error := command.run(args)
 	return [error, lines]
-
-
-func _remove(path: String) -> void:
-	var dir := DirAccess.open(path)
-	if dir == null:
-		return
-	for file in dir.get_files():
-		dir.remove(file)
-	for sub in dir.get_directories():
-		_remove(path.path_join(sub))
-	DirAccess.remove_absolute(path)
 
 
 # --- parse ------------------------------------------------------------------
@@ -51,17 +30,22 @@ func test_parse_accepts_hpda() -> void:
 
 func test_parse_reads_folder_and_extends() -> void:
 	var request := _request(PackedStringArray([
-		"slime", "hpda", "--folder", "enemies/slime",
+		"slime", "hpda", "--folder", "characters/enemies/slime",
 		"--extends", "enemy_alive_state", "jump",
 	]))
 	assert_eq(request.error, "")
-	assert_eq(request.folder, "enemies/slime")
+	assert_eq(request.folder, "characters/enemies/slime")
 	assert_eq(request.extends_state, "enemy_alive_state")
 
 
 func test_parse_rejects_host_option() -> void:
 	var request := _request(PackedStringArray(["slime", "hpda", "--host", "Slime", "jump"]))
 	assert_string_contains(request.error, "unknown option '--host'")
+
+
+func test_parse_rejects_root_option() -> void:
+	var request := _request(PackedStringArray(["slime", "hpda", "--root", "res://x", "jump"]))
+	assert_string_contains(request.error, "unknown option '--root'")
 
 
 func test_parse_rejects_hdpa() -> void:
@@ -127,6 +111,11 @@ func test_folder_with_parent_traversal_is_a_parse_error() -> void:
 	)
 
 
+func test_folder_with_a_scheme_is_a_parse_error() -> void:
+	var request := _request(PackedStringArray(["enemy", "hpda", "--folder", "res://x", "alive"]))
+	assert_eq(request.error, DogNames.folder_error("res://x"))
+
+
 # --- run (parse errors only) ------------------------------------------------
 
 
@@ -135,7 +124,6 @@ func test_run_reports_parse_errors() -> void:
 	assert_eq(result[0], ERR_INVALID_PARAMETER)
 	assert_eq(result[1].size(), 1)
 	assert_string_contains(result[1][0], "Dog: state:")
-	assert_eq(DirAccess.open(ROOT), null)
 
 
 func test_run_reports_unknown_type() -> void:
@@ -147,17 +135,16 @@ func test_run_reports_unknown_type() -> void:
 # --- options_for -------------------------------------------------------------
 
 
-func test_options_for_copies_the_request_and_the_root() -> void:
+func test_options_for_copies_the_request() -> void:
 	var request := _request(PackedStringArray([
-		"slime", "hpda", "--folder", "enemies/slime", "--extends", "enemy_alive_state",
+		"slime", "hpda", "--folder", "characters/enemies/slime", "--extends", "enemy_alive_state",
 		"--initial", "jump", "-u", "jump",
 	]))
-	var options := Command.options_for(request, "user://root")
+	var options := Command.options_for(request)
 	assert_eq(options.actor, "slime")
 	assert_eq(options.type, "hpda")
-	assert_eq(options.folder, "enemies/slime")
+	assert_eq(options.folder, "characters/enemies/slime")
 	assert_eq(options.base, "enemy_alive_state")
 	assert_eq(options.initial, "jump")
 	assert_eq(options.mode, DogScriptMerge.Mode.UPDATE)
-	assert_eq(options.root, "user://root")
 	assert_eq(options.tree, request.tree)

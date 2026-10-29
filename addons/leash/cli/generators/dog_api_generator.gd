@@ -6,9 +6,10 @@ extends RefCounted
 ## `dog_jump_2d` -> DogJump2D): one `@onready` reference per component, a forwarding
 ## func per public method, and a re-declared + connected signal per public signal.
 ##
-## Convention: `<root>/[<folder>/]<actor>/<actor>.tscn`, with a script already
-## attached to the root node (create it in Godot first, so `extends` is right).
-## Members starting with `_` are internal and never forwarded.
+## Convention: the scene is `<actor>.tscn` inside the actor's directory (see
+## DogSettings.actor_dir), with a script already attached to the root node (create
+## it in Godot first, so `extends` is right). Members starting with `_` are
+## internal and never forwarded.
 
 # Error messages
 const COULD_NOT_WRITE := "could not write %s"
@@ -24,9 +25,7 @@ const NOT_A_CHILD := (
 )
 const UNKNOWN_CLASS := "no class in the project matches '%s'."
 const REPEATED_COMPONENT := "more than one %s under %s: %s. A component class must appear once."
-const INVALID_ROOT := "'%s' is not a valid root."
-const SCENE_NOT_FOUND := "no %s.tscn found under %s."
-const MANY_SCENES := "more than one %s.tscn under %s: %s (use --folder)."
+const SCENE_NOT_FOUND := "no scene at %s (use --folder if the actor lives somewhere else)."
 const MEMBER_SKIPPED := "%s %s of %s was skipped: %s already provides it"
 
 
@@ -49,7 +48,7 @@ static func generate(options: Options) -> Result:
 ## Everything except the write. Returns a Result whose `source` is what generate
 ## writes to `path`, the host script.
 static func build(options: Options) -> Result:
-	var found := find_scene(options.actor, options.folder, options.root)
+	var found := find_scene(options.actor, options.folder)
 	var find_error: String = found["error"]
 	if not find_error.is_empty():
 		return _failure(find_error)
@@ -110,40 +109,18 @@ static func candidates(host: Node) -> Array:
 	return names
 
 
-## Finds the scene like the state generator finds the actor folder: the actor's
-## directory is `<root>/<folder>` (or `<root>/<actor>` without a folder), and the
-## scene is `<actor>.tscn` inside it. When it isn't exactly there, searches below
-## `<root>/<folder>` (or all of `<root>`) for `<actor>.tscn`. More than one match
-## is an error listing them. Returns {path, error}.
-static func find_scene(
-	actor: String,
-	folder := "",
-	root := DogSettings.actors_root(),
-) -> Dictionary:
-	var base := normalize_root(root)
-	var error := _scene_input_error(actor, folder, root, base)
+## Finds the scene of an actor: `<actor>.tscn` inside DogSettings.actor_dir(actor,
+## folder), at exactly that path (no searching below it). The actor, the folder and
+## the folder settings are checked first. Returns {path, error}.
+static func find_scene(actor: String, folder := "") -> Dictionary:
+	var error := _scene_input_error(actor, folder)
 	if not error.is_empty():
 		return _scene_error(error)
 
-	var actor_dir := folder if not folder.is_empty() else actor
-	var exact := "%s/%s/%s.tscn" % [base, actor_dir, actor]
-	if FileAccess.file_exists(exact):
-		return { "path": exact, "error": "" }
-
-	var search_in := base if folder.is_empty() else base + "/" + folder
-	return _search_scene(actor, search_in)
-
-
-## `scenes` -> `res://scenes`; trailing slash dropped; "" when it has `..` or is empty.
-static func normalize_root(root: String) -> String:
-	var path := root.strip_edges()
-	if path.is_empty() or ".." in path.replace("://", "/").split("/"):
-		return ""
-	while path.ends_with("/") and not path.ends_with("://"):
-		path = path.trim_suffix("/")
-	if not (path.begins_with("res://") or path.begins_with("user://")):
-		path = "res://" + path.trim_prefix("/")
-	return path
+	var scene := "%s/%s.tscn" % [DogSettings.actor_dir(actor, folder), actor]
+	if not FileAccess.file_exists(scene):
+		return _scene_error(SCENE_NOT_FOUND % scene)
+	return { "path": scene, "error": "" }
 
 
 ## Loads the scene and checks its root script. Returns {host, path, error}:
@@ -244,27 +221,15 @@ static func _plan_component(
 		blocks.append(DogScriptRender.func_block(var_name, method))
 
 
-## Why `actor`, `folder` or `root` can't be used, or "". Checked in that order:
-## actor, root, folder.
-static func _scene_input_error(actor: String, folder: String, root: String, base: String) -> String:
+## Why `actor` or `folder` can't be used, or "". Checked in that order, then the
+## folder settings the path is built from.
+static func _scene_input_error(actor: String, folder: String) -> String:
 	var error := DogNames.actor_error(actor)
-	if error.is_empty() and base.is_empty():
-		error = INVALID_ROOT % root
 	if error.is_empty():
 		error = DogNames.folder_error(folder)
+	if error.is_empty():
+		error = DogSettings.error()
 	return error
-
-
-## Searches `search_in` (recursively) for `<actor>.tscn`: exactly one match wins.
-static func _search_scene(actor: String, search_in: String) -> Dictionary:
-	var matches: Array = []
-	_find_files(search_in, actor + ".tscn", matches)
-	matches.sort()
-	if matches.is_empty():
-		return _scene_error(SCENE_NOT_FOUND % [actor, search_in])
-	if matches.size() > 1:
-		return _scene_error(MANY_SCENES % [actor, search_in, ", ".join(matches)])
-	return { "path": matches[0], "error": "" }
 
 
 ## {snake_case class name: [child nodes]} for the direct children of `host`, in
@@ -310,23 +275,6 @@ static func _claim(
 	return true
 
 
-static func _find_files(dir_path: String, file_name: String, found: Array) -> void:
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var entry := dir.get_next()
-	while not entry.is_empty():
-		if entry.begins_with("."):
-			pass
-		elif dir.current_is_dir():
-			_find_files(dir_path + "/" + entry, file_name, found)
-		elif entry == file_name:
-			found.append(dir_path + "/" + entry)
-		entry = dir.get_next()
-	dir.list_dir_end()
-
-
 static func _failure(message: String) -> Result:
 	var result := Result.new()
 	result.error = message
@@ -343,7 +291,6 @@ class Options:
 	var actor := ""
 	var components: Array = []
 	var folder := ""
-	var root := DogSettings.actors_root()
 	var mode := DogScriptMerge.Mode.ADD
 	var write := true
 

@@ -5,6 +5,24 @@ extends GutTest
 const Command := preload("res://addons/leash/cli/commands/dog_state_command.gd")
 const Generator := preload("res://addons/leash/cli/generators/dog_state_generator.gd")
 const ROOT := "user://never_written"
+const KEYS := [DogSettings.IMPLICIT_FOLDER, DogSettings.EXPLICIT_FOLDER]
+
+var _saved := {}
+
+
+func before_each() -> void:
+	_saved.clear()
+	for key in KEYS:
+		if ProjectSettings.has_setting(key):
+			_saved[key] = ProjectSettings.get_setting(key)
+
+
+func after_each() -> void:
+	for key in KEYS:
+		if _saved.has(key):
+			ProjectSettings.set_setting(key, _saved[key])
+		elif ProjectSettings.has_setting(key):
+			ProjectSettings.clear(key)
 
 
 func _request(args: PackedStringArray) -> DogStateCommand.Request:
@@ -49,6 +67,13 @@ func test_only_the_actor_states_folder_inside_the_root_can_be_deleted() -> void:
 	assert_false(Generator.is_safe_states_dir(ROOT + "_evil/slime/states", ROOT))
 
 
+func test_the_root_defaults_to_the_project() -> void:
+	assert_true(Generator.is_safe_states_dir("res://scenes/slime/states"))
+	assert_true(Generator.is_safe_states_dir("res://slime/states"))
+	assert_false(Generator.is_safe_states_dir("res://states"))
+	assert_false(Generator.is_safe_states_dir("user://scenes/slime/states"))
+
+
 # --- names and paths ---------------------------------------------------------
 
 
@@ -63,19 +88,17 @@ func test_state_class_of_the_actor_base_and_of_a_state() -> void:
 	assert_eq(Generator.state_class("robot_2d", "idle"), "Robot2DIdleState")
 
 
-func test_output_dir_is_the_actor_or_the_folder_below_the_root() -> void:
-	assert_eq(Generator.output_dir("", "player", "res://r"), "res://r/player/states")
-	assert_eq(
-		Generator.output_dir("enemies/slime", "slime", "res://r"),
-		"res://r/enemies/slime/states",
-	)
+func test_output_dir_without_a_folder_is_the_actor_under_the_implicit_root() -> void:
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "game/actors")
+	assert_eq(Generator.output_dir("", "player"), "res://game/actors/player/states")
 
 
-func test_scene_path_is_next_to_the_states_folder() -> void:
-	assert_eq(Generator.scene_path("", "player", "res://r"), "res://r/player/player.tscn")
+func test_output_dir_with_a_folder_starts_at_the_explicit_root() -> void:
+	ProjectSettings.set_setting(DogSettings.IMPLICIT_FOLDER, "somewhere/else")
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "game")
 	assert_eq(
-		Generator.scene_path("enemies/slime", "slime", "res://r"),
-		"res://r/enemies/slime/slime.tscn",
+		Generator.output_dir("actors/enemies/slime", "slime"),
+		"res://game/actors/enemies/slime/states",
 	)
 
 
