@@ -355,20 +355,13 @@ static func _host_error(
 
 ## Warns when the host script doesn't declare `class_name <host_class>`.
 static func _check_host_class(result: Result, host_class: String) -> void:
-	var found_class := _declared_class_name(_read_text(result.host_path))
+	var found_class := DogScriptHeader.declared_class_name(_read_text(result.host_path))
 	if found_class == host_class:
 		return
 	var warning := HOST_CLASS_MISMATCH % [host_class, result.host_path.get_file(), host_class]
 	if not found_class.is_empty():
 		warning += HOST_CLASS_FOUND % found_class
 	result.warnings.append(warning)
-
-
-## The `class_name` written in `source`, or "".
-static func _declared_class_name(source: String) -> String:
-	var re := RegEx.create_from_string("(?m)^class_name\\s+(\\w+)")
-	var found := re.search(source)
-	return found.get_string(1) if found != null else ""
 
 
 static func file_name(actor: String, node: String = "") -> String:
