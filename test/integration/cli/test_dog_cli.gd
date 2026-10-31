@@ -4,7 +4,7 @@ extends GutTest
 ## checked apart: running both in one line is the job of `generate`.
 
 ## Every command the addon ships. Update it when a command is added or removed.
-const COMMAND_NAMES := ["bind", "help", "init", "state"]
+const COMMAND_NAMES := ["actor", "bind", "help", "init", "state"]
 const COMMANDS := "res://addons/leash/cli/commands"
 const ROOT_DIR := "scenes/tmp/dog_cli_e2e"
 const ROOT := "res://" + ROOT_DIR
@@ -125,6 +125,13 @@ func test_bind_line_fills_the_host_with_the_component_api() -> void:
 	assert_string_contains(host, "@onready var _fixture_jump_2d: FixtureJump2D = $Jump")
 	assert_string_contains(host, "func jump(")
 	assert_has(_lines, "updated %s" % ROOT.path_join("actor/actor.gd"))
+
+
+func test_actor_line_creates_the_scene_and_the_script() -> void:
+	assert_eq(_cli.execute("leash actor hero"), OK)
+	var script := ROOT.path_join("hero/hero.gd")
+	assert_eq(_text(script), "class_name Hero\nextends CharacterBody2D\n")
+	assert_eq(_lines, ["created %s" % ROOT.path_join("hero/hero.tscn"), "created %s" % script])
 
 
 func test_a_bad_line_prints_the_error_and_writes_nothing() -> void:
