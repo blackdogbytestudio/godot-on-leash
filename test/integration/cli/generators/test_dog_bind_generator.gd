@@ -277,11 +277,17 @@ func test_build_naming_a_machine_is_an_error_and_writes_nothing() -> void:
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
-func test_build_only_forwards_the_listed_components() -> void:
+func test_build_binds_the_whole_scene_whatever_is_listed() -> void:
 	var r := DogBindGenerator.build(_options("actor", ["fixture_dash"]))
 	assert_eq(r.error, "")
 	assert_string_contains(r.source, "func dash() -> void:")
-	assert_false(r.source.contains("jump"))
+	assert_string_contains(r.source, "func jump() -> void:")
+
+
+func test_build_adds_a_listed_component_the_scene_does_not_have() -> void:
+	var r := DogBindGenerator.build(_options("actor", ["fixture_dash"]))
+	assert_eq(r.error, "")
+	assert_eq(r.scene_source, r.scene_original)
 
 
 func test_build_error_when_the_scene_is_missing() -> void:

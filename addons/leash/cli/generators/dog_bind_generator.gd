@@ -6,11 +6,10 @@ extends RefCounted
 ## `dog_jump_2d` -> DogJump2D): one `@onready` reference per component, a forwarding
 ## func per public method, and a re-declared + connected signal per public signal.
 ##
-## Without a list it binds every direct child that has a class and is not a state
-## machine (automatic). With a list it binds only those (explicit); naming a machine
-## is an error, the state command owns machines. A listed class of the project that
-## is not a child yet is added to the scene as a node named after the class (only in
-## explicit mode: the automatic one never adds nodes).
+## It always binds every direct child of the root that has a class and is not a state
+## machine. The classes listed in `components` are added to the scene first when it
+## does not have them yet (only classes of the project; naming a machine is an error,
+## the state command owns machines).
 ##
 ## Convention: the scene is `<actor>.tscn` inside the actor's directory (see
 ## DogSettings.actor_dir), with a script already attached to the root node (create
@@ -60,6 +59,8 @@ static func generate(options: Options) -> Result:
 	return result
 
 
+## Everything except the writes. Returns a Result whose `scene_source` and `source`
+## are what generate writes to `scene` and to `path`, the host script.
 static func build(options: Options) -> Result:
 	var found := find_scene(options.actor, options.folder)
 	var find_error: String = found["error"]
@@ -88,22 +89,20 @@ static func build(options: Options) -> Result:
 	return result
 
 
-## Everything build does with the live host: picks the components (automatic mode)
-## or adds the missing ones (explicit mode), then plans their blocks. Returns
+## Everything build does with the live host: adds the listed components the scene
+## does not have, then plans the blocks of every component in the scene. Returns
 ## {planned, added, error}.
 static func _plan_components(host: Node, listed: Array, scene_path: String) -> Dictionary:
-	var components := listed
 	var warnings: Array = []
 	var added := { "source": "", "report": [], "error": "" }
-	if components.is_empty():
-		components = _bindable(host)
-		if components.is_empty():
-			warnings.append(NOTHING_TO_BIND % scene_path)
-	else:
-		added = _add_missing(host, components, scene_path)
+	if not listed.is_empty():
+		added = _add_missing(host, listed, scene_path)
 		if not String(added["error"]).is_empty():
 			return { "error": added["error"] }
 
+	var components := _bindable(host)
+	if components.is_empty():
+		warnings.append(NOTHING_TO_BIND % scene_path)
 	var planned := plan(host, components)
 	if not String(planned["error"]).is_empty():
 		return { "error": planned["error"] }
@@ -171,13 +170,13 @@ static func _add_missing(host: Node, components: Array, scene_path: String) -> D
 	var report: Array[String] = []
 	for component in components:
 		var component_name := String(component)
+		var script := class_script(component_name)
+		if script != null and is_machine(script):
+			return _added_error(MACHINE_COMPONENT % component_name)
 		if children.has(component_name):
 			continue
-		var script := class_script(component_name)
 		if script == null:
 			return _added_error(UNKNOWN_CLASS % component_name)
-		if is_machine(script):
-			return _added_error(MACHINE_COMPONENT % component_name)
 		var node := ClassDB.instantiate(script.get_instance_base_type()) as Node
 		if node == null:
 			return _added_error(NOT_A_NODE % [component_name, scene_path.get_file()])
@@ -423,7 +422,8 @@ static func _scene_error(message: String) -> Dictionary:
 
 
 ## What to generate. `components` are snake_case class names (prefix / suffix
-## already applied); with `write` false, build runs but nothing is written.
+## already applied) to add to the scene when it does not have them; everything in the
+## scene is bound either way. With `write` false, build runs but nothing is written.
 class Options:
 	var actor := ""
 	var components: Array = []
