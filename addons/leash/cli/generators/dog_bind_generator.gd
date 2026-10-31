@@ -190,19 +190,19 @@ static func _bindable(host: Node) -> Array:
 	var names := []
 	var children := _children_by_class(host)
 	for key in children:
-		if not _is_machine(children[key][0].get_script() as Script):
+		if not is_machine(children[key][0].get_script() as Script):
 			names.append(key)
 	return names
 
 
 ## Why `component_name` can't be planned for `host`, or "".
 static func _component_error(host: Node, children: Dictionary, component_name: String) -> String:
-	var class_script := _class_script(component_name)
-	if class_script != null and _is_machine(class_script):
+	var found_script := class_script(component_name)
+	if found_script != null and is_machine(found_script):
 		return MACHINE_COMPONENT % component_name
 
 	if not children.has(component_name):
-		if class_script == null:
+		if found_script == null:
 			return UNKNOWN_CLASS % component_name
 		var available := ", ".join(candidates(host))
 		return NOT_A_CHILD % [component_name, host.name, available]
@@ -275,15 +275,28 @@ static func _children_by_class(host: Node) -> Dictionary:
 
 
 ## The script of the project class named `snake_name`, or null when none matches.
-static func _class_script(snake_name: String) -> Script:
+static func class_script(snake_name: String) -> Script:
 	for entry in ProjectSettings.get_global_class_list():
 		if String(entry["class"]).to_snake_case() == snake_name:
 			return load(String(entry["path"])) as Script
 	return null
 
 
+## Adds a direct child of the root to the scene text `source` for the class of
+## `script`: named and typed after it, with the script (and its uid, when it has one)
+## attached. Returns DogSceneEdit.add_node's {source, error}.
+static func add_class_node(source: String, script: Script) -> Dictionary:
+	var path := script.resource_path
+	var uid := ""
+	var uid_id := ResourceLoader.get_resource_uid(path)
+	if uid_id != ResourceUID.INVALID_ID:
+		uid = ResourceUID.id_to_text(uid_id)
+	var node_name := String(script.get_global_name())
+	return DogSceneEdit.add_node(source, node_name, script.get_instance_base_type(), path, uid)
+
+
 ## Whether `script` is DogMachine or extends it, directly or not.
-static func _is_machine(script: Script) -> bool:
+static func is_machine(script: Script) -> bool:
 	var current := script
 	while current != null:
 		if current.get_global_name() == &"DogMachine":

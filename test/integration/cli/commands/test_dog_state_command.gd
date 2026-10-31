@@ -173,3 +173,11 @@ func test_run_invalid_folder_setting_fails_naming_it_and_writes_nothing() -> voi
 	assert_true(result[1][0].begins_with("Dog: state: "))
 	assert_string_contains(result[1][0], DogSettings.EXPLICIT_FOLDER)
 	assert_false(DirAccess.dir_exists_absolute(_states("player")))
+
+
+func test_run_prints_the_machine_node_it_adds_and_the_updated_scene() -> void:
+	var scene := _scene("enemy", {})
+	var result := _run(PackedStringArray(["enemy", "hpda", "alive"]))
+	assert_eq(result[0], OK)
+	assert_has(result[1], "add node DogHPDA")
+	assert_has(result[1], "updated %s" % scene)

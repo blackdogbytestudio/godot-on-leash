@@ -2,7 +2,9 @@
 class_name DogStateCommand
 extends DogCommand
 ## state <actor> <type> <tree...> [--folder f] [--extends State] [--initial state] [-f | -u]
-## The states' host is always the actor's class (actor in PascalCase).
+## The states' host is always the actor's class (actor in PascalCase). When the
+## root of <actor>.tscn has no machine of <type>, a node named after the machine
+## class (DogHPDA, ...) is added to the scene; a machine of another type is an error.
 ## --folder is the actor's directory, written in full from the explicit_folder
 ## setting (--folder characters/enemies/slime); without it the actor is looked for
 ## under the implicit_folder setting. The states go in its `states` folder.
@@ -22,7 +24,7 @@ func command_name() -> String:
 
 
 func description() -> String:
-	return "Generate actor state scripts."
+	return "Generate actor state scripts, adding the machine node when it is missing."
 
 
 func usage() -> String:
@@ -53,6 +55,8 @@ func run(args: PackedStringArray) -> Error:
 		print_line("kept %s" % path)
 	for line in result.report:
 		print_line(line)
+	if result.scene_source != result.scene_original:
+		print_line("updated %s" % result.scene)
 	if result.host_source == result.host_original:
 		print_line("kept %s" % result.host_path)
 	else:

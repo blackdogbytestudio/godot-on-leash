@@ -314,17 +314,20 @@ func test_root_without_script_is_an_error() -> void:
 	_fails_without_writing(PackedStringArray(["enemy", "hpda", "alive"]), ["no script"])
 
 
-func test_missing_machine_lists_the_children_with_a_class() -> void:
+func test_a_machine_of_another_type_is_an_error_naming_it() -> void:
 	_scene("enemy", { "Brain": "DogFSM" })
 	_fails_without_writing(
 		PackedStringArray(["enemy", "hpda", "alive"]),
-		["no DogHPDA child in enemy.tscn", "children with a class: Brain (DogFSM)"]
+		["enemy.tscn already has a machine of another type: Brain (DogFSM)", "needs a DogHPDA"]
 	)
 
 
 func test_machine_type_is_never_switched() -> void:
 	_scene("enemy", { "DogHPDA": "DogHPDA" })
-	_fails_without_writing(PackedStringArray(["enemy", "pda", "alive"]), ["no DogPDA child"])
+	_fails_without_writing(
+		PackedStringArray(["enemy", "pda", "alive"]),
+		["another type: DogHPDA (DogHPDA)", "needs a DogPDA"],
+	)
 
 
 func test_two_machines_of_the_type_is_an_error_listing_them() -> void:
@@ -517,7 +520,7 @@ func test_force_deletes_nothing_when_validation_fails() -> void:
 	_scene("enemy", { "Brain": "DogFSM" })
 	var before := _files(ROOT)
 	var result := _generate(PackedStringArray(["enemy", "hpda", "-f", "alive"]))
-	assert_string_contains(result.error, "no DogHPDA child")
+	assert_string_contains(result.error, "machine of another type")
 	assert_eq(_files(ROOT), before)
 
 
