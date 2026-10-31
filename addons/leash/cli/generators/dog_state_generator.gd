@@ -11,8 +11,8 @@ extends RefCounted
 ## DogSettings.actor_dir), with a saved .gd script on its root. Its machine is the
 ## direct child whose script is the machine class of `type` (see FAMILIES); when the
 ## root has none, a node named after the class is added to the scene. A machine of
-## another type, or two of this one, is an error. Everything is checked before any
-## file is written.
+## another type, even next to one of this type, or two of this one, is an error (an
+## actor has one machine). Everything is checked before any file is written.
 ##
 ## FORCE puts things back to factory: the whole `states/` folder of the actor is
 ## deleted (only that computed folder, see is_safe_states_dir), the states are
@@ -46,7 +46,10 @@ const UNSAFE_DELETE := "refusing to delete '%s': not an actor states folder insi
 const HOST_MERGE_FAILED := "%s: %s."
 const NO_HOST_SCRIPT := "the root node of %s has no script: attach one in Godot first."
 const BUILT_IN_SCRIPT := "the script of %s is built into the scene: save it as a .gd file first."
-const OTHER_MACHINE := "%s already has a machine of another type: %s (this type needs a %s)."
+const OTHER_MACHINE := (
+	"%s already has a machine of another type: %s (this type needs a %s)."
+	+ " An actor has one machine: remove that node from the scene and run again."
+)
 const NO_MACHINE_CLASS := "no class %s in the project."
 const SCENE_EDIT_FAILED := "%s: %s"
 const MANY_MACHINES := "more than one %s child in %s: %s."
@@ -343,7 +346,7 @@ static func _host_error(
 
 	var machines: Array = children["machines"]
 	var others: Array = children["others"]
-	if machines.is_empty() and not others.is_empty():
+	if not others.is_empty():
 		return OTHER_MACHINE % [scene_file, ", ".join(others), machine_class]
 	if machines.size() > 1:
 		return MANY_MACHINES % [machine_class, scene_file, ", ".join(machines)]

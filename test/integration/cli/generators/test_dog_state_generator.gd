@@ -322,6 +322,14 @@ func test_a_machine_of_another_type_is_an_error_naming_it() -> void:
 	)
 
 
+func test_a_machine_of_another_type_next_to_the_right_one_is_an_error() -> void:
+	_scene("enemy", { "Brain": "DogHPDA", "Spare": "DogFSM" })
+	_fails_without_writing(
+		PackedStringArray(["enemy", "hpda", "alive"]),
+		["already has a machine of another type: Spare (DogFSM)", "remove that node"],
+	)
+
+
 func test_machine_type_is_never_switched() -> void:
 	_scene("enemy", { "DogHPDA": "DogHPDA" })
 	_fails_without_writing(
@@ -343,6 +351,33 @@ func test_machine_node_name_does_not_matter() -> void:
 	var result := _generate(PackedStringArray(["enemy", "hpda", "alive"]))
 	assert_eq(result.error, "")
 	assert_eq(result.machine_node, "Brain")
+
+
+func test_a_scene_without_a_machine_gets_one() -> void:
+	_scene("enemy", {})
+	var result := _generate(PackedStringArray(["enemy", "hpda", "alive"]))
+	assert_eq(result.error, "")
+	assert_eq(result.machine_node, "DogHPDA")
+	assert_has(result.report, "add node DogHPDA")
+	var scene := _text(ROOT.path_join("enemy").path_join("enemy.tscn"))
+	assert_string_contains(scene, "[node name=\"DogHPDA\" type=\"Node\" parent=\".\"]")
+	assert_string_contains(_host(), "@onready var _dog_hpda: DogHPDA = $DogHPDA\n")
+
+
+func test_a_scene_that_has_the_machine_is_not_rewritten() -> void:
+	var scene_path := _scene("enemy", { "Brain": "DogHPDA" })
+	var before := _text(scene_path)
+	var result := _generate(PackedStringArray(["enemy", "hpda", "alive"]))
+	assert_eq(result.error, "")
+	assert_eq(_text(scene_path), before)
+
+
+func test_force_leaves_the_scene_alone() -> void:
+	var scene_path := _scene("enemy", {})
+	_generate(PackedStringArray(["enemy", "hpda", "alive"]))
+	var before := _text(scene_path)
+	_generate(PackedStringArray(["enemy", "hpda", "-f", "alive"]))
+	assert_eq(_text(scene_path), before)
 
 
 func test_host_without_class_name_is_only_a_warning() -> void:
