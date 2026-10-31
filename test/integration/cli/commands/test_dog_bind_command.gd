@@ -123,11 +123,20 @@ func test_run_with_prefix_and_suffix_finds_the_component() -> void:
 	assert_has(_lines, "add func jump")
 
 
-func test_run_component_that_is_not_a_child_fails_early_and_writes_nothing() -> void:
+func test_run_component_that_is_not_a_child_adds_it_and_prints_the_scene() -> void:
 	var code := _command.run(_args("actor --no-fix fixture_dash"))
+	assert_eq(code, OK)
+	assert_eq(_lines[0], "add node FixtureDash")
+	assert_has(_lines, "updated %s/actor/actor.tscn" % TMP)
+	assert_has(_lines, "updated %s/actor/actor.gd" % TMP)
+
+
+func test_run_unknown_component_fails_early_and_writes_nothing() -> void:
+	var code := _command.run(_args("actor --no-fix nothing_like_this"))
 	assert_eq(code, FAILED)
-	assert_string_contains(_lines[0], "not a child")
+	assert_string_contains(_lines[0], "no class in the project")
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
+	assert_eq(_read(TMP + "/actor/actor.tscn"), ACTOR_TSCN)
 
 
 func test_run_full_name_without_no_fix_gets_the_settings_and_fails_early() -> void:

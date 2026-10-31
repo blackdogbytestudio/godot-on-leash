@@ -8,6 +8,8 @@ extends DogCommand
 ## Godot first. Without a list it binds every child that has a class and is not a
 ## state machine. With a list it binds only those: snake_case class names, with the
 ## prefix and suffix settings added around each one (dog, 2d: jump -> dog_jump_2d).
+## A listed class of the project that is not a child yet is added to the scene as a
+## node named after the class; the automatic mode never adds nodes.
 ## --prefix / --suffix replace a setting (empty, as in --prefix=, drops that side)
 ## and --no-fix drops both, for full names (--no-fix dog_jump_2d); all three need
 ## a list to apply to.
@@ -28,7 +30,7 @@ func command_name() -> String:
 
 
 func description() -> String:
-	return "Fill an actor's script with an API for its components."
+	return "Fill an actor's script with an API for its components, adding missing ones."
 
 
 func usage() -> String:
@@ -55,6 +57,8 @@ func run(args: PackedStringArray) -> Error:
 		print_line(line)
 	for warning in result.warnings:
 		print_line("warning: %s" % warning)
+	if result.scene_source != result.scene_original:
+		print_line("updated %s" % result.scene)
 	if result.source == result.original:
 		print_line("kept %s" % result.path)
 	else:

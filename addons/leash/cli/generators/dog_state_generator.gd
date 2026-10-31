@@ -60,39 +60,60 @@ static func generate(options: Options) -> Result:
 	if not result.error.is_empty():
 		return result
 
-	if result.scene_source != result.scene_original:
-		var scene_error := _write_text(result.scene, result.scene_source)
-		if scene_error != OK:
-			result.error = COULD_NOT_WRITE % [result.scene, scene_error]
-			return result
+	result.error = _write_all(result, options)
+	if result.error.is_empty():
+		DogEditor.refresh(_written_paths(result))
+	return result
 
-	if not result.delete_dir.is_empty():
-		var remove_error := _remove_dir(result.delete_dir)
-		if remove_error != OK:
-			result.error = COULD_NOT_DELETE % [result.delete_dir, remove_error]
-			return result
 
-	if not result.files.is_empty():
-		var dir := output_dir(options.folder, options.actor)
-		var make_error := DirAccess.make_dir_recursive_absolute(dir)
-		if make_error != OK:
-			result.error = COULD_NOT_CREATE % [dir, make_error]
-			return result
+## Writes what build planned, in order: the scene, the states folder (deleted
+## first with FORCE), the state files and the host script. Stops at the first
+## failure. Returns an error, or "".
+static func _write_all(result: Result, options: Options) -> String:
+	var error := _write_scene(result)
+	if error.is_empty():
+		error = _remove_states(result)
+	if error.is_empty():
+		error = _write_states(result, options)
+	if error.is_empty():
+		error = _write_host(result)
+	return error
+
+
+static func _write_scene(result: Result) -> String:
+	if result.scene_source == result.scene_original:
+		return ""
+	var error := _write_text(result.scene, result.scene_source)
+	return COULD_NOT_WRITE % [result.scene, error] if error != OK else ""
+
+
+static func _remove_states(result: Result) -> String:
+	if result.delete_dir.is_empty():
+		return ""
+	var error := _remove_dir(result.delete_dir)
+	return COULD_NOT_DELETE % [result.delete_dir, error] if error != OK else ""
+
+
+static func _write_states(result: Result, options: Options) -> String:
+	if result.files.is_empty():
+		return ""
+	var dir := output_dir(options.folder, options.actor)
+	var make_error := DirAccess.make_dir_recursive_absolute(dir)
+	if make_error != OK:
+		return COULD_NOT_CREATE % [dir, make_error]
 	for path in result.files:
 		var write_error := _write_text(path, result.files[path])
 		if write_error != OK:
-			result.error = COULD_NOT_WRITE % [path, write_error]
-			return result
+			return COULD_NOT_WRITE % [path, write_error]
 		result.written.append(path)
+	return ""
 
-	if result.host_source != result.host_original:
-		var host_error := _write_text(result.host_path, result.host_source)
-		if host_error != OK:
-			result.error = COULD_NOT_WRITE % [result.host_path, host_error]
-			return result
 
-	DogEditor.refresh(_written_paths(result))
-	return result
+static func _write_host(result: Result) -> String:
+	if result.host_source == result.host_original:
+		return ""
+	var error := _write_text(result.host_path, result.host_source)
+	return COULD_NOT_WRITE % [result.host_path, error] if error != OK else ""
 
 
 ## Everything except writing: checks the scene (adding the machine node when it is
@@ -257,14 +278,19 @@ static func _inspect_scene(result: Result, options: Options, machine_class: Stri
 
 	result.scene = path
 	result.host_path = host_script.resource_path
-	var machines: Array = children["machines"]
-	if machines.is_empty():
-		result.error = _plan_machine_node(result, machine_class)
-		if not result.error.is_empty():
-			return
-	else:
-		result.machine_node = machines[0]
+	result.error = _pick_machine(result, children["machines"], machine_class)
+	if not result.error.is_empty():
+		return
 	_check_host_class(result, _pascal(options.actor))
+
+
+## The machine node of the host: the existing one, or a new one planned in the scene
+## when there is none. Returns an error, or "".
+static func _pick_machine(result: Result, machines: Array, machine_class: String) -> String:
+	if machines.is_empty():
+		return _plan_machine_node(result, machine_class)
+	result.machine_node = machines[0]
+	return ""
 
 
 ## Adds a `machine_class` node to the text of result.scene: fills scene_original,
