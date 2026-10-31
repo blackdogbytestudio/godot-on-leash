@@ -165,9 +165,12 @@ every state extends the actor base.
 
 The actor's scene must exist first: `<actor>.tscn` in the actor's directory
 (see [Where actors live](#where-actors-live)), with a saved `.gd` script on
-its root and one direct child whose script is the machine of the type
-(`fsm` → `DogFSM`, `pda` → `DogPDA`, `hfsm` → `DogHFSM`, `hpda` →
-`DogHPDA`; the node name doesn't matter). Otherwise nothing is written.
+its root. The machine is the direct child whose script is the machine of the
+type (`fsm` → `DogFSM`, `pda` → `DogPDA`, `hfsm` → `DogHFSM`, `hpda` →
+`DogHPDA`; the node name doesn't matter). When the root has none, the
+command adds one to the scene, named after the class (`add node DogHPDA` in
+the report); a machine of another type, or two of this one, is an error and
+nothing is written. `-f` never touches the scene.
 
 The states go in the `states/` folder of the actor's directory:
 

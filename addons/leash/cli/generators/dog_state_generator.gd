@@ -8,13 +8,16 @@ extends RefCounted
 ## parent state's class. Existing files are kept unless force is set.
 ##
 ## The actor's scene is required: `<actor>.tscn` inside the actor's directory (see
-## DogSettings.actor_dir), with a saved .gd script on its root and exactly one
-## direct child whose script is the machine class of `type` (see FAMILIES).
-## Everything is checked before any file is written.
+## DogSettings.actor_dir), with a saved .gd script on its root. Its machine is the
+## direct child whose script is the machine class of `type` (see FAMILIES); when the
+## root has none, a node named after the class is added to the scene. A machine of
+## another type, or two of this one, is an error. Everything is checked before any
+## file is written.
 ##
 ## FORCE puts things back to factory: the whole `states/` folder of the actor is
 ## deleted (only that computed folder, see is_safe_states_dir), the states are
-## recreated and the host script is rewritten below its header.
+## recreated and the host script is rewritten below its header. The scene is left
+## as it is.
 
 const STATES_DIR := "states"
 const TEMPLATE_ROOTS: PackedStringArray = [
@@ -43,7 +46,9 @@ const UNSAFE_DELETE := "refusing to delete '%s': not an actor states folder insi
 const HOST_MERGE_FAILED := "%s: %s."
 const NO_HOST_SCRIPT := "the root node of %s has no script: attach one in Godot first."
 const BUILT_IN_SCRIPT := "the script of %s is built into the scene: save it as a .gd file first."
-const NO_MACHINE := "no %s child in %s. children with a class: %s."
+const OTHER_MACHINE := "%s already has a machine of another type: %s (this type needs a %s)."
+const NO_MACHINE_CLASS := "no class %s in the project."
+const SCENE_EDIT_FAILED := "%s: %s"
 const MANY_MACHINES := "more than one %s child in %s: %s."
 const HOST_CLASS_MISMATCH := "states cast host as %s, but %s has no class_name %s"
 const HOST_CLASS_FOUND := " (found: %s)"
@@ -54,6 +59,12 @@ static func generate(options: Options) -> Result:
 	var result := build(options)
 	if not result.error.is_empty():
 		return result
+
+	if result.scene_source != result.scene_original:
+		var scene_error := _write_text(result.scene, result.scene_source)
+		if scene_error != OK:
+			result.error = COULD_NOT_WRITE % [result.scene, scene_error]
+			return result
 
 	if not result.delete_dir.is_empty():
 		var remove_error := _remove_dir(result.delete_dir)
@@ -84,10 +95,10 @@ static func generate(options: Options) -> Result:
 	return result
 
 
-## Everything except writing: checks the scene, picks the initial state, renders
-## the state files that are missing (all of them with FORCE) and merges the
-## machine plumbing into the host script. Returns a Result whose `files` and
-## `host_source` are what generate writes.
+## Everything except writing: checks the scene (adding the machine node when it is
+## missing), picks the initial state, renders the state files that are missing (all
+## of them with FORCE) and merges the machine plumbing into the host script. Returns
+## a Result whose `scene_source`, `files` and `host_source` are what generate writes.
 static func build(options: Options) -> Result:
 	var result := Result.new()
 	var family: Dictionary = FAMILIES[options.type]
@@ -216,7 +227,8 @@ static func output_dir(folder: String, actor: String) -> String:
 	return DogSettings.actor_dir(actor, folder).path_join(STATES_DIR)
 
 
-## Fills result.scene, host_path, machine_node and warnings, or result.error.
+## Fills result.scene, host_path, machine_node, warnings and, when the machine is
+## missing, scene_source and report; or result.error.
 static func _inspect_scene(result: Result, options: Options, machine_class: String) -> void:
 	var found := DogBindGenerator.find_scene(options.actor, options.folder)
 	var find_error: String = found["error"]
@@ -245,24 +257,49 @@ static func _inspect_scene(result: Result, options: Options, machine_class: Stri
 
 	result.scene = path
 	result.host_path = host_script.resource_path
-	result.machine_node = children["machines"][0]
+	var machines: Array = children["machines"]
+	if machines.is_empty():
+		result.error = _plan_machine_node(result, machine_class)
+		if not result.error.is_empty():
+			return
+	else:
+		result.machine_node = machines[0]
 	_check_host_class(result, _pascal(options.actor))
 
 
-## The direct children of `host` that have a class_name: {"machines": names of the
-## ones whose class is `machine_class`, "with_class": "Name (Class)" of all of them}.
+## Adds a `machine_class` node to the text of result.scene: fills scene_original,
+## scene_source, machine_node and the report line. Returns an error, or "".
+static func _plan_machine_node(result: Result, machine_class: String) -> String:
+	var script := DogBindGenerator.class_script(machine_class.to_snake_case())
+	if script == null:
+		return NO_MACHINE_CLASS % machine_class
+	result.scene_original = _read_text(result.scene)
+	var edit := DogBindGenerator.add_class_node(result.scene_original, script)
+	var edit_error: String = edit["error"]
+	if not edit_error.is_empty():
+		return SCENE_EDIT_FAILED % [result.scene.get_file(), edit_error]
+	result.scene_source = edit["source"]
+	result.machine_node = machine_class
+	result.report.append("add node %s" % machine_class)
+	return ""
+
+
+## The machines among the direct children of `host`: {"machines": names of the
+## ones whose class is `machine_class`, "others": "Name (Class)" of the machines of
+## any other class}.
 static func _classed_children(host: Node, machine_class: String) -> Dictionary:
 	var machines: Array[String] = []
-	var with_class: Array[String] = []
+	var others: Array[String] = []
 	for child in host.get_children():
 		var script := child.get_script() as Script
 		var klass := String(script.get_global_name()) if script != null else ""
 		if klass.is_empty():
 			continue
-		with_class.append("%s (%s)" % [child.name, klass])
 		if klass == machine_class:
 			machines.append(child.name)
-	return { "machines": machines, "with_class": with_class }
+		elif DogBindGenerator.is_machine(script):
+			others.append("%s (%s)" % [child.name, klass])
+	return { "machines": machines, "others": others }
 
 
 ## Why the scene's root can't host the states, or "".
@@ -279,10 +316,9 @@ static func _host_error(
 		return BUILT_IN_SCRIPT % scene_file
 
 	var machines: Array = children["machines"]
-	if machines.is_empty():
-		var with_class: Array = children["with_class"]
-		var listed := ", ".join(with_class) if not with_class.is_empty() else "none"
-		return NO_MACHINE % [machine_class, scene_file, listed]
+	var others: Array = children["others"]
+	if machines.is_empty() and not others.is_empty():
+		return OTHER_MACHINE % [scene_file, ", ".join(others), machine_class]
 	if machines.size() > 1:
 		return MANY_MACHINES % [machine_class, scene_file, ", ".join(machines)]
 	return ""
@@ -425,7 +461,7 @@ static func _merge_host(
 		result.files.clear()
 		return HOST_MERGE_FAILED % [result.host_path.get_file(), merge_error]
 	result.host_source = merged["source"]
-	result.report.assign(dropped_files + Array(merged["report"]))
+	result.report.append_array(dropped_files + Array(merged["report"]))
 	return ""
 
 
@@ -478,9 +514,11 @@ static func _write_text(path: String, text: String) -> Error:
 	return OK
 
 
-## The state files written and, when it changed, the host script.
+## The state files written and, when they changed, the scene and the host script.
 static func _written_paths(result: Result) -> PackedStringArray:
 	var paths := PackedStringArray(result.written)
+	if result.scene_source != result.scene_original:
+		paths.append(result.scene)
 	if result.host_source != result.host_original:
 		paths.append(result.host_path)
 	return paths
@@ -502,7 +540,8 @@ class Result:
 	var written: Array[String] = []
 	var skipped: Array[String] = []
 	var warnings: Array[String] = []
-	## What the merge did to the host script ("add var alive_state", ...).
+	## What build plans for the scene and the host script ("add node DogHPDA",
+	## "add var alive_state", ...).
 	var report: Array[String] = []
 	var error := ""
 	var scene := ""
@@ -515,3 +554,7 @@ class Result:
 	var delete_dir := ""
 	var host_original := ""
 	var host_source := ""
+	## The scene as read, and with the machine node added; both empty when the scene
+	## already has its machine.
+	var scene_original := ""
+	var scene_source := ""
