@@ -8,7 +8,9 @@ extends RefCounted
 ##
 ## Without a list it binds every direct child that has a class and is not a state
 ## machine (automatic). With a list it binds only those (explicit); naming a machine
-## is an error, the state command owns machines.
+## is an error, the state command owns machines. A listed class of the project that
+## is not a child yet is added to the scene as a node named after the class (only in
+## explicit mode: the automatic one never adds nodes).
 ##
 ## Convention: the scene is `<actor>.tscn` inside the actor's directory (see
 ## DogSettings.actor_dir), with a script already attached to the root node (create
@@ -28,30 +30,36 @@ const NOT_A_CHILD := (
 	+ " (components in the scene: %s)."
 )
 const UNKNOWN_CLASS := "no class in the project matches '%s'."
+const NOT_A_NODE := "%s is not a node class, so it can't be added to %s."
+const SCENE_EDIT_FAILED := "%s: %s"
 const REPEATED_COMPONENT := "more than one %s under %s: %s. A component class must appear once."
 const SCENE_NOT_FOUND := "no scene at %s (use --folder if the actor lives somewhere else)."
 const NOTHING_TO_BIND := "no components in %s: nothing to bind."
 const MEMBER_SKIPPED := "%s %s of %s was skipped: %s already provides it"
 
 
-## build + write. Nothing is written on error, when `options.write` is false, or
-## when the merged source equals the file.
+## build + write: the scene first, then the host script, each one only when it
+## changed. Nothing is written on error or when `options.write` is false.
 static func generate(options: Options) -> Result:
 	var result := build(options)
-	if not result.error.is_empty() or not options.write or result.source == result.original:
+	if not result.error.is_empty() or not options.write:
 		return result
-	var file := FileAccess.open(result.path, FileAccess.WRITE)
-	if file == null:
-		result.error = COULD_NOT_WRITE % result.path
-		return result
-	file.store_string(result.source)
-	file.close()
-	DogEditor.refresh(PackedStringArray([result.path]))
+	var written := PackedStringArray()
+	if result.scene_source != result.scene_original:
+		if not _write_text(result.scene, result.scene_source):
+			result.error = COULD_NOT_WRITE % result.scene
+			return result
+		written.append(result.scene)
+	if result.source != result.original:
+		if not _write_text(result.path, result.source):
+			result.error = COULD_NOT_WRITE % result.path
+			return result
+		written.append(result.path)
+	if not written.is_empty():
+		DogEditor.refresh(written)
 	return result
 
 
-## Everything except the write. Returns a Result whose `source` is what generate
-## writes to `path`, the host script.
 static func build(options: Options) -> Result:
 	var found := find_scene(options.actor, options.folder)
 	var find_error: String = found["error"]
@@ -65,21 +73,42 @@ static func build(options: Options) -> Result:
 		return _failure(load_error)
 	var host: Node = loaded["host"]
 
-	var components := options.components
-	var extra_warnings: Array = []
+	var chosen := _plan_components(host, options.components, scene_path)
+	host.free()
+	var chosen_error: String = chosen["error"]
+	if not chosen_error.is_empty():
+		return _failure(chosen_error)
+
+	var result := _merge_into(loaded["path"], scene_path, chosen["planned"], options.mode)
+	var added: Dictionary = chosen["added"]
+	if not String(added["source"]).is_empty():
+		result.scene_original = _read_text(scene_path)
+		result.scene_source = added["source"]
+	result.report.assign(added["report"] + Array(result.report))
+	return result
+
+
+## Everything build does with the live host: picks the components (automatic mode)
+## or adds the missing ones (explicit mode), then plans their blocks. Returns
+## {planned, added, error}.
+static func _plan_components(host: Node, listed: Array, scene_path: String) -> Dictionary:
+	var components := listed
+	var warnings: Array = []
+	var added := { "source": "", "report": [], "error": "" }
 	if components.is_empty():
 		components = _bindable(host)
 		if components.is_empty():
-			extra_warnings.append(NOTHING_TO_BIND % scene_path)
+			warnings.append(NOTHING_TO_BIND % scene_path)
+	else:
+		added = _add_missing(host, components, scene_path)
+		if not String(added["error"]).is_empty():
+			return { "error": added["error"] }
 
 	var planned := plan(host, components)
-	host.free()
-	var plan_error: String = planned["error"]
-	if not plan_error.is_empty():
-		return _failure(plan_error)
-
-	planned["warnings"] = extra_warnings + planned["warnings"]
-	return _merge_into(loaded["path"], scene_path, planned, options.mode)
+	if not String(planned["error"]).is_empty():
+		return { "error": planned["error"] }
+	planned["warnings"] = warnings + planned["warnings"]
+	return { "planned": planned, "added": added, "error": "" }
 
 
 ## Builds the blocks for the named components (snake_case class names, in the
@@ -130,6 +159,48 @@ static func find_scene(actor: String, folder := "") -> Dictionary:
 	if not FileAccess.file_exists(scene):
 		return _scene_error(SCENE_NOT_FOUND % scene)
 	return { "path": scene, "error": "" }
+
+
+## Adds to `host` (in memory) a node for each listed component that is a class of
+## the project but not a child yet, so plan finds it, and the same nodes to the text
+## of the scene. Returns {source, report, error}: `source` is the new scene text ("" =
+## nothing added) and `report` one "add node <Class>" line per node.
+static func _add_missing(host: Node, components: Array, scene_path: String) -> Dictionary:
+	var children := _children_by_class(host)
+	var source := ""
+	var report: Array[String] = []
+	for component in components:
+		var component_name := String(component)
+		if children.has(component_name):
+			continue
+		var script := class_script(component_name)
+		if script == null:
+			return _added_error(UNKNOWN_CLASS % component_name)
+		if is_machine(script):
+			return _added_error(MACHINE_COMPONENT % component_name)
+		var node := ClassDB.instantiate(script.get_instance_base_type()) as Node
+		if node == null:
+			return _added_error(NOT_A_NODE % [component_name, scene_path.get_file()])
+
+		if source.is_empty():
+			source = _read_text(scene_path)
+		var edit := add_class_node(source, script)
+		var edit_error: String = edit["error"]
+		if not edit_error.is_empty():
+			node.free()
+			return _added_error(SCENE_EDIT_FAILED % [scene_path.get_file(), edit_error])
+		source = edit["source"]
+
+		node.set_script(script)
+		node.name = script.get_global_name()
+		host.add_child(node)
+		children[component_name] = [node]
+		report.append("add node %s" % node.name)
+	return { "source": source, "report": report, "error": "" }
+
+
+static func _added_error(message: String) -> Dictionary:
+	return { "source": "", "report": [], "error": message }
 
 
 ## Loads the scene and checks its root script. Returns {host, path, error}:
@@ -323,6 +394,24 @@ static func _claim(
 	return true
 
 
+static func _read_text(path: String) -> String:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var text := file.get_as_text()
+	file.close()
+	return text
+
+
+static func _write_text(path: String, text: String) -> bool:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(text)
+	file.close()
+	return true
+
+
 static func _failure(message: String) -> Result:
 	var result := Result.new()
 	result.error = message
@@ -351,7 +440,11 @@ class Result:
 	## The host script as read, and as merged.
 	var original := ""
 	var source := ""
-	## What the merge did, one line per item ("add func jump", ...).
+	## The scene as read, and with the added components; both empty when nothing is
+	## added.
+	var scene_original := ""
+	var scene_source := ""
+	## What build plans, one line per item ("add node DogJump2D", "add func jump", ...).
 	var report: Array[String] = []
 	var warnings: Array[String] = []
 	## The planned blocks (see DogScriptMerge).
