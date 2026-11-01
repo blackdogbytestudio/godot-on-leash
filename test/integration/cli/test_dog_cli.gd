@@ -128,10 +128,10 @@ func test_bind_line_fills_the_host_with_the_component_api() -> void:
 
 
 func test_actor_line_creates_the_scene_and_the_script() -> void:
-	assert_eq(_cli.execute("leash actor hero"), OK)
-	var script := ROOT.path_join("hero/hero.gd")
-	assert_eq(_text(script), "class_name Hero\nextends CharacterBody2D\n")
-	assert_eq(_lines, ["created %s" % ROOT.path_join("hero/hero.tscn"), "created %s" % script])
+	assert_eq(_cli.execute("leash actor knight"), OK)
+	var script := ROOT.path_join("knight/knight.gd")
+	assert_eq(_text(script), "class_name Knight\nextends CharacterBody2D\n")
+	assert_eq(_lines, ["created %s" % ROOT.path_join("knight/knight.tscn"), "created %s" % script])
 
 
 func test_a_bad_line_prints_the_error_and_writes_nothing() -> void:

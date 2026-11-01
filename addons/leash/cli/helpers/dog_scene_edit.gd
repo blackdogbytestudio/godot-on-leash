@@ -90,6 +90,22 @@ static func rename_root(source: String, node_name: String) -> Dictionary:
 	return _result("\n".join(lines), "")
 
 
+## Sets the type of the root node to `node_type`. A root without a type (an instance
+## of another scene) keeps none: that is an error. Returns {source, error} like
+## add_node.
+static func set_root_type(source: String, node_type: String) -> Dictionary:
+	if node_type.is_empty():
+		return _result(source, NO_NODE_TYPE)
+	var scan := _read(source)
+	if not scan.error.is_empty():
+		return _result(source, scan.error)
+	var lines := scan.lines
+	if _type.search(lines[scan.root]) == null:
+		return _result(source, NO_ROOT_TYPE)
+	lines[scan.root] = _type.sub(lines[scan.root], " type=\"%s\"" % node_type)
+	return _result("\n".join(lines), "")
+
+
 ## The type of the root node. Returns {type, error}: an instanced root (one whose
 ## scene inherits another) has no type, which is an error.
 static func root_type(source: String) -> Dictionary:
