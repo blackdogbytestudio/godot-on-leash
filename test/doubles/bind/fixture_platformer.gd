@@ -1,3 +1,4 @@
+@tool
 class_name FixturePlatformer2D
 extends DogPlatformerFacade2D
 ## Test double: a component that extends a shipped facade, so its funcs come from
