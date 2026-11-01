@@ -48,22 +48,30 @@ func run(args: PackedStringArray) -> Error:
 		print_line("Dog: state: %s" % result.error)
 		return FAILED
 
-	for warning in result.warnings:
-		print_line("warning: %s" % warning)
-	print_line("initial: %s" % result.initial)
-	for path in result.written:
-		print_line("created %s" % path)
-	for path in result.skipped:
-		print_line("kept %s" % path)
-	for line in result.report:
+	for line in report(result):
 		print_line(line)
-	if result.scene_source != result.scene_original:
-		print_line("updated %s" % result.scene)
-	if result.host_source == result.host_original:
-		print_line("kept %s" % result.host_path)
-	else:
-		print_line("updated %s" % result.host_path)
 	return OK
+
+
+## What run prints for a successful `result`: warnings, the initial state, the state
+## files created and kept, the planned items, then the scene and the host script.
+static func report(result: DogStateGenerator.Result) -> Array[String]:
+	var lines: Array[String] = []
+	for warning in result.warnings:
+		lines.append("warning: %s" % warning)
+	lines.append("initial: %s" % result.initial)
+	for path in result.written:
+		lines.append("created %s" % path)
+	for path in result.skipped:
+		lines.append("kept %s" % path)
+	lines.append_array(result.report)
+	if result.scene_source != result.scene_original:
+		lines.append("updated %s" % result.scene)
+	if result.host_source == result.host_original:
+		lines.append("kept %s" % result.host_path)
+	else:
+		lines.append("updated %s" % result.host_path)
+	return lines
 
 
 ## The generator options for a parsed `request`.

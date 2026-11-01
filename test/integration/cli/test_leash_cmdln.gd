@@ -24,8 +24,8 @@ func _run(args: Array) -> Dictionary:
 func test_without_arguments_it_lists_the_commands() -> void:
 	var result := _run([])
 	assert_eq(result["code"], 0)
-	for name in ["bind", "help", "init", "state"]:
-		assert_string_contains(result["text"], name + "  -  ")
+	for command in ["actor", "bind", "generate", "help", "init", "state"]:
+		assert_string_contains(result["text"], command + "  -  ")
 
 
 func test_an_unknown_command_fails_with_exit_code_1() -> void:
@@ -44,3 +44,9 @@ func test_a_command_that_works_exits_with_0() -> void:
 	var result := _run(["help"])
 	assert_eq(result["code"], 0)
 	assert_string_contains(result["text"], "usage: bind <actor>")
+
+
+func test_generate_runs_and_fails_before_writing() -> void:
+	var result := _run(["generate", "no_such_actor_for_the_runner_test", "--extends", "Area2D"])
+	assert_eq(result["code"], 1)
+	assert_string_contains(result["text"], "Dog: generate: " + DogGenerateCommand.AMBIGUOUS_EXTENDS)

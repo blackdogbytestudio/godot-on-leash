@@ -53,17 +53,25 @@ func run(args: PackedStringArray) -> Error:
 		print_line("Dog: bind: %s" % result.error)
 		return FAILED
 
-	for line in result.report:
+	for line in report(result):
 		print_line(line)
-	for warning in result.warnings:
-		print_line("warning: %s" % warning)
-	if result.scene_source != result.scene_original:
-		print_line("updated %s" % result.scene)
-	if result.source == result.original:
-		print_line("kept %s" % result.path)
-	else:
-		print_line("updated %s" % result.path)
 	return OK
+
+
+## What run prints for a successful `result`: the planned items, the warnings, then
+## the scene and the host script.
+static func report(result: DogBindGenerator.Result) -> Array[String]:
+	var lines: Array[String] = []
+	lines.append_array(result.report)
+	for warning in result.warnings:
+		lines.append("warning: %s" % warning)
+	if result.scene_source != result.scene_original:
+		lines.append("updated %s" % result.scene)
+	if result.source == result.original:
+		lines.append("kept %s" % result.path)
+	else:
+		lines.append("updated %s" % result.path)
+	return lines
 
 
 ## The generator options for a parsed `request`.
