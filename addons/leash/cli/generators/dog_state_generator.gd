@@ -68,7 +68,7 @@ static func generate(options: Options) -> Result:
 
 	result.error = _write_all(result, options)
 	if result.error.is_empty():
-		DogEditor.refresh(_written_paths(result))
+		DogEditor.refresh(written_paths(result))
 	return result
 
 
@@ -122,25 +122,20 @@ static func _write_host(result: Result) -> String:
 	return COULD_NOT_WRITE % [result.host_path, error] if error != OK else ""
 
 
-## Everything except writing: checks the base class, picks the initial state, checks
-## the scene (adding the machine node when it is missing), renders the state files
-## that are missing (all of them with FORCE) and merges the machine plumbing into the
-## host script. Returns a Result whose `scene_source`, `files` and `host_source` are
-## what generate writes.
+## Everything except writing: runs check, picks the initial state, checks the scene
+## (adding the machine node when it is missing), renders the state files that are
+## missing (all of them with FORCE) and merges the machine plumbing into the host
+## script. Returns a Result whose `scene_source`, `files` and `host_source` are what
+## generate writes.
 static func build(options: Options) -> Result:
 	var result := Result.new()
 	var family: Dictionary = FAMILIES[options.type]
 
-	result.error = base_error(options.base)
-	if result.error.is_empty():
-		result.error = _pick_initial(result, options)
+	result.error = check(options)
 	if not result.error.is_empty():
 		return result
-
+	result.initial = initial_state(options)
 	var template_dir := _find_template_dir(family["dir"])
-	if template_dir.is_empty():
-		result.error = TEMPLATE_DIR_NOT_FOUND % family["dir"]
-		return result
 
 	_inspect_scene(result, options, family["machine"])
 	if not result.error.is_empty():
@@ -157,6 +152,18 @@ static func build(options: Options) -> Result:
 
 	result.error = _merge_host(result, options, family["machine"], dropped_files)
 	return result
+
+
+## The checks of build that need no scene, so they can run before the actor exists:
+## the base class, the initial state and the template folder. Returns an error, or "".
+static func check(options: Options) -> String:
+	var error := base_error(options.base)
+	if error.is_empty():
+		error = _initial_error(options)
+	var family_dir: String = FAMILIES[options.type]["dir"]
+	if error.is_empty() and _find_template_dir(family_dir).is_empty():
+		error = TEMPLATE_DIR_NOT_FOUND % family_dir
+	return error
 
 
 ## Why `base` can't be the class the root states extend, or "": in PascalCase
@@ -389,16 +396,19 @@ static func state_class(actor: String, node: String = "") -> String:
 	return "%s%sState" % [_pascal(actor), _pascal(node)]
 
 
-## result.initial is --initial or default_initial. Returns an error, or "".
-static func _pick_initial(result: Result, options: Options) -> String:
-	result.initial = options.initial
-	if result.initial.is_empty():
-		result.initial = default_initial(options.tree)
+## The state the machine starts in: --initial, or default_initial.
+static func initial_state(options: Options) -> String:
+	return options.initial if not options.initial.is_empty() else default_initial(options.tree)
+
+
+## INITIAL_NOT_IN_TREE when initial_state is not a state of the tree, or "".
+static func _initial_error(options: Options) -> String:
+	var initial := initial_state(options)
 	var state_names: Array[String] = []
 	for node in options.tree.nodes:
 		state_names.append(node.name)
-	if result.initial not in state_names:
-		return INITIAL_NOT_IN_TREE % [result.initial, ", ".join(state_names)]
+	if initial not in state_names:
+		return INITIAL_NOT_IN_TREE % [initial, ", ".join(state_names)]
 	return ""
 
 
@@ -551,8 +561,9 @@ static func _write_text(path: String, text: String) -> Error:
 	return OK
 
 
-## The state files written and, when they changed, the scene and the host script.
-static func _written_paths(result: Result) -> PackedStringArray:
+## The state files written and, when they changed, the scene and the host script:
+## what generate wrote when it succeeded.
+static func written_paths(result: Result) -> PackedStringArray:
 	var paths := PackedStringArray(result.written)
 	if result.scene_source != result.scene_original:
 		paths.append(result.scene)

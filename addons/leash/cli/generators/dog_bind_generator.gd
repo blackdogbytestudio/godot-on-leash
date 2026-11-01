@@ -170,13 +170,12 @@ static func _add_missing(host: Node, components: Array, scene_path: String) -> D
 	var report: Array[String] = []
 	for component in components:
 		var component_name := String(component)
-		var script := class_script(component_name)
-		if script != null and is_machine(script):
-			return _added_error(MACHINE_COMPONENT % component_name)
+		var listed_error := _listed_error(component_name, children.has(component_name))
+		if not listed_error.is_empty():
+			return _added_error(listed_error)
 		if children.has(component_name):
 			continue
-		if script == null:
-			return _added_error(UNKNOWN_CLASS % component_name)
+		var script := class_script(component_name)
 		var node := ClassDB.instantiate(script.get_instance_base_type()) as Node
 		if node == null:
 			return _added_error(NOT_A_NODE % [component_name, scene_path.get_file()])
@@ -196,6 +195,27 @@ static func _add_missing(host: Node, components: Array, scene_path: String) -> D
 		children[component_name] = [node]
 		report.append("add node %s" % node.name)
 	return { "source": source, "report": report, "error": "" }
+
+
+## Why a listed component can't be added or bound, checked without the scene, or "":
+## each one must be a class of the project and not a state machine. build checks
+## the rest against the scene.
+static func listed_error(components: Array) -> String:
+	for component in components:
+		var error := _listed_error(String(component), false)
+		if not error.is_empty():
+			return error
+	return ""
+
+
+## listed_error for one component; one that is already `in_scene` needs no class.
+static func _listed_error(component_name: String, in_scene: bool) -> String:
+	var script := class_script(component_name)
+	if script != null and is_machine(script):
+		return MACHINE_COMPONENT % component_name
+	if script == null and not in_scene:
+		return UNKNOWN_CLASS % component_name
+	return ""
 
 
 static func _added_error(message: String) -> Dictionary:
