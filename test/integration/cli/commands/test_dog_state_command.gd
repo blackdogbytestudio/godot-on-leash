@@ -125,6 +125,17 @@ func test_run_prints_validation_errors() -> void:
 	assert_string_contains(result[1][0], "Dog: state: ")
 
 
+func test_run_with_an_extends_that_is_not_a_class_writes_nothing() -> void:
+	var scene := _scene("slime")
+	var before := FileAccess.get_file_as_string(scene)
+	var result := _run(PackedStringArray(["slime", "hpda", "--extends", "enemy_state", "alive"]))
+	var expected := "Dog: state: " + DogStateGenerator.NOT_A_CLASS % "EnemyState"
+	assert_eq(result, [FAILED, [expected]])
+	assert_false(DirAccess.dir_exists_absolute(_states("slime")))
+	assert_eq(FileAccess.get_file_as_string(scene), before)
+	assert_eq(FileAccess.get_file_as_string(ROOT.path_join("slime/slime.gd")), "extends Node\n")
+
+
 func test_run_prints_created_and_keeps() -> void:
 	_scene("player", { "DogHPDA": "DogHPDA" }, "", "class_name Player\nextends Node\n")
 	var first = _run(PackedStringArray(["player", "hpda", "alive"]))
