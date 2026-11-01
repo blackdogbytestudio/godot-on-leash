@@ -21,7 +21,7 @@ extends DogCommand
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
 const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
-const NO_FIX_AND_FIX := "use either --no-fix or --prefix / --suffix, not both."
+const NO_FIX_AND_FIX := DogFix.NO_FIX_AND_FIX
 const FIX_WITHOUT_COMPONENTS := "--prefix, --suffix and --no-fix need components to apply to."
 
 
@@ -117,43 +117,21 @@ static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 	return DogNames.actor_error(request.actor)
 
 
-## The remaining tokens as components, with the prefix and suffix around each one.
-## No tokens means the automatic mode.
+## The remaining tokens as components, with the prefix and suffix around each one
+## (see DogFix). No tokens means the automatic mode.
 static func _read_components(parser: DogOptParse, request: Request) -> String:
-	var given_prefix: Variant = parser.get_value_or_null("--prefix")
-	var given_suffix: Variant = parser.get_value_or_null("--suffix")
-	var no_fix: bool = parser.get_value("--no-fix")
-	var fix_given := no_fix or given_prefix != null or given_suffix != null
-	if no_fix and (given_prefix != null or given_suffix != null):
-		return NO_FIX_AND_FIX
-	if fix_given and parser.unused.is_empty():
+	var fix := DogFix.from_parser(parser)
+	if not fix.error.is_empty():
+		return fix.error
+	if fix.given and parser.unused.is_empty():
 		return FIX_WITHOUT_COMPONENTS
 
-	var prefix := ""
-	var suffix := ""
-	if not no_fix:
-		prefix = _given_or(given_prefix, DogSettings.prefix()).trim_suffix("_")
-		suffix = _given_or(given_suffix, DogSettings.suffix()).trim_prefix("_")
 	for token in parser.unused:
-		var component := _component_name(String(token), prefix, suffix)
+		var component := fix.apply(String(token))
 		if not DogNames.is_valid_name(component):
 			return INVALID_COMPONENT % component
 		request.components.append(component)
 	return ""
-
-
-## `given` when the flag was passed (even empty), otherwise `setting`.
-static func _given_or(given: Variant, setting: String) -> String:
-	return setting if given == null else String(given)
-
-
-static func _component_name(token: String, prefix: String, suffix: String) -> String:
-	var component := token
-	if not prefix.is_empty():
-		component = prefix + "_" + component
-	if not suffix.is_empty():
-		component = component + "_" + suffix
-	return component
 
 
 ## --folder and the -f / -u mode.

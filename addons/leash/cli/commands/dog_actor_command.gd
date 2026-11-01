@@ -1,16 +1,25 @@
 @tool
 class_name DogActorCommand
 extends DogCommand
-## actor <actor> [template] [--folder f] [-f]
+## actor <actor> [template] [--extends cls] [--prefix p] [--suffix s | --no-fix]
+## [--folder f] [-f]
 ##
 ## Creates <actor>.tscn and <actor>.gd as a copy of a scene template (see
 ## DogActorGenerator), the root renamed after the actor and the script given
 ## `class_name <Actor>`. The template is a snake_case folder name, looked for in
 ## res://scene_templates and then in the addon's; without one it is character_body_2d.
+## --extends is the class the actor extends instead of the template's: the script
+## extends it and the root of the scene gets its native type. It is built like a bind
+## component, prefix and suffix around it, then in PascalCase (dog, 2d: move ->
+## DogMove2D); --prefix= drops the prefix (area -> Area2D) and --no-fix both. A name
+## already in PascalCase is kept as is, so any class can be given in full with
+## --no-fix (--extends CPUParticles2D --no-fix).
 ## --folder is the actor's directory, written in full from the explicit_folder
 ## setting (--folder characters/enemies/slime); without it the actor goes under the
-## implicit_folder setting. An existing scene or script is an error; -f recreates
-## both from the template. There is no -u: nothing in the copy can be updated.
+## implicit_folder setting. An actor whose scene and script both exist is kept as it
+## is (asking to change it with a template or --extends is an error); only one of
+## them is an error. -f recreates both from the template. There is no -u: nothing in
+## the copy can be updated.
 
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
@@ -20,6 +29,8 @@ const NO_UPDATE := (
 	"actor has no -u: it creates the actor from the template,"
 	+ " or recreates it with -f, overwriting both files."
 )
+const EMPTY_EXTENDS := "--extends needs a class name."
+const FIX_WITHOUT_EXTENDS := "--prefix, --suffix and --no-fix need --extends to apply to."
 
 
 func command_name() -> String:
@@ -31,7 +42,11 @@ func description() -> String:
 
 
 func usage() -> String:
-	return "actor <actor> [template] [--folder path] [-f]"
+	return (
+		"actor <actor> [template] [--extends class]"
+		+ " [--prefix p] [--suffix s | --no-fix]"
+		+ " [--folder path] [-f]"
+	)
 
 
 func run(args: PackedStringArray) -> Error:
@@ -45,9 +60,21 @@ func run(args: PackedStringArray) -> Error:
 		print_line("Dog: actor: %s" % result.error)
 		return FAILED
 
-	for path in result.written:
-		print_line("created %s" % path)
+	for line in report(result):
+		print_line(line)
 	return OK
+
+
+## What run prints for a successful `result`: the files created, or kept.
+static func report(result: DogActorGenerator.Result) -> Array[String]:
+	var lines: Array[String] = []
+	if result.kept:
+		lines.append("kept %s" % result.scene_path)
+		lines.append("kept %s" % result.script_path)
+		return lines
+	for path in result.written:
+		lines.append("created %s" % path)
+	return lines
 
 
 ## The generator options for a parsed `request`.
@@ -56,6 +83,8 @@ static func options_for(request: Request) -> DogActorGenerator.Options:
 	options.actor = request.actor
 	options.template = request.template
 	options.folder = request.folder
+	options.base = request.extends_class
+	options.base_fixed = request.extends_fixed
 	options.force = request.force
 	return options
 
@@ -66,6 +95,9 @@ static func parse_request(args: PackedStringArray) -> Request:
 	parser.parse(args)  # always pass args: null would read the editor's cmdline
 
 	request.error = _read_arguments(parser, request)
+	if not request.error.is_empty():
+		return request
+	request.error = _read_extends(parser, request)
 	if not request.error.is_empty():
 		return request
 	request.error = _read_options(parser, request)
@@ -80,6 +112,16 @@ static func _build_parser() -> DogOptParse:
 		"",
 		"scene template folder (default: %s)" % DogActorGenerator.DEFAULT_TEMPLATE,
 	)
+	parser.add(
+		"--extends",
+		"",
+		"node class the actor extends, with the prefix and suffix, in PascalCase;"
+		+ " a PascalCase name is kept, so any class works with --no-fix"
+		+ " (--extends CPUParticles2D --no-fix)",
+	)
+	parser.add("--prefix", "", "put before --extends (default: the prefix setting)")
+	parser.add("--suffix", "", "put after --extends (default: the suffix setting)")
+	parser.add("--no-fix", false, "no prefix and no suffix: --extends is the full name")
 	parser.add("--folder", "", "actor directory in full, e.g. characters/enemies/slime")
 	parser.add(["--force", "-f"], false, "recreate the scene and the script from the template")
 	parser.add(["--update", "-u"], false, "not supported: rejected with a message")
@@ -109,6 +151,24 @@ static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 	return ""
 
 
+## --extends with the prefix and suffix around it (see DogFix), in PascalCase. The
+## fix flags need --extends.
+static func _read_extends(parser: DogOptParse, request: Request) -> String:
+	var fix := DogFix.from_parser(parser)
+	if not fix.error.is_empty():
+		return fix.error
+	var given: Variant = parser.get_value_or_null("--extends")
+	if given == null:
+		return FIX_WITHOUT_EXTENDS if fix.given else ""
+	var token := String(given)
+	if token.is_empty():
+		return EMPTY_EXTENDS
+
+	request.extends_class = DogNames.to_pascal(fix.apply(token))
+	request.extends_fixed = fix.is_applied()
+	return ""
+
+
 ## --folder, -f, and -u, which is rejected.
 static func _read_options(parser: DogOptParse, request: Request) -> String:
 	if parser.get_value("--update"):
@@ -122,5 +182,9 @@ class Request:
 	var actor: String = ""
 	var template: String = ""
 	var folder: String = ""
+	## The --extends class in PascalCase ("" = not given), and whether the prefix or
+	## the suffix was added to it.
+	var extends_class: String = ""
+	var extends_fixed: bool = false
 	var force: bool = false
 	var error: String = ""

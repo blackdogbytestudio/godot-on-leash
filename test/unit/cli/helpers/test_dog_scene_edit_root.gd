@@ -118,6 +118,40 @@ func test_root_type_errors_on_bad_text() -> void:
 	assert_eq(DogSceneEdit.root_type("[gd_scene format=3]\n")["error"], DogSceneEdit.NO_ROOT)
 
 
+# --- set_root_type ------------------------------------------------------------
+
+
+func test_set_root_type_changes_only_the_type_of_the_root() -> void:
+	var edit := DogSceneEdit.set_root_type(TEMPLATE, "Area2D")
+	assert_eq(edit["error"], "")
+	var expected := _replaced(
+		TEMPLATE,
+		"[node name=\"Thing\" type=\"CharacterBody2D\"]",
+		"[node name=\"Thing\" type=\"Area2D\"]",
+	)
+	assert_eq(edit["source"], expected)
+
+
+func test_set_root_type_of_an_instanced_root_is_an_error() -> void:
+	var scene := """[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://base.tscn" id="1_b"]
+
+[node name="Thing" instance=ExtResource("1_b")]
+"""
+	var edit := DogSceneEdit.set_root_type(scene, "Area2D")
+	assert_eq(edit, { "source": scene, "error": DogSceneEdit.NO_ROOT_TYPE })
+
+
+func test_set_root_type_errors_keep_the_text() -> void:
+	var no_type := DogSceneEdit.set_root_type(PLAIN, "")
+	assert_eq(no_type, { "source": PLAIN, "error": DogSceneEdit.NO_NODE_TYPE })
+	var not_scene := DogSceneEdit.set_root_type("extends Node", "Node")
+	assert_eq(not_scene, { "source": "extends Node", "error": DogSceneEdit.NOT_A_SCENE })
+	var no_root := DogSceneEdit.set_root_type("[gd_scene format=3]\n", "Node")
+	assert_eq(no_root["error"], DogSceneEdit.NO_ROOT)
+
+
 # --- root_script_path ---------------------------------------------------------
 
 

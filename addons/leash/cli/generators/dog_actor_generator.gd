@@ -12,10 +12,18 @@ extends RefCounted
 ## The script gets `class_name <Actor>` (see DogScriptHeader.set_class_name). The
 ## scene loses its uid, its root is renamed to <Actor> and the root's script points
 ## to the actor's script, without uid: Godot writes the new uids when it saves them.
-## The rest of both texts is kept as is.
+## The rest of both texts is kept as is. A template script needs an `extends` line.
 ##
-## The actor goes in its directory (see DogSettings.actor_dir). When its scene or its
-## script is already there, nothing is written; force recreates both from the template.
+## `base` changes the class the actor extends: the script's `extends` names it, and
+## the root of the scene gets the native type at the end of its chain (a scene can't
+## use a class_name as a node type). It must be a node class, native or global, and
+## <Actor> must not be a class already (except the actor's own script, for force).
+##
+## The actor goes in its directory (see DogSettings.actor_dir). When both its scene
+## and its script are there, the actor is kept: nothing is checked against the
+## template and nothing is written, and asking to change it (a template or a base) is
+## an error. When only one of them is there, it is an error. Force recreates both
+## from the template.
 
 const DEFAULT_TEMPLATE := "character_body_2d"
 const TEMPLATE_ROOTS: PackedStringArray = [
@@ -29,14 +37,25 @@ const TEMPLATE_FILE_MISSING := "template '%s' has no %s."
 const TEMPLATE_EDIT_FAILED := "%s: %s"
 const WRONG_TEMPLATE_SCRIPT := "%s: the root node uses %s, not the template's own %s."
 const ALREADY_EXISTS := "the actor already has %s (-f recreates it from the template)."
+const KEPT_CHANGE := (
+	"the actor already exists, so %s can't change it: -f recreates it from the template,"
+	+ " destroying the current scene and script."
+)
+const NATIVE_CLASS_EXISTS := "class '%s' already exists in Godot: name the actor something else."
+const GLOBAL_CLASS_EXISTS := "class '%s' already exists in %s: name the actor something else."
+const NOT_A_NODE_CLASS := "'%s' is not a node class."
+const FIX_HINT := (
+	" The prefix and suffix were added to the name you gave:"
+	+ " --prefix= / --suffix= / --no-fix change that."
+)
 const COULD_NOT_CREATE := "could not create '%s' (error %d)."
 const COULD_NOT_WRITE := "could not write '%s' (error %d)."
 
 
-## build + write. Nothing is written when build fails.
+## build + write. Nothing is written when build fails or keeps the actor.
 static func generate(options: Options) -> Result:
 	var result := build(options)
-	if not result.error.is_empty():
+	if not result.error.is_empty() or result.kept:
 		return result
 
 	result.error = _write_all(result)
@@ -44,10 +63,10 @@ static func generate(options: Options) -> Result:
 	return result
 
 
-## Everything except writing: checks the names, finds and checks the template,
-## checks that the actor is not there yet (unless force) and renders the scene and
-## the script. Returns a Result whose `scene_source` and `script_source` are what
-## generate writes.
+## Everything except writing: checks the names, checks whether the actor is there
+## (kept, unless force), finds and checks the template, checks the classes and
+## renders the scene and the script. Returns a Result whose `scene_source` and
+## `script_source` are what generate writes, or with `kept` set.
 static func build(options: Options) -> Result:
 	var result := Result.new()
 	var template := options.template if not options.template.is_empty() else DEFAULT_TEMPLATE
@@ -55,24 +74,36 @@ static func build(options: Options) -> Result:
 	if not result.error.is_empty():
 		return result
 
-	result.error = _find_template(result, template)
-	if not result.error.is_empty():
-		return result
-
 	var dir := DogSettings.actor_dir(options.actor, options.folder)
 	result.scene_path = dir.path_join(options.actor + ".tscn")
 	result.script_path = dir.path_join(options.actor + ".gd")
 	if not options.force:
-		result.error = _existing_error(result)
-		if not result.error.is_empty():
+		result.error = _existing_error(result, options)
+		if not result.error.is_empty() or result.kept:
 			return result
 
-	var actor_class := DogNames.to_pascal(options.actor)
-	result.error = _render_scene(result, actor_class)
+	result.error = _find_template(result, template)
 	if not result.error.is_empty():
 		return result
-	result.error = _render_script(result, actor_class)
+
+	result.actor_class = DogNames.to_pascal(options.actor)
+	result.error = _class_error(result, options)
+	if not result.error.is_empty():
+		return result
+
+	result.error = _render_scene(result, options.base)
+	if not result.error.is_empty():
+		return result
+	result.error = _render_script(result, options.base)
 	return result
+
+
+## Why `base` can't be extended by an actor, or "": it must be a node class, native
+## or global. With `fixed`, the error says the prefix and suffix were added to it.
+static func base_error(base: String, fixed := false) -> String:
+	if DogClasses.is_node(base):
+		return ""
+	return NOT_A_NODE_CLASS % base + (FIX_HINT if fixed else "")
 
 
 ## Why the actor, the folder, the template or the folder settings can't be used,
@@ -106,18 +137,49 @@ static func _find_template(result: Result, template: String) -> String:
 	return TEMPLATE_NOT_FOUND % [template, ", ".join(searched)]
 
 
-## ALREADY_EXISTS naming the actor files that exist, or "".
-static func _existing_error(result: Result) -> String:
+## Sets result.kept when both actor files exist. Returns ALREADY_EXISTS naming the
+## one that exists when the other is missing, KEPT_CHANGE when the actor is kept but
+## the options ask to change it, or "".
+static func _existing_error(result: Result, options: Options) -> String:
 	var existing: Array[String] = []
 	for path in [result.scene_path, result.script_path]:
 		if FileAccess.file_exists(path):
 			existing.append(path)
-	return ALREADY_EXISTS % " and ".join(existing) if not existing.is_empty() else ""
+	if existing.size() == 1:
+		return ALREADY_EXISTS % existing[0]
+	if existing.is_empty():
+		return ""
+
+	result.kept = true
+	if not options.template.is_empty():
+		return KEPT_CHANGE % ("template '%s'" % options.template)
+	if not options.base.is_empty():
+		return KEPT_CHANGE % "--extends"
+	return ""
 
 
-## The template scene without uid, its typed root renamed to `actor_class` and
-## pointing to result.script_path. Returns an error, or "".
-static func _render_scene(result: Result, actor_class: String) -> String:
+## Why the actor's class can't be created, or "": result.actor_class must not be a
+## class yet (unless it is the actor's own script) and options.base must be a node
+## class. Fills result.native_type.
+static func _class_error(result: Result, options: Options) -> String:
+	if ClassDB.class_exists(result.actor_class):
+		return NATIVE_CLASS_EXISTS % result.actor_class
+	var owner_path := DogClasses.global_path(result.actor_class)
+	if not owner_path.is_empty() and owner_path != result.script_path:
+		return GLOBAL_CLASS_EXISTS % [result.actor_class, owner_path]
+
+	if options.base.is_empty():
+		return ""
+	var error := base_error(options.base, options.base_fixed)
+	if error.is_empty():
+		result.native_type = DogClasses.native_base(options.base)
+	return error
+
+
+## The template scene without uid, its typed root renamed to result.actor_class,
+## pointing to result.script_path and, with a `base`, of type result.native_type.
+## Returns an error, or "".
+static func _render_scene(result: Result, base: String) -> String:
 	var source := FileAccess.get_file_as_string(result.template_scene)
 	var file := result.template_scene.get_file()
 	var type_query := DogSceneEdit.root_type(source)
@@ -131,8 +193,10 @@ static func _render_scene(result: Result, actor_class: String) -> String:
 		return WRONG_TEMPLATE_SCRIPT % [file, used, result.template_script.get_file()]
 
 	var edit := DogSceneEdit.strip_uid(source)
-	edit = DogSceneEdit.rename_root(edit["source"], actor_class)
+	edit = DogSceneEdit.rename_root(edit["source"], result.actor_class)
 	edit = DogSceneEdit.retarget_root_script(edit["source"], result.script_path)
+	if not base.is_empty():
+		edit = DogSceneEdit.set_root_type(edit["source"], result.native_type)
 	var edit_error: String = edit["error"]
 	if not edit_error.is_empty():
 		return TEMPLATE_EDIT_FAILED % [file, edit_error]
@@ -140,10 +204,18 @@ static func _render_scene(result: Result, actor_class: String) -> String:
 	return ""
 
 
-## The template script with `class_name <actor_class>`. Returns an error, or "".
-static func _render_script(result: Result, actor_class: String) -> String:
+## The template script with `class_name <result.actor_class>` and, with a `base`,
+## `extends <base>`. A template script without extends is an error either way.
+## Returns an error, or "".
+static func _render_script(result: Result, base: String) -> String:
 	var source := FileAccess.get_file_as_string(result.template_script)
-	var edit := DogScriptHeader.set_class_name(source, actor_class)
+	var edit := { "source": source, "error": "" }
+	if DogScriptHeader.declared_extends(source).is_empty():
+		edit["error"] = DogScriptHeader.NO_EXTENDS
+	elif not base.is_empty():
+		edit = DogScriptHeader.set_extends(source, base)
+	if String(edit["error"]).is_empty():
+		edit = DogScriptHeader.set_class_name(edit["source"], result.actor_class)
 	var edit_error: String = edit["error"]
 	if not edit_error.is_empty():
 		return TEMPLATE_EDIT_FAILED % [result.template_script.get_file(), edit_error]
@@ -174,16 +246,25 @@ static func _write_all(result: Result) -> String:
 
 
 ## What to create. `template` "" means DEFAULT_TEMPLATE; `force` overwrites an
-## existing scene and script.
+## existing scene and script. `base` is the class the actor extends, in PascalCase
+## ("" = the template's), and `base_fixed` says the prefix or the suffix was added
+## to it (for the error message).
 class Options:
 	var actor := ""
 	var template := ""
 	var folder := ""
+	var base := ""
+	var base_fixed := false
 	var force := false
 
 
 class Result:
 	var error := ""
+	## Set by build when both actor files exist: nothing is rendered or written.
+	var kept := false
+	## The actor's class (PascalCase actor) and, with a base, the root's node type.
+	var actor_class := ""
+	var native_type := ""
 	## The template's files, once found.
 	var template_scene := ""
 	var template_script := ""

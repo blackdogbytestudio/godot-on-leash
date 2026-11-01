@@ -42,12 +42,20 @@ func _options(
 	template := "",
 	folder := "",
 	force := false,
+	base := "",
 ) -> DogActorGenerator.Options:
 	var options := DogActorGenerator.Options.new()
 	options.actor = actor
 	options.template = template
 	options.folder = folder
 	options.force = force
+	options.base = base
+	return options
+
+
+func _based(actor: String, base: String, fixed := false) -> DogActorGenerator.Options:
+	var options := _options(actor, "", "", false, base)
+	options.base_fixed = fixed
 	return options
 
 
@@ -117,42 +125,42 @@ func test_godot_loads_the_default_template() -> void:
 
 
 func test_the_default_template_is_character_body_2d() -> void:
-	var result := DogActorGenerator.generate(_options("hero"))
+	var result := DogActorGenerator.generate(_options("knight"))
 	assert_eq(result.error, "")
-	var dir := ROOT.path_join("hero")
-	assert_eq(result.written, [dir.path_join("hero.tscn"), dir.path_join("hero.gd")])
-	assert_eq(_read(dir.path_join("hero.gd")), "class_name Hero\nextends CharacterBody2D\n")
+	var dir := ROOT.path_join("knight")
+	assert_eq(result.written, [dir.path_join("knight.tscn"), dir.path_join("knight.gd")])
+	assert_eq(_read(dir.path_join("knight.gd")), "class_name Knight\nextends CharacterBody2D\n")
 	var expected := """[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="%s" id="1_template"]
 
-[node name="Hero" type="CharacterBody2D"]
+[node name="Knight" type="CharacterBody2D"]
 script = ExtResource("1_template")
-""" % dir.path_join("hero.gd")
-	assert_eq(_read(dir.path_join("hero.tscn")), expected)
+""" % dir.path_join("knight.gd")
+	assert_eq(_read(dir.path_join("knight.tscn")), expected)
 
 
 func test_godot_loads_the_actor_with_its_new_script() -> void:
-	DogActorGenerator.generate(_options("actor_gen_hero_2d"))
-	var dir := ROOT.path_join("actor_gen_hero_2d")
-	var path := dir.path_join("actor_gen_hero_2d.tscn")
+	DogActorGenerator.generate(_options("actor_gen_knight_2d"))
+	var dir := ROOT.path_join("actor_gen_knight_2d")
+	var path := dir.path_join("actor_gen_knight_2d.tscn")
 	var packed := ResourceLoader.load(path, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE)
 	var root := (packed as PackedScene).instantiate()
-	assert_eq(root.name, &"ActorGenHero2D")
+	assert_eq(root.name, &"ActorGenKnight2D")
 	assert_eq(root.get_class(), "CharacterBody2D")
 	var script := root.get_script() as Script
-	assert_eq(script.resource_path, dir.path_join("actor_gen_hero_2d.gd"))
-	assert_eq(script.get_global_name(), &"ActorGenHero2D")
+	assert_eq(script.resource_path, dir.path_join("actor_gen_knight_2d.gd"))
+	assert_eq(script.get_global_name(), &"ActorGenKnight2D")
 	root.free()
 
 
 func test_build_writes_nothing() -> void:
-	var result := DogActorGenerator.build(_options("hero"))
+	var result := DogActorGenerator.build(_options("knight"))
 	assert_eq(result.error, "")
-	assert_true(result.scene_source.contains("[node name=\"Hero\""))
-	assert_eq(result.script_source, "class_name Hero\nextends CharacterBody2D\n")
+	assert_true(result.scene_source.contains("[node name=\"Knight\""))
+	assert_eq(result.script_source, "class_name Knight\nextends CharacterBody2D\n")
 	assert_eq(result.written, [])
-	assert_false(DirAccess.dir_exists_absolute(ROOT.path_join("hero")))
+	assert_false(DirAccess.dir_exists_absolute(ROOT.path_join("knight")))
 
 
 # --- templates ----------------------------------------------------------------
@@ -179,18 +187,18 @@ func test_a_project_template_keeps_everything_but_the_root_and_its_script() -> v
 
 func test_a_project_template_wins_over_the_addon_one() -> void:
 	_template("character_body_2d", "extends CharacterBody2D\n# project\n", "CharacterBody2D")
-	var result := DogActorGenerator.generate(_options("hero"))
+	var result := DogActorGenerator.generate(_options("knight"))
 	assert_eq(result.error, "")
 	var template := PROJECT_TEMPLATES.path_join("character_body_2d/character_body_2d.tscn")
 	assert_eq(result.template_scene, template)
-	assert_string_contains(_read(ROOT.path_join("hero/hero.gd")), "# project")
-	assert_string_contains(_read(ROOT.path_join("hero/hero.tscn")), "Sprite2D")
+	assert_string_contains(_read(ROOT.path_join("knight/knight.gd")), "# project")
+	assert_string_contains(_read(ROOT.path_join("knight/knight.tscn")), "Sprite2D")
 
 
 func test_a_template_class_name_is_replaced() -> void:
 	_template("actor_gen_named", "class_name Template\nextends Node2D\n")
-	DogActorGenerator.generate(_options("hero", "actor_gen_named"))
-	assert_eq(_read(ROOT.path_join("hero/hero.gd")), "class_name Hero\nextends Node2D\n")
+	DogActorGenerator.generate(_options("knight", "actor_gen_named"))
+	assert_eq(_read(ROOT.path_join("knight/knight.gd")), "class_name Knight\nextends Node2D\n")
 
 
 func test_folder_is_the_actor_directory() -> void:
@@ -204,12 +212,12 @@ func test_folder_is_the_actor_directory() -> void:
 # --- errors -------------------------------------------------------------------
 
 
-func _assert_nothing_written(actor := "hero") -> void:
+func _assert_nothing_written(actor := "knight") -> void:
 	assert_false(DirAccess.dir_exists_absolute(ROOT.path_join(actor)), "nothing written")
 
 
 func test_a_missing_template_names_the_places_searched() -> void:
-	var result := DogActorGenerator.generate(_options("hero", "actor_gen_none"))
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_none"))
 	var searched := "res://scene_templates/actor_gen_none, "
 	searched += "res://addons/leash/scene_templates/actor_gen_none"
 	assert_eq(result.error, DogActorGenerator.TEMPLATE_NOT_FOUND % ["actor_gen_none", searched])
@@ -218,7 +226,7 @@ func test_a_missing_template_names_the_places_searched() -> void:
 
 func test_a_template_without_its_script_is_an_error() -> void:
 	var dir := _template("actor_gen_noscript", "")
-	var result := DogActorGenerator.generate(_options("hero", "actor_gen_noscript"))
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_noscript"))
 	var missing := DogActorGenerator.TEMPLATE_FILE_MISSING % [dir, "actor_gen_noscript.gd"]
 	assert_eq(result.error, missing)
 	_assert_nothing_written()
@@ -228,7 +236,7 @@ func test_a_template_without_its_scene_is_an_error() -> void:
 	var dir := PROJECT_TEMPLATES.path_join("actor_gen_noscene")
 	_templates.append(dir)
 	_write(dir.path_join("actor_gen_noscene.gd"), "extends Node\n")
-	var result := DogActorGenerator.generate(_options("hero", "actor_gen_noscene"))
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_noscene"))
 	var missing := DogActorGenerator.TEMPLATE_FILE_MISSING % [dir, "actor_gen_noscene.tscn"]
 	assert_eq(result.error, missing)
 	_assert_nothing_written()
@@ -237,14 +245,14 @@ func test_a_template_without_its_scene_is_an_error() -> void:
 func test_a_template_scene_that_is_not_a_scene_is_an_error() -> void:
 	var dir := _template("actor_gen_text")
 	_write(dir.path_join("actor_gen_text.tscn"), "hello\n")
-	var result := DogActorGenerator.generate(_options("hero", "actor_gen_text"))
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_text"))
 	assert_eq(result.error, "actor_gen_text.tscn: " + DogSceneEdit.NOT_A_SCENE)
 	_assert_nothing_written()
 
 
 func test_a_template_root_without_script_is_an_error() -> void:
 	_template("actor_gen_bare", "extends Node2D\n", "Node2D", "-")
-	var result := DogActorGenerator.generate(_options("hero", "actor_gen_bare"))
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_bare"))
 	assert_eq(result.error, "actor_gen_bare.tscn: " + DogSceneEdit.NO_ROOT_SCRIPT)
 	_assert_nothing_written()
 
@@ -252,7 +260,7 @@ func test_a_template_root_without_script_is_an_error() -> void:
 func test_a_template_root_with_another_script_is_an_error() -> void:
 	var other := ADDON_TEMPLATE.path_join("character_body_2d.gd")
 	_template("actor_gen_other", "extends Node2D\n", "Node2D", other)
-	var result := DogActorGenerator.generate(_options("hero", "actor_gen_other"))
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_other"))
 	var expected := DogActorGenerator.WRONG_TEMPLATE_SCRIPT % [
 		"actor_gen_other.tscn",
 		other,
@@ -268,24 +276,24 @@ func test_an_instanced_template_root_is_an_error() -> void:
 	text += "[ext_resource type=\"PackedScene\" path=\"res://x.tscn\" id=\"1_x\"]\n\n"
 	text += "[node name=\"Inst\" instance=ExtResource(\"1_x\")]\n"
 	_write(dir.path_join("actor_gen_inst.tscn"), text)
-	var result := DogActorGenerator.generate(_options("hero", "actor_gen_inst"))
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_inst"))
 	assert_eq(result.error, "actor_gen_inst.tscn: " + DogSceneEdit.NO_ROOT_TYPE)
 	_assert_nothing_written()
 
 
 func test_a_template_script_without_extends_is_an_error() -> void:
 	_template("actor_gen_noext", "func a() -> void:\n\tpass\n")
-	var result := DogActorGenerator.generate(_options("hero", "actor_gen_noext"))
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_noext"))
 	assert_eq(result.error, "actor_gen_noext.gd: " + DogScriptHeader.NO_EXTENDS)
 	_assert_nothing_written()
 
 
 func test_bad_names_are_errors() -> void:
 	var cases := [
-		[_options("Hero"), DogNames.INVALID_ACTOR % "Hero"],
-		[_options("hero", "", "Bad/x"), DogNames.INVALID_FOLDER % "Bad/x"],
-		[_options("hero", "Body"), DogActorGenerator.INVALID_TEMPLATE % "Body"],
-		[_options("hero", "../x"), DogActorGenerator.INVALID_TEMPLATE % "../x"],
+		[_options("Knight"), DogNames.INVALID_ACTOR % "Knight"],
+		[_options("knight", "", "Bad/x"), DogNames.INVALID_FOLDER % "Bad/x"],
+		[_options("knight", "Body"), DogActorGenerator.INVALID_TEMPLATE % "Body"],
+		[_options("knight", "../x"), DogActorGenerator.INVALID_TEMPLATE % "../x"],
 	]
 	for case in cases:
 		assert_eq(DogActorGenerator.generate(case[0]).error, case[1])
@@ -293,41 +301,188 @@ func test_bad_names_are_errors() -> void:
 
 
 func test_an_existing_scene_is_an_error_and_nothing_is_written() -> void:
-	var scene := ROOT.path_join("hero/hero.tscn")
+	var scene := ROOT.path_join("knight/knight.tscn")
 	_write(scene, "mine")
-	var result := DogActorGenerator.generate(_options("hero"))
+	var result := DogActorGenerator.generate(_options("knight"))
 	assert_eq(result.error, DogActorGenerator.ALREADY_EXISTS % scene)
 	assert_eq(_read(scene), "mine")
-	assert_false(FileAccess.file_exists(ROOT.path_join("hero/hero.gd")))
+	assert_false(FileAccess.file_exists(ROOT.path_join("knight/knight.gd")))
 
 
 func test_an_existing_script_is_an_error_and_nothing_is_written() -> void:
-	var script := ROOT.path_join("hero/hero.gd")
+	var script := ROOT.path_join("knight/knight.gd")
 	_write(script, "mine")
-	var result := DogActorGenerator.generate(_options("hero"))
+	var result := DogActorGenerator.generate(_options("knight"))
 	assert_eq(result.error, DogActorGenerator.ALREADY_EXISTS % script)
 	assert_eq(_read(script), "mine")
-	assert_false(FileAccess.file_exists(ROOT.path_join("hero/hero.tscn")))
+	assert_false(FileAccess.file_exists(ROOT.path_join("knight/knight.tscn")))
 
 
-func test_an_existing_actor_is_an_error_naming_both_files() -> void:
-	DogActorGenerator.generate(_options("hero"))
-	var scene := ROOT.path_join("hero/hero.tscn")
-	var script := ROOT.path_join("hero/hero.gd")
-	_write(script, "mine")
-	var result := DogActorGenerator.generate(_options("hero"))
-	assert_eq(result.error, DogActorGenerator.ALREADY_EXISTS % (scene + " and " + script))
+func test_a_template_script_with_class_name_but_without_extends_is_an_error() -> void:
+	_template("actor_gen_named_noext", "class_name Template\n")
+	var result := DogActorGenerator.generate(_options("knight", "actor_gen_named_noext"))
+	assert_eq(result.error, "actor_gen_named_noext.gd: " + DogScriptHeader.NO_EXTENDS)
+	_assert_nothing_written("knight")
+
+
+# --- an existing actor --------------------------------------------------------
+
+
+func _existing_actor() -> Array[String]:
+	var scene := ROOT.path_join("knight/knight.tscn")
+	var script := ROOT.path_join("knight/knight.gd")
+	_write(scene, "my scene")
+	_write(script, "my script")
+	return [scene, script]
+
+
+func test_an_existing_actor_is_kept_and_nothing_is_written() -> void:
+	var paths := _existing_actor()
+	var result := DogActorGenerator.generate(_options("knight"))
+	assert_eq(result.error, "")
+	assert_true(result.kept)
+	assert_eq([result.scene_path, result.script_path], paths)
 	assert_eq(result.written, [])
-	assert_eq(_read(script), "mine")
+	assert_eq(_read(paths[0]), "my scene")
+	assert_eq(_read(paths[1]), "my script")
+
+
+func test_a_kept_actor_skips_the_template_and_the_class_checks() -> void:
+	# Hero is a class of the project, but the actor is not being created.
+	var scene := ROOT.path_join("hero/hero.tscn")
+	_write(scene, "my scene")
+	_write(ROOT.path_join("hero/hero.gd"), "my script")
+	var result := DogActorGenerator.generate(_options("hero"))
+	assert_eq(result.error, "")
+	assert_true(result.kept)
+	assert_eq(result.template_scene, "")
+
+
+func test_a_kept_actor_with_a_template_is_an_error() -> void:
+	var paths := _existing_actor()
+	var result := DogActorGenerator.generate(_options("knight", "character_body_2d"))
+	var flag := "template 'character_body_2d'"
+	assert_eq(result.error, DogActorGenerator.KEPT_CHANGE % flag)
+	assert_eq(_read(paths[1]), "my script")
+
+
+func test_a_kept_actor_with_a_base_is_an_error() -> void:
+	var paths := _existing_actor()
+	var result := DogActorGenerator.generate(_based("knight", "Area2D"))
+	assert_eq(result.error, DogActorGenerator.KEPT_CHANGE % "--extends")
+	assert_eq(_read(paths[0]), "my scene")
+
+
+func test_force_recreates_an_existing_actor() -> void:
+	var paths := _existing_actor()
+	var result := DogActorGenerator.generate(_options("knight", "", "", true, "Area2D"))
+	assert_eq(result.error, "")
+	assert_false(result.kept)
+	assert_eq(result.written, paths)
+	assert_eq(_read(paths[1]), "class_name Knight\nextends Area2D\n")
 
 
 func test_force_recreates_both_files() -> void:
-	var scene := ROOT.path_join("hero/hero.tscn")
-	var script := ROOT.path_join("hero/hero.gd")
+	var scene := ROOT.path_join("knight/knight.tscn")
+	var script := ROOT.path_join("knight/knight.gd")
 	_write(scene, "mine")
 	_write(script, "mine")
-	var result := DogActorGenerator.generate(_options("hero", "", "", true))
+	var result := DogActorGenerator.generate(_options("knight", "", "", true))
 	assert_eq(result.error, "")
 	assert_eq(result.written, [scene, script])
-	assert_eq(_read(script), "class_name Hero\nextends CharacterBody2D\n")
-	assert_string_contains(_read(scene), "[node name=\"Hero\" type=\"CharacterBody2D\"]")
+	assert_eq(_read(script), "class_name Knight\nextends CharacterBody2D\n")
+	assert_string_contains(_read(scene), "[node name=\"Knight\" type=\"CharacterBody2D\"]")
+
+
+# --- class names --------------------------------------------------------------
+
+
+func test_an_actor_named_like_a_native_class_is_an_error() -> void:
+	var result := DogActorGenerator.generate(_options("area_2d"))
+	assert_eq(result.error, DogActorGenerator.NATIVE_CLASS_EXISTS % "Area2D")
+	_assert_nothing_written("area_2d")
+
+
+func test_an_actor_named_like_a_global_class_is_an_error() -> void:
+	var result := DogActorGenerator.generate(_options("dog_move_2d"))
+	var where := "res://addons/leash/components/2d/character/dog_move_2d.gd"
+	assert_eq(result.error, DogActorGenerator.GLOBAL_CLASS_EXISTS % ["DogMove2D", where])
+	_assert_nothing_written("dog_move_2d")
+
+
+func test_the_actor_own_class_is_not_a_collision() -> void:
+	# FixtureDash is res://test/doubles/bind/fixture_dash.gd: the script this actor
+	# would be. Only build runs, so the fixture is never touched.
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "test/doubles")
+	var own := DogActorGenerator.build(_options("fixture_dash", "", "bind", true))
+	assert_eq(own.error, "")
+	assert_eq(own.script_path, "res://test/doubles/bind/fixture_dash.gd")
+	assert_eq(own.actor_class, "FixtureDash")
+
+	var elsewhere := DogActorGenerator.build(_options("fixture_dash", "", "other", true))
+	var expected := DogActorGenerator.GLOBAL_CLASS_EXISTS % [
+		"FixtureDash",
+		"res://test/doubles/bind/fixture_dash.gd",
+	]
+	assert_eq(elsewhere.error, expected)
+
+
+# --- base ---------------------------------------------------------------------
+
+
+func test_a_native_base_sets_the_extends_and_the_root_type() -> void:
+	var result := DogActorGenerator.generate(_based("knight", "Area2D"))
+	assert_eq(result.error, "")
+	assert_eq(result.native_type, "Area2D")
+	assert_eq(_read(ROOT.path_join("knight/knight.gd")), "class_name Knight\nextends Area2D\n")
+	var scene := _read(ROOT.path_join("knight/knight.tscn"))
+	assert_string_contains(scene, "[node name=\"Knight\" type=\"Area2D\"]")
+
+
+func test_a_global_base_is_extended_and_the_root_gets_its_native_type() -> void:
+	var result := DogActorGenerator.generate(_based("knight", "DogMove2D"))
+	assert_eq(result.error, "")
+	var script := _read(ROOT.path_join("knight/knight.gd"))
+	assert_eq(script, "class_name Knight\nextends DogMove2D\n")
+	var scene := _read(ROOT.path_join("knight/knight.tscn"))
+	assert_string_contains(scene, "[node name=\"Knight\" type=\"Node\"]")
+
+
+func test_godot_loads_an_actor_with_a_base() -> void:
+	DogActorGenerator.generate(_based("knight", "CPUParticles2D"))
+	var path := ROOT.path_join("knight/knight.tscn")
+	var packed := ResourceLoader.load(path, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE)
+	var root := (packed as PackedScene).instantiate()
+	assert_eq(root.get_class(), "CPUParticles2D")
+	assert_eq((root.get_script() as Script).get_instance_base_type(), &"CPUParticles2D")
+	root.free()
+
+
+func test_a_base_replaces_the_extends_of_a_template_class_name_line() -> void:
+	_template("actor_gen_oneline", "class_name Template extends Node2D\n")
+	var options := _based("knight", "Sprite2D")
+	options.template = "actor_gen_oneline"
+	assert_eq(DogActorGenerator.generate(options).error, "")
+	var script := _read(ROOT.path_join("knight/knight.gd"))
+	assert_eq(script, "class_name Knight extends Sprite2D\n")
+
+
+func test_a_base_that_is_not_a_node_class_is_an_error() -> void:
+	for base in ["RefCounted", "DogNames", "NoSuchClass"]:
+		var result := DogActorGenerator.generate(_based("knight", base))
+		assert_eq(result.error, DogActorGenerator.NOT_A_NODE_CLASS % base, base)
+	_assert_nothing_written("knight")
+
+
+func test_a_fixed_base_error_hints_at_the_fix_flags() -> void:
+	var result := DogActorGenerator.generate(_based("knight", "DogArea2D", true))
+	var expected := DogActorGenerator.NOT_A_NODE_CLASS % "DogArea2D"
+	assert_eq(result.error, expected + DogActorGenerator.FIX_HINT)
+	_assert_nothing_written("knight")
+
+
+func test_base_error_is_a_static_check() -> void:
+	assert_eq(DogActorGenerator.base_error("Area2D"), "")
+	assert_eq(DogActorGenerator.base_error("DogMove2D"), "")
+	var expected := DogActorGenerator.NOT_A_NODE_CLASS % "DogState"
+	assert_eq(DogActorGenerator.base_error("DogState"), expected)
