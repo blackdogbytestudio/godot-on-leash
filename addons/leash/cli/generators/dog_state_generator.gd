@@ -5,7 +5,9 @@ extends RefCounted
 ##
 ## The actor base is created from class.gd (its own enter/exit/update
 ## wrappers); every tree node is created from state.gd, extending its
-## parent state's class. Existing files are kept unless force is set.
+## parent state's class. Existing files are kept unless force is set. A `base`
+## (the class the root states extend instead of the actor base) must be an existing
+## class, native or global, of any type: states are not nodes.
 ##
 ## The actor's scene is required: `<actor>.tscn` inside the actor's directory (see
 ## DogSettings.actor_dir), with a saved .gd script on its root. Its machine is the
@@ -55,6 +57,7 @@ const SCENE_EDIT_FAILED := "%s: %s"
 const MANY_MACHINES := "more than one %s child in %s: %s."
 const HOST_CLASS_MISMATCH := "states cast host as %s, but %s has no class_name %s"
 const HOST_CLASS_FOUND := " (found: %s)"
+const NOT_A_CLASS := "'%s' is not an existing class."
 
 
 ## build + write. Nothing is written when build fails.
@@ -119,15 +122,18 @@ static func _write_host(result: Result) -> String:
 	return COULD_NOT_WRITE % [result.host_path, error] if error != OK else ""
 
 
-## Everything except writing: checks the scene (adding the machine node when it is
-## missing), picks the initial state, renders the state files that are missing (all
-## of them with FORCE) and merges the machine plumbing into the host script. Returns
-## a Result whose `scene_source`, `files` and `host_source` are what generate writes.
+## Everything except writing: checks the base class, picks the initial state, checks
+## the scene (adding the machine node when it is missing), renders the state files
+## that are missing (all of them with FORCE) and merges the machine plumbing into the
+## host script. Returns a Result whose `scene_source`, `files` and `host_source` are
+## what generate writes.
 static func build(options: Options) -> Result:
 	var result := Result.new()
 	var family: Dictionary = FAMILIES[options.type]
 
-	result.error = _pick_initial(result, options)
+	result.error = base_error(options.base)
+	if result.error.is_empty():
+		result.error = _pick_initial(result, options)
 	if not result.error.is_empty():
 		return result
 
@@ -151,6 +157,15 @@ static func build(options: Options) -> Result:
 
 	result.error = _merge_host(result, options, family["machine"], dropped_files)
 	return result
+
+
+## Why `base` can't be the class the root states extend, or "": in PascalCase
+## (`enemy_state` and `EnemyState` are the same) it must be a native or a global
+## class. "" means no base, which is fine.
+static func base_error(base: String) -> String:
+	if base.is_empty() or DogClasses.exists(_pascal(base)):
+		return ""
+	return NOT_A_CLASS % _pascal(base)
 
 
 ## True only for `<root>/<actor dir>/states`: inside `root`, no `..`, with at

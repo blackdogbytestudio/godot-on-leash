@@ -31,11 +31,11 @@ func test_parse_accepts_hpda() -> void:
 func test_parse_reads_folder_and_extends() -> void:
 	var request := _request(PackedStringArray([
 		"slime", "hpda", "--folder", "characters/enemies/slime",
-		"--extends", "enemy_alive_state", "jump",
+		"--extends", "hero_alive_state", "jump",
 	]))
 	assert_eq(request.error, "")
 	assert_eq(request.folder, "characters/enemies/slime")
-	assert_eq(request.extends_state, "enemy_alive_state")
+	assert_eq(request.extends_state, "hero_alive_state")
 
 
 func test_parse_rejects_host_option() -> void:
@@ -137,14 +137,14 @@ func test_run_reports_unknown_type() -> void:
 
 func test_options_for_copies_the_request() -> void:
 	var request := _request(PackedStringArray([
-		"slime", "hpda", "--folder", "characters/enemies/slime", "--extends", "enemy_alive_state",
+		"slime", "hpda", "--folder", "characters/enemies/slime", "--extends", "hero_alive_state",
 		"--initial", "jump", "-u", "jump",
 	]))
 	var options := Command.options_for(request)
 	assert_eq(options.actor, "slime")
 	assert_eq(options.type, "hpda")
 	assert_eq(options.folder, "characters/enemies/slime")
-	assert_eq(options.base, "enemy_alive_state")
+	assert_eq(options.base, "hero_alive_state")
 	assert_eq(options.initial, "jump")
 	assert_eq(options.mode, DogScriptMerge.Mode.UPDATE)
 	assert_eq(options.tree, request.tree)

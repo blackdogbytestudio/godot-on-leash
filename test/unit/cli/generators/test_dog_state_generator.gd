@@ -40,6 +40,16 @@ func _initial(args: Array) -> String:
 # --- initial state ------------------------------------------------------------
 
 
+func test_base_error_accepts_any_existing_class_or_none() -> void:
+	for base in ["", "hero_alive_state", "HeroAliveState", "DogState", "RefCounted", "Node"]:
+		assert_eq(Generator.base_error(base), "", base)
+
+
+func test_base_error_rejects_a_class_that_does_not_exist() -> void:
+	assert_eq(Generator.base_error("enemy_state"), Generator.NOT_A_CLASS % "EnemyState")
+	assert_eq(Generator.base_error("EnemyState"), Generator.NOT_A_CLASS % "EnemyState")
+
+
 func test_initial_defaults_to_the_deepest_state() -> void:
 	assert_eq(
 		_initial(["p", "hpda", "alive", ".grounded", "..run", "...run_ground", "..idle", "dead"]),

@@ -8,6 +8,8 @@ extends DogCommand
 ## --folder is the actor's directory, written in full from the explicit_folder
 ## setting (--folder characters/enemies/slime); without it the actor is looked for
 ## under the implicit_folder setting. The states go in its `states` folder.
+## --extends is the class the root states extend instead of the actor's base state:
+## a native or a project class, in snake_case or PascalCase (enemy_state, EnemyState).
 
 const FLAT_TYPES: PackedStringArray = ["fsm", "pda"]
 const TREE_TYPES: PackedStringArray = ["hfsm", "hpda"]
@@ -101,7 +103,7 @@ static func _build_parser() -> DogOptParse:
 		"",
 		"actor directory in full, e.g. characters/enemies/slime (states go inside it)",
 	)
-	parser.add("--extends", "", "state class the root states inherit from")
+	parser.add("--extends", "", "existing class the root states inherit from")
 	parser.add(
 		"--initial",
 		"",
