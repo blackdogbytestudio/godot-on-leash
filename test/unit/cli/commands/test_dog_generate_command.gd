@@ -42,7 +42,7 @@ func _assert_error(line: String, step: String, error: String) -> void:
 func test_command_name_description_and_usage() -> void:
 	assert_eq(_command.command_name(), "generate")
 	assert_ne(_command.description(), "")
-	for part in ["generate <actor>", "--bind a,b", "--extends-actor", "--extends-state", "-f | -u"]:
+	for part in ["generate <actor>", "--bind a,b", "--extends class", "--base class", "-f | -u"]:
 		assert_string_contains(_command.usage(), part)
 
 
@@ -78,18 +78,25 @@ func test_parse_fix_flags_go_only_to_the_steps_that_use_them() -> void:
 	assert_eq(to_bind.error, "")
 	assert_eq(to_bind.actor.extends_class, "")
 
-	var to_actor := _request("knight --extends-actor area_2d --prefix=")
+	var to_actor := _request("knight --extends area_2d --prefix=")
 	assert_eq(to_actor.error, DogGenerateCommand.FIX_WITHOUT_TARGET, "the actor takes none")
 
 
-func test_parse_extends_actor_keeps_a_pascal_case_name() -> void:
-	var request := _request("knight --extends-actor CPUParticles2D --bind move")
-	assert_eq(request.actor.extends_class, "CPUParticles2D")
-	assert_eq(request.bind.components, ["DogMove2D"])
+func test_parse_extends_goes_to_the_actor_as_typed() -> void:
+	for token in ["CPUParticles2D", "CPU_particles_2d"]:
+		var request := _request("knight --extends %s --bind move" % token)
+		assert_eq(request.error, "", token)
+		assert_eq(request.actor.extends_class, "CPUParticles2D", token)
+		assert_eq(request.bind.components, ["DogMove2D"], "the prefix is bind's only")
 
 
-func test_parse_template_extends_state_and_folder() -> void:
-	var line := "knight fsm alive --template area_2d --extends-state hero_state"
+func test_parse_bind_mixes_short_names_and_project_classes() -> void:
+	var request := _request("knight --bind move,jump,FixtureWallClimb")
+	assert_eq(request.bind.components, ["DogMove2D", "DogJump2D", "FixtureWallClimb"])
+
+
+func test_parse_template_base_and_folder() -> void:
+	var line := "knight fsm alive --template area_2d --base hero_state"
 	var request := _request(line + " --folder enemies/knight")
 	assert_eq(request.error, "")
 	assert_eq(request.actor.template, "area_2d")
@@ -115,7 +122,7 @@ func test_parse_update_goes_to_state_and_bind_never_to_actor() -> void:
 
 
 func test_options_for_copies_each_step() -> void:
-	var line := "knight hpda alive --bind move --extends-actor area_2d --prefix= -u"
+	var line := "knight hpda alive --bind move --extends area_2d --prefix= -u"
 	var options := DogGenerateCommand.options_for(_request(line))
 	assert_eq(options.actor.actor, "knight")
 	assert_eq(options.actor.base, "Area2D")
@@ -137,10 +144,10 @@ func test_parse_rejects_unknown_options() -> void:
 	_assert_error("knight --nope", "generate", DogGenerateCommand.UNKNOWN_OPTION % "--nope")
 
 
-func test_parse_extends_alone_is_ambiguous() -> void:
-	var expected := "'--extends' is ambiguous here: use --extends-actor or --extends-state"
-	assert_eq(DogGenerateCommand.AMBIGUOUS_EXTENDS, expected)
-	for line in ["knight --extends Area2D", "knight hpda alive --extends=hero_state"]:
+func test_parse_old_flag_names_are_unknown_options() -> void:
+	for flag in ["--extends-actor", "--extends-state"]:
+		var line := "knight hpda alive %s=Area2D" % flag
+		var expected := DogGenerateCommand.UNKNOWN_OPTION % (flag + "=Area2D")
 		_assert_error(line, "generate", expected)
 
 
@@ -150,8 +157,8 @@ func test_parse_force_and_update_together_are_an_error() -> void:
 
 func test_parse_state_flags_without_a_type_are_an_error() -> void:
 	_assert_error("knight --initial alive", "generate", DogGenerateCommand.NEEDS_TYPE % "--initial")
-	var extends_state := DogGenerateCommand.NEEDS_TYPE % "--extends-state"
-	_assert_error("knight --extends-state hero_state", "generate", extends_state)
+	var base := DogGenerateCommand.NEEDS_TYPE % "--base"
+	_assert_error("knight --base hero_state", "generate", base)
 
 
 func test_parse_fix_flags_without_bind_or_extends_actor_are_an_error() -> void:
@@ -167,8 +174,8 @@ func test_parse_flags_given_empty_are_an_error() -> void:
 	for flag in ["--template", "--initial", "--folder"]:
 		var expected := DogGenerateCommand.EMPTY_VALUE % flag
 		_assert_error("knight hpda alive %s=" % flag, "generate", expected)
-	var extends_state := DogGenerateCommand.EMPTY_VALUE % "--extends-state"
-	_assert_error("knight hpda alive --extends-state=", "generate", extends_state)
+	var base := DogGenerateCommand.EMPTY_VALUE % "--base"
+	_assert_error("knight hpda alive --base=", "generate", base)
 
 
 func test_parse_empty_bind_is_an_error() -> void:
@@ -182,7 +189,7 @@ func test_parse_empty_bind_is_an_error() -> void:
 func test_parse_errors_of_the_steps_name_the_step() -> void:
 	_assert_error("Knight", "actor", DogNames.INVALID_ACTOR % "Knight")
 	_assert_error("knight --template Bo-dy", "actor", DogActorGenerator.INVALID_TEMPLATE % "Bo-dy")
-	_assert_error("knight --extends-actor=", "actor", DogActorCommand.EMPTY_EXTENDS)
+	_assert_error("knight --extends=", "actor", DogActorCommand.EMPTY_EXTENDS)
 	_assert_error("knight nope alive", "state", DogStateCommand.UNKNOWN_TYPE % "nope")
 	_assert_error("knight hpda", "state", DogStateTree.NO_STATES)
 	_assert_error("knight fsm a .b", "state", DogStateCommand.NESTED_IN_FLAT % "fsm")
