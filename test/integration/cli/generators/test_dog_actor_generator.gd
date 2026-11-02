@@ -435,6 +435,41 @@ func test_an_actor_named_like_a_global_class_is_an_error() -> void:
 	_assert_nothing_written("dog_move_2d")
 
 
+## The options of fixture_knight, whose script would be the FixtureKnight fixture
+## (res://test/doubles/actor/fixture_knight.gd), extending `base`, with force.
+func _fixture_knight(base: String) -> DogActorGenerator.Options:
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "test/doubles")
+	return _options("fixture_knight", "", "actor", true, base)
+
+
+func test_a_base_that_is_the_actor_itself_is_an_error() -> void:
+	var result := DogActorGenerator.build(_fixture_knight("FixtureKnight"))
+	var expected := DogActorGenerator.INHERITS_ACTOR % ["FixtureKnight", "FixtureKnight"]
+	assert_eq(result.error, expected)
+	assert_eq(result.script_source, "")
+
+
+func test_a_base_that_inherits_from_the_actor_is_an_error() -> void:
+	var result := DogActorGenerator.build(_fixture_knight("fixture_paladin"))
+	var expected := DogActorGenerator.INHERITS_ACTOR % ["FixturePaladin", "FixtureKnight"]
+	assert_eq(result.error, expected)
+
+
+func test_a_base_that_does_not_inherit_from_the_actor_is_fine() -> void:
+	var result := DogActorGenerator.build(_fixture_knight("FixtureSquire"))
+	assert_eq(result.error, "")
+	assert_eq(result.script_source, "class_name FixtureKnight\nextends FixtureSquire\n")
+	assert_eq(result.native_type, "CharacterBody2D")
+
+
+func test_a_base_inheriting_from_another_actor_class_is_fine() -> void:
+	# FixturePaladin inherits from FixtureKnight, not from Knight.
+	var result := DogActorGenerator.generate(_based("knight", "FixturePaladin"))
+	assert_eq(result.error, "")
+	var script := _read(ROOT.path_join("knight/knight.gd"))
+	assert_eq(script, "class_name Knight\nextends FixturePaladin\n")
+
+
 func test_the_actor_own_class_is_not_a_collision() -> void:
 	# FixtureDash is res://test/doubles/bind/fixture_dash.gd: the script this actor
 	# would be. Only build runs, so the fixture is never touched.

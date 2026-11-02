@@ -19,19 +19,28 @@ static func global_path(name: String) -> String:
 	return String(entry.get("path", ""))
 
 
-## The native class `name` ends in: itself when it is native, otherwise the native
-## class at the end of its global `base` chain. "" when `name` does not exist or its
-## chain is broken (a base that does not exist, or a cycle).
-static func native_base(name: String) -> String:
+## The classes from `name` up to the native class it ends in, both included:
+## [FixturePaladin, FixtureKnight, CharacterBody2D], or [Area2D] for a native class.
+## Empty when `name` does not exist or its chain is broken (a base that does not
+## exist, or a cycle).
+static func chain(name: String) -> PackedStringArray:
 	var globals := _globals()
+	var classes := PackedStringArray()
 	var current := name
-	var seen := {}
 	while not ClassDB.class_exists(current):
-		if seen.has(current) or not globals.has(current):
-			return ""
-		seen[current] = true
+		if current in classes or not globals.has(current):
+			return PackedStringArray()
+		classes.append(current)
 		current = String(globals[current]["base"])
-	return current
+	classes.append(current)
+	return classes
+
+
+## The native class `name` ends in: itself when it is native, otherwise the native
+## class at the end of its chain (see chain). "" when the chain is empty.
+static func native_base(name: String) -> String:
+	var classes := chain(name)
+	return "" if classes.is_empty() else classes[classes.size() - 1]
 
 
 ## Whether `name` is a node class: Node or a subclass of it, native or global.

@@ -269,6 +269,26 @@ func test_errors_found_before_writing_write_nothing() -> void:
 		_assert_nothing_written(line)
 
 
+func test_an_extends_that_inherits_from_the_actor_writes_nothing() -> void:
+	# fixture_knight in test/doubles/actor is the FixtureKnight fixture: the actor
+	# build fails before anything is written.
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "test/doubles")
+	var fixture := FileAccess.get_file_as_string("res://test/doubles/actor/fixture_knight.gd")
+	for token: String in ["FixtureKnight", "FixturePaladin"]:
+		var line := "fixture_knight --folder actor -f --extends " + token
+		var message := DogActorGenerator.INHERITS_ACTOR % [token, "FixtureKnight"]
+		assert_eq(_run(line), [FAILED, ["Dog: actor: " + message]], token)
+	var after := FileAccess.get_file_as_string("res://test/doubles/actor/fixture_knight.gd")
+	assert_eq(after, fixture)
+	assert_false(FileAccess.file_exists("res://test/doubles/actor/fixture_knight.tscn"))
+
+
+func test_an_extends_that_does_not_inherit_from_the_actor_is_generated() -> void:
+	var result := _run("knight --extends FixtureSquire --bind move")
+	assert_eq(result[0], OK)
+	assert_true(_read(SCRIPT).begins_with("class_name Knight\nextends FixtureSquire\n"))
+
+
 func test_a_step_that_fails_after_a_write_stops_the_run() -> void:
 	# The template already has a DogFSM, so the hpda state step fails on the scene.
 	_template("gen_cmd_fsm", FSM)

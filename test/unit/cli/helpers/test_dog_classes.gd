@@ -1,6 +1,7 @@
 extends GutTest
 ## DogClasses: native and global classes, with classes that exist in the repo (a
-## node component, a RefCounted helper and a RefCounted state).
+## node component, a RefCounted helper, a RefCounted state and the actor fixtures of
+## test/doubles/actor).
 
 const MOVE_PATH := "res://addons/leash/components/2d/character/dog_move_2d.gd"
 
@@ -16,6 +17,19 @@ func test_global_path_is_the_script_of_a_global_class() -> void:
 	assert_eq(DogClasses.global_path("DogMove2D"), MOVE_PATH)
 	assert_eq(DogClasses.global_path("Node"), "", "a native class has no script")
 	assert_eq(DogClasses.global_path("NoSuchClass"), "")
+
+
+func test_chain_goes_from_the_class_up_to_its_native_class() -> void:
+	var expected := PackedStringArray(["FixturePaladin", "FixtureKnight", "CharacterBody2D"])
+	assert_eq(DogClasses.chain("FixturePaladin"), expected)
+	var knight := PackedStringArray(["FixtureKnight", "CharacterBody2D"])
+	assert_eq(DogClasses.chain("FixtureKnight"), knight)
+	assert_eq(DogClasses.chain("Area2D"), PackedStringArray(["Area2D"]))
+
+
+func test_chain_of_a_missing_class_is_empty() -> void:
+	assert_eq(DogClasses.chain("NoSuchClass"), PackedStringArray())
+	assert_eq(DogClasses.chain(""), PackedStringArray())
 
 
 func test_native_base_of_a_native_class_is_itself() -> void:
