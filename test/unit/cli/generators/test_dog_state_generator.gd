@@ -40,9 +40,21 @@ func _initial(args: Array) -> String:
 # --- initial state ------------------------------------------------------------
 
 
-func test_base_error_accepts_any_existing_class_or_none() -> void:
-	for base in ["", "hero_alive_state", "HeroAliveState", "DogState", "RefCounted", "Node"]:
+func test_base_error_accepts_a_state_class_refcounted_or_none() -> void:
+	for base in ["", "hero_alive_state", "HeroAliveState", "DogState", "DogFSMState", "RefCounted"]:
 		assert_eq(Generator.base_error(base), "", base)
+
+
+func test_base_error_accepts_any_class_on_refcounted() -> void:
+	# A state needs RefCounted, not DogState: DogNames is a RefCounted helper.
+	assert_eq(Generator.base_error("DogNames"), "")
+
+
+func test_base_error_rejects_a_class_that_is_not_on_refcounted() -> void:
+	for base in ["Node", "Area2D", "DogMove2D", "Object", "MainLoop"]:
+		assert_eq(Generator.base_error(base), Generator.NOT_A_STATE_CLASS % base, base)
+	var snake := Generator.NOT_A_STATE_CLASS % "Area2D"
+	assert_eq(Generator.base_error("area_2d"), snake)
 
 
 func test_base_error_accepts_snake_pascal_and_hybrid() -> void:

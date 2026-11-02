@@ -7,7 +7,8 @@ extends RefCounted
 ## wrappers); every tree node is created from state.gd, extending its
 ## parent state's class. Existing files are kept unless force is set. A `base`
 ## (the class the root states extend instead of the actor base) must be an existing
-## class, native or global, of any type: states are not nodes.
+## class, native or global, that inherits from RefCounted (DogState does: it is the
+## parent of every state), or RefCounted itself.
 ##
 ## The actor's scene is required: `<actor>.tscn` inside the actor's directory (see
 ## DogSettings.actor_dir), with a saved .gd script on its root. Its machine is the
@@ -58,6 +59,7 @@ const MANY_MACHINES := "more than one %s child in %s: %s."
 const HOST_CLASS_MISMATCH := "states cast host as %s, but %s has no class_name %s"
 const HOST_CLASS_FOUND := " (found: %s)"
 const NOT_A_CLASS := "'%s' is not an existing class."
+const NOT_A_STATE_CLASS := "'%s' is not a state class: it must inherit from RefCounted."
 
 
 ## build + write. Nothing is written when build fails.
@@ -168,13 +170,21 @@ static func check(options: Options) -> String:
 
 ## Why `base` can't be the class the root states extend, or "": a class name as typed
 ## (see DogNames.to_pascal: `enemy_state` and `EnemyState` are the same), it must be
-## a native or a global class. "" means no base, which is fine.
+## a native or a global class whose chain (see DogClasses.chain) ends in RefCounted or
+## a class that inherits from it. "" means no base, which is fine. Needs no scene, so
+## generate runs it before writing anything.
 static func base_error(base: String) -> String:
 	if base.is_empty():
 		return ""
 	if not DogNames.is_valid_class_token(base):
 		return DogNames.INVALID_CLASS % base
-	return "" if DogClasses.exists(_pascal(base)) else NOT_A_CLASS % _pascal(base)
+	var pascal := _pascal(base)
+	if not DogClasses.exists(pascal):
+		return NOT_A_CLASS % pascal
+	var native := DogClasses.native_base(pascal)
+	if native != "RefCounted" and not ClassDB.is_parent_class(native, &"RefCounted"):
+		return NOT_A_STATE_CLASS % pascal
+	return ""
 
 
 ## True only for `<root>/<actor dir>/states`: inside `root`, no `..`, with at

@@ -253,6 +253,8 @@ func test_errors_of_generate_write_nothing() -> void:
 
 func test_errors_found_before_writing_write_nothing() -> void:
 	var cases := {
+		"knight hpda alive --base dog_move_2d":
+		"Dog: state: " + DogStateGenerator.NOT_A_STATE_CLASS % "DogMove2D",
 		"knight hpda alive --base enemy_state":
 		"Dog: state: " + DogStateGenerator.NOT_A_CLASS % "EnemyState",
 		"knight hpda alive --initial dead":
