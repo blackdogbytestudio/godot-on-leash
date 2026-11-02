@@ -29,6 +29,26 @@ func after_each() -> void:
 			ProjectSettings.clear(key)
 
 
+func test_build_refuses_an_actor_base_that_inherits_from_the_actor() -> void:
+	# fixture_knight in test/doubles/actor is the FixtureKnight fixture; with a
+	# state step and a bind list, build stops at the actor and writes nothing.
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "test/doubles")
+	var fixture := FileAccess.get_file_as_string("res://test/doubles/actor/fixture_knight.gd")
+	for base in ["FixtureKnight", "FixturePaladin"]:
+		var options := _options("fixture_knight", "alive", ["DogMove2D"])
+		options.actor.folder = "actor"
+		options.actor.force = true
+		options.actor.base = base
+		var result := DogGenerateGenerator.generate(options)
+		assert_eq(result.step, DogGenerateGenerator.ACTOR_STEP, base)
+		var expected := DogActorGenerator.INHERITS_ACTOR % [base, "FixtureKnight"]
+		assert_eq(result.error, expected, base)
+		assert_eq(result.written, [], base)
+	var after := FileAccess.get_file_as_string("res://test/doubles/actor/fixture_knight.gd")
+	assert_eq(after, fixture)
+	assert_false(DirAccess.dir_exists_absolute("res://test/doubles/actor/states"))
+
+
 ## Options for `actor` with a hpda state step (`tree`, "" = no state step) and the
 ## listed components.
 func _options(
