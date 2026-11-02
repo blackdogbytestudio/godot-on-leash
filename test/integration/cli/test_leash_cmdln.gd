@@ -47,6 +47,7 @@ func test_a_command_that_works_exits_with_0() -> void:
 
 
 func test_generate_runs_and_fails_before_writing() -> void:
-	var result := _run(["generate", "no_such_actor_for_the_runner_test", "--extends", "Area2D"])
+	var result := _run(["generate", "no_such_actor_for_the_runner_test", "--initial", "a"])
 	assert_eq(result["code"], 1)
-	assert_string_contains(result["text"], "Dog: generate: " + DogGenerateCommand.AMBIGUOUS_EXTENDS)
+	var expected := DogGenerateCommand.NEEDS_TYPE % "--initial"
+	assert_string_contains(result["text"], "Dog: generate: " + expected)

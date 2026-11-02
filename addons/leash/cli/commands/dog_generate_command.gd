@@ -2,27 +2,26 @@
 class_name DogGenerateCommand
 extends DogCommand
 ## generate <actor> [<fsm|pda|hfsm|hpda> <tree...>] [--bind a,b] [--template t]
-## [--extends-actor cls] [--extends-state cls] [--folder f] [--initial s]
+## [--extends cls] [--base cls] [--folder f] [--initial s]
 ## [--prefix p] [--suffix s | --no-fix] [-f | -u]
 ##
 ## Runs actor, state and bind on <actor>, in that order (see DogGenerateGenerator),
 ## and prints their lines in the same order. Each step gets the flags that apply to
 ## it and parses them as the command of that name would, so its checks and messages
 ## are the same:
-##   actor: [template] from --template, --extends from --extends-actor, -f. It never
-##     gets -u: an existing actor is kept.
-##   state (only with a type and a tree): the tree, --base from --extends-state,
-##     --initial, -f or -u.
-##   bind (always): the components of --bind (comma separated), -u. It never gets
-##     -f, which would rewrite what state wrote.
-## --folder goes to every step; --prefix / --suffix / --no-fix go only to bind. A
-## flag that no step would use is an error, and so is --extends, which could mean
-## either class.
+##   actor: [template] from --template, --extends, -f. It never gets -u: an existing
+##     actor is kept.
+##   state (only with a type and a tree): the tree, --base, --initial, -f or -u.
+##   bind (always): the components of --bind (comma separated), the fix flags, -u. It
+##     never gets -f, which would rewrite what state wrote.
+## Class names (--template, --extends, --base, the --bind entries) accept snake_case,
+## PascalCase (literal) and hybrid: area_2d, Area2D, CPU_particles_2d.
+## --folder goes to every step; --prefix / --suffix / --no-fix go only to bind, for
+## its lower case entries. A flag that no step would use is an error.
 
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
-const AMBIGUOUS_EXTENDS := "'--extends' is ambiguous here: use --extends-actor or --extends-state"
 const EMPTY_BIND := "--bind needs components, separated by commas."
 const EMPTY_VALUE := "%s needs a value."
 const NEEDS_TYPE := "%s needs a machine type and states to apply to."
@@ -42,7 +41,7 @@ func usage() -> String:
 	return (
 		"generate <actor> [<fsm|pda|hfsm|hpda> <tree...>]"
 		+ " [--bind a,b] [--template t]"
-		+ " [--extends-actor class] [--extends-state class]"
+		+ " [--extends class] [--base class]"
 		+ " [--folder path] [--initial state]"
 		+ " [--prefix p] [--suffix s | --no-fix]"
 		+ " [-f | -u]"
@@ -108,16 +107,19 @@ static func _build_parser() -> DogOptParse:
 	var parser := DogOptParse.new()
 	parser.add_positional_required("actor", "", "actor name (snake_case)")
 	parser.add_positional("type", "", "type: fsm | pda | hfsm | hpda (no type: no states)")
-	parser.add("--bind", "", "components to add and bind, separated by commas")
-	parser.add("--template", "", "scene template of a new actor")
-	parser.add("--extends-actor", "", "node class a new actor extends (as actor --extends)")
-	parser.add("--extends-state", "", "class the root states extend (as state --base)")
-	parser.add("--extends", "", "rejected: use --extends-actor or --extends-state")
+	parser.add(
+		"--bind",
+		"",
+		"components to add and bind, separated by commas: snake_case, PascalCase or hybrid",
+	)
+	parser.add("--template", "", "scene template of a new actor (as actor [template])")
+	parser.add("--extends", "", "node class a new actor extends (as actor --extends)")
+	parser.add("--base", "", "class the root states extend (as state --base)")
 	parser.add("--folder", "", "actor directory in full, e.g. characters/enemies/slime")
 	parser.add("--initial", "", "state the machine starts in")
-	parser.add("--prefix", "", "put before every --bind entry")
-	parser.add("--suffix", "", "put after every --bind entry")
-	parser.add("--no-fix", false, "no prefix and no suffix: full class names")
+	parser.add("--prefix", "", "put before the lower case --bind entries (as bind --prefix)")
+	parser.add("--suffix", "", "put after the lower case --bind entries (as bind --suffix)")
+	parser.add("--no-fix", false, "no prefix and no suffix on the --bind entries")
 	parser.add(["--force", "-f"], false, "recreate the actor and the states")
 	parser.add(["--update", "-u"], false, "update the states and the bound API")
 	return parser
@@ -134,12 +136,10 @@ static func _read_arguments(parser: DogOptParse) -> String:
 	return ""
 
 
-## The errors of generate itself: --extends, flags given empty, the mode, and flags
-## no step would use.
+## The errors of generate itself: flags given empty, the mode, and flags no step
+## would use.
 static func _read_flags(parser: DogOptParse) -> String:
-	if parser.get_value_or_null("--extends") != null:
-		return AMBIGUOUS_EXTENDS
-	for flag in ["--template", "--extends-state", "--initial", "--folder"]:
+	for flag in ["--template", "--base", "--initial", "--folder"]:
 		if parser.get_value_or_null(flag) != null and String(parser.get_value(flag)).is_empty():
 			return EMPTY_VALUE % flag
 	var mode_error := DogScriptMerge.mode_error(
@@ -157,7 +157,7 @@ static func _read_flags(parser: DogOptParse) -> String:
 ## --no-fix and --prefix / --suffix both), or "".
 static func _unused_flag_error(parser: DogOptParse) -> String:
 	if String(parser.get_value("type")).is_empty():
-		for flag in ["--initial", "--extends-state"]:
+		for flag in ["--initial", "--base"]:
 			if parser.get_value_or_null(flag) != null:
 				return NEEDS_TYPE % flag
 	var fix := DogFix.from_parser(parser)
@@ -195,8 +195,8 @@ static func _actor_args(parser: DogOptParse) -> PackedStringArray:
 	var template: String = parser.get_value("--template")
 	if not template.is_empty():
 		args.append(template)
-	if parser.get_value_or_null("--extends-actor") != null:
-		args.append("--extends=" + String(parser.get_value("--extends-actor")))
+	if parser.get_value_or_null("--extends") != null:
+		args.append("--extends=" + String(parser.get_value("--extends")))
 	args.append_array(_folder_args(parser))
 	if parser.get_value("--force"):
 		args.append("-f")
@@ -206,8 +206,8 @@ static func _actor_args(parser: DogOptParse) -> PackedStringArray:
 static func _state_args(parser: DogOptParse) -> PackedStringArray:
 	var args := PackedStringArray([parser.get_value("actor"), parser.get_value("type")])
 	args.append_array(PackedStringArray(parser.unused))
-	if parser.get_value_or_null("--extends-state") != null:
-		args.append("--base=" + String(parser.get_value("--extends-state")))
+	if parser.get_value_or_null("--base") != null:
+		args.append("--base=" + String(parser.get_value("--base")))
 	if parser.get_value_or_null("--initial") != null:
 		args.append("--initial=" + String(parser.get_value("--initial")))
 	args.append_array(_folder_args(parser))

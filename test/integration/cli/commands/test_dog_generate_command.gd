@@ -154,9 +154,9 @@ func test_run_binds_everything_in_the_scene_without_a_list() -> void:
 	assert_string_contains(script, "@onready var _dog_move_2d: DogMove2D = $Child")
 
 
-func test_run_with_a_custom_template_and_extends_actor() -> void:
+func test_run_with_a_custom_template_and_extends() -> void:
 	_template("gen_cmd_plain")
-	var line := "ranger fsm idle walk --template gen_cmd_plain --extends-actor area_2d"
+	var line := "ranger fsm idle walk --template gen_cmd_plain --extends area_2d"
 	var result := _run(line + " --bind move")
 	assert_eq(result[0], OK)
 	var paths := _paths("ranger")
@@ -167,8 +167,8 @@ func test_run_with_a_custom_template_and_extends_actor() -> void:
 	assert_string_contains(script, "$DogMove2D")
 
 
-func test_run_with_extends_state() -> void:
-	var result := _run("knight hpda alive --extends-state hero_state")
+func test_run_with_base() -> void:
+	var result := _run("knight hpda alive --base hero_state")
 	assert_eq(result[0], OK)
 	var alive := _read(STATES.path_join("knight_alive_state.gd"))
 	assert_string_contains(alive, "extends HeroState")
@@ -224,7 +224,7 @@ func test_run_on_an_existing_actor_rejects_what_would_change_it() -> void:
 	var before := _read(SCRIPT)
 	var cases := {
 		"knight --template character_body_2d": "template 'character_body_2d'",
-		"knight --extends-actor Area2D": "--extends",
+		"knight --extends Area2D": "--extends",
 	}
 	for line in cases:
 		var expected := "Dog: actor: " + DogActorGenerator.KEPT_CHANGE % cases[line]
@@ -237,10 +237,12 @@ func test_run_on_an_existing_actor_rejects_what_would_change_it() -> void:
 
 func test_errors_of_generate_write_nothing() -> void:
 	var cases := {
-		"knight --extends Area2D": DogGenerateCommand.AMBIGUOUS_EXTENDS,
+		"knight --extends-actor Area2D": DogGenerateCommand.UNKNOWN_OPTION % "--extends-actor",
+		"knight hpda alive --extends-state hero_state":
+		DogGenerateCommand.UNKNOWN_OPTION % "--extends-state",
 		"knight hpda alive -f -u": DogScriptMerge.FORCE_AND_UPDATE,
 		"knight --initial alive": DogGenerateCommand.NEEDS_TYPE % "--initial",
-		"knight --extends-state hero_state": DogGenerateCommand.NEEDS_TYPE % "--extends-state",
+		"knight --base hero_state": DogGenerateCommand.NEEDS_TYPE % "--base",
 		"knight --prefix=": DogGenerateCommand.FIX_WITHOUT_TARGET,
 		"knight hpda alive --no-fix": DogGenerateCommand.FIX_WITHOUT_TARGET,
 	}
@@ -251,14 +253,14 @@ func test_errors_of_generate_write_nothing() -> void:
 
 func test_errors_found_before_writing_write_nothing() -> void:
 	var cases := {
-		"knight hpda alive --extends-state enemy_state":
+		"knight hpda alive --base enemy_state":
 		"Dog: state: " + DogStateGenerator.NOT_A_CLASS % "EnemyState",
 		"knight hpda alive --initial dead":
 		"Dog: state: " + DogStateGenerator.INITIAL_NOT_IN_TREE % ["dead", "alive"],
 		"knight --bind nope": "Dog: bind: " + DogBindGenerator.UNKNOWN_CLASS % "DogNope2D",
 		"knight --bind DogFSM":
 		"Dog: bind: " + DogBindGenerator.MACHINE_COMPONENT % "DogFSM",
-		"knight --extends-actor RefCounted":
+		"knight --extends RefCounted":
 		"Dog: actor: " + DogActorGenerator.NOT_A_NODE_CLASS % "RefCounted",
 		"area_2d": "Dog: actor: " + DogActorGenerator.NATIVE_CLASS_EXISTS % "Area2D",
 	}
