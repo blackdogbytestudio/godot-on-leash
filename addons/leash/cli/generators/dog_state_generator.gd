@@ -323,7 +323,7 @@ static func _pick_machine(result: Result, machines: Array, machine_class: String
 ## Adds a `machine_class` node to the text of result.scene: fills scene_original,
 ## scene_source, machine_node and the report line. Returns an error, or "".
 static func _plan_machine_node(result: Result, machine_class: String) -> String:
-	var script := DogBindGenerator.class_script(machine_class.to_snake_case())
+	var script := DogBindGenerator.class_script(machine_class)
 	if script == null:
 		return NO_MACHINE_CLASS % machine_class
 	result.scene_original = _read_text(result.scene)

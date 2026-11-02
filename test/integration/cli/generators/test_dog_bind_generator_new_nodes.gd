@@ -82,7 +82,7 @@ func _assert_nothing_written() -> void:
 
 
 func test_a_missing_component_is_added_and_bound() -> void:
-	var result := _generate(["fixture_jump_2d", "fixture_dash"])
+	var result := _generate(["FixtureJump2D", "FixtureDash"])
 	assert_eq(result.error, "")
 	assert_eq(result.report[0], "add node FixtureDash")
 	var scene := _read(SCENE)
@@ -96,13 +96,13 @@ func test_a_missing_component_is_added_and_bound() -> void:
 
 
 func test_the_added_component_has_the_uid_of_its_script() -> void:
-	_generate(["fixture_dash"])
+	_generate(["FixtureDash"])
 	var uid := ResourceUID.id_to_text(ResourceLoader.get_resource_uid(DASH))
 	assert_string_contains(_read(SCENE), "uid=\"%s\" path=\"%s\"" % [uid, DASH])
 
 
 func test_godot_loads_the_edited_scene_with_the_component_attached() -> void:
-	_generate(["fixture_dash"])
+	_generate(["FixtureDash"])
 	var mode := ResourceLoader.CACHE_MODE_IGNORE
 	var packed := ResourceLoader.load(SCENE, "PackedScene", mode) as PackedScene
 	var root := packed.instantiate()
@@ -112,19 +112,19 @@ func test_godot_loads_the_edited_scene_with_the_component_attached() -> void:
 
 
 func test_an_unknown_class_is_an_error_and_nothing_is_written() -> void:
-	var result := _generate(["fixture_dash", "nothing_like_this"])
-	assert_eq(result.error, DogBindGenerator.UNKNOWN_CLASS % "nothing_like_this")
+	var result := _generate(["FixtureDash", "NothingLikeThis"])
+	assert_eq(result.error, DogBindGenerator.UNKNOWN_CLASS % "NothingLikeThis")
 	_assert_nothing_written()
 
 
 func test_a_machine_in_the_list_is_an_error_and_nothing_is_written() -> void:
-	var result := _generate(["fixture_dash", "dog_fsm"])
-	assert_eq(result.error, DogBindGenerator.MACHINE_COMPONENT % "dog_fsm")
+	var result := _generate(["FixtureDash", "DogFSM"])
+	assert_eq(result.error, DogBindGenerator.MACHINE_COMPONENT % "DogFSM")
 	_assert_nothing_written()
 
 
 func test_a_class_that_is_not_a_node_is_an_error() -> void:
-	var result := _generate(["dog_state"])
+	var result := _generate(["DogState"])
 	assert_string_contains(result.error, "not a node class")
 	_assert_nothing_written()
 
@@ -138,15 +138,15 @@ func test_the_automatic_mode_never_adds_nodes() -> void:
 
 
 func test_without_write_nothing_is_written() -> void:
-	var result := _generate(["fixture_dash"], false)
+	var result := _generate(["FixtureDash"], false)
 	assert_eq(result.error, "")
 	assert_string_contains(result.scene_source, DASH_NODE)
 	_assert_nothing_written()
 
 
 func test_running_again_does_not_add_a_second_node() -> void:
-	_generate(["fixture_dash"])
-	var second := _generate(["fixture_dash"])
+	_generate(["FixtureDash"])
+	var second := _generate(["FixtureDash"])
 	assert_eq(second.error, "")
 	assert_false(second.report.has("add node FixtureDash"))
 	assert_eq(second.scene_source, second.scene_original)

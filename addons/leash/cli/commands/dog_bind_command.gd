@@ -6,13 +6,17 @@ extends DogCommand
 ## Fills the script on the root node of <actor>.tscn with an API that forwards to
 ## its components, which are direct children of the root. Attach the script in
 ## Godot first. Without a list it binds every child that has a class and is not a
-## state machine. With a list it binds only those: snake_case class names, with the
-## prefix and suffix settings added around each one (dog, 2d: jump -> dog_jump_2d).
-## A listed class of the project that is not a child yet is added to the scene as a
-## node named after the class; the automatic mode never adds nodes.
+## state machine. With a list it binds only those classes. Class names accept
+## snake_case, PascalCase (literal) and hybrid: an all lower case name gets the prefix
+## and suffix settings around it (dog, 2d: jump -> dog_jump_2d -> DogJump2D), and a
+## name with any upper case letter is taken as typed (WallClimb, DogJump2D,
+## CPU_particles_2d -> CPUParticles2D), so `move jump WallClimb` mixes Dog
+## components with a class of the project. A listed class of the project that is not
+## a child yet is added to the scene as a node named after the class; the automatic
+## mode never adds nodes.
 ## --prefix / --suffix replace a setting (empty, as in --prefix=, drops that side)
-## and --no-fix drops both, for full names (--no-fix dog_jump_2d); all three need
-## a list to apply to.
+## and --no-fix drops both, for full names (--no-fix dog_jump_2d); all three apply to
+## the lower case names and need a list.
 ## --folder is the actor's directory, written in full from the explicit_folder
 ## setting (--folder characters/enemies/slime); without it the actor is looked for
 ## under the implicit_folder setting.
@@ -20,7 +24,10 @@ extends DogCommand
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."
-const INVALID_COMPONENT := "'%s' is not a valid component name (use snake_case, e.g. dog_jump_2d)."
+const INVALID_COMPONENT := (
+	"'%s' is not a valid component name"
+	+ " (snake_case, PascalCase or hybrid: jump, DogJump2D, CPU_particles_2d)."
+)
 const NO_FIX_AND_FIX := DogFix.NO_FIX_AND_FIX
 const FIX_WITHOUT_COMPONENTS := "--prefix, --suffix and --no-fix need components to apply to."
 
@@ -102,8 +109,8 @@ static func parse_request(args: PackedStringArray) -> Request:
 static func _build_parser() -> DogOptParse:
 	var parser := DogOptParse.new()
 	parser.add_positional_required("actor", "", "actor name (snake_case)")
-	parser.add("--prefix", "", "put before every component (default: the prefix setting)")
-	parser.add("--suffix", "", "put after every component (default: the suffix setting)")
+	parser.add("--prefix", "", "put before lower case components (default: the prefix setting)")
+	parser.add("--suffix", "", "put after lower case components (default: the suffix setting)")
 	parser.add("--no-fix", false, "no prefix and no suffix: components are full names")
 	parser.add("--folder", "", "actor directory in full, e.g. characters/enemies/slime")
 	parser.add(["--force", "-f"], false, "keep the header, rewrite everything below it")
@@ -125,8 +132,8 @@ static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 	return DogNames.actor_error(request.actor)
 
 
-## The remaining tokens as components, with the prefix and suffix around each one
-## (see DogFix). No tokens means the automatic mode.
+## The remaining tokens as class names (see component_class). No tokens means the
+## automatic mode.
 static func _read_components(parser: DogOptParse, request: Request) -> String:
 	var fix := DogFix.from_parser(parser)
 	if not fix.error.is_empty():
@@ -135,11 +142,25 @@ static func _read_components(parser: DogOptParse, request: Request) -> String:
 		return FIX_WITHOUT_COMPONENTS
 
 	for token in parser.unused:
-		var component := fix.apply(String(token))
-		if not DogNames.is_valid_name(component):
-			return INVALID_COMPONENT % component
+		var component := component_class(String(token), fix)
+		if component.is_empty():
+			return INVALID_COMPONENT % _with_fix(String(token), fix)
 		request.components.append(component)
 	return ""
+
+
+## The class a listed `token` names, or "" when it is not a valid class name: a token
+## with an upper case letter is taken as typed, an all lower case one gets the prefix
+## and suffix of `fix` around it; both are made PascalCase (see DogNames.to_pascal).
+static func component_class(token: String, fix: DogFix) -> String:
+	var full := _with_fix(token, fix)
+	return DogNames.to_pascal(full) if DogNames.is_valid_class_token(full) else ""
+
+
+## `token` with the prefix and suffix of `fix` around it, unless it has an upper case
+## letter.
+static func _with_fix(token: String, fix: DogFix) -> String:
+	return token if token != token.to_lower() else fix.apply(token)
 
 
 ## --folder and the -f / -u mode.

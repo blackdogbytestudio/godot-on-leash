@@ -255,9 +255,9 @@ func test_errors_found_before_writing_write_nothing() -> void:
 		"Dog: state: " + DogStateGenerator.NOT_A_CLASS % "EnemyState",
 		"knight hpda alive --initial dead":
 		"Dog: state: " + DogStateGenerator.INITIAL_NOT_IN_TREE % ["dead", "alive"],
-		"knight --bind nope": "Dog: bind: " + DogBindGenerator.UNKNOWN_CLASS % "dog_nope_2d",
-		"knight --bind fsm --suffix=":
-		"Dog: bind: " + DogBindGenerator.MACHINE_COMPONENT % "dog_fsm",
+		"knight --bind nope": "Dog: bind: " + DogBindGenerator.UNKNOWN_CLASS % "DogNope2D",
+		"knight --bind DogFSM":
+		"Dog: bind: " + DogBindGenerator.MACHINE_COMPONENT % "DogFSM",
 		"knight --extends-actor RefCounted":
 		"Dog: actor: " + DogActorGenerator.NOT_A_NODE_CLASS % "RefCounted",
 		"area_2d": "Dog: actor: " + DogActorGenerator.NATIVE_CLASS_EXISTS % "Area2D",

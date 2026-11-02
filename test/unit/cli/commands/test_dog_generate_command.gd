@@ -67,10 +67,10 @@ func test_parse_with_a_type_and_a_tree() -> void:
 
 
 func test_parse_bind_list_gets_the_prefix_and_suffix() -> void:
-	assert_eq(_request("knight --bind move,jump").bind.components, ["dog_move_2d", "dog_jump_2d"])
+	assert_eq(_request("knight --bind move,jump").bind.components, ["DogMove2D", "DogJump2D"])
 	var full := _request("knight --bind fixture_jump_2d --no-fix")
-	assert_eq(full.bind.components, ["fixture_jump_2d"])
-	assert_eq(_request("knight --bind jump --prefix=").bind.components, ["jump_2d"])
+	assert_eq(full.bind.components, ["FixtureJump2D"])
+	assert_eq(_request("knight --bind jump --prefix=").bind.components, ["Jump2D"])
 
 
 func test_parse_fix_flags_go_only_to_the_steps_that_use_them() -> void:
@@ -85,7 +85,7 @@ func test_parse_fix_flags_go_only_to_the_steps_that_use_them() -> void:
 func test_parse_extends_actor_keeps_a_pascal_case_name() -> void:
 	var request := _request("knight --extends-actor CPUParticles2D --bind move")
 	assert_eq(request.actor.extends_class, "CPUParticles2D")
-	assert_eq(request.bind.components, ["dog_move_2d"])
+	assert_eq(request.bind.components, ["DogMove2D"])
 
 
 func test_parse_template_extends_state_and_folder() -> void:
@@ -121,7 +121,7 @@ func test_options_for_copies_each_step() -> void:
 	assert_eq(options.actor.base, "Area2D")
 	assert_eq(options.state.type, "hpda")
 	assert_eq(options.state.mode, DogScriptMerge.Mode.UPDATE)
-	assert_eq(options.bind.components, ["move_2d"])
+	assert_eq(options.bind.components, ["Move2D"])
 	assert_eq(options.bind.mode, DogScriptMerge.Mode.UPDATE)
 	assert_null(DogGenerateCommand.options_for(_request("knight")).state)
 
@@ -186,8 +186,8 @@ func test_parse_errors_of_the_steps_name_the_step() -> void:
 	_assert_error("knight nope alive", "state", DogStateCommand.UNKNOWN_TYPE % "nope")
 	_assert_error("knight hpda", "state", DogStateTree.NO_STATES)
 	_assert_error("knight fsm a .b", "state", DogStateCommand.NESTED_IN_FLAT % "fsm")
-	var invalid := DogBindCommand.INVALID_COMPONENT % "dog_Jump_2d"
-	_assert_error("knight --bind Jump", "bind", invalid)
+	var invalid := DogBindCommand.INVALID_COMPONENT % "Ju-mp"
+	_assert_error("knight --bind Ju-mp", "bind", invalid)
 
 
 # --- run ----------------------------------------------------------------------
