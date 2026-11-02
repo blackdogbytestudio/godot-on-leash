@@ -19,8 +19,9 @@ extends RefCounted
 ## `base` changes the class the actor extends, a class name as typed (see
 ## DogNames.to_pascal): the script's `extends` names it, and the root of the scene gets
 ## the native type at the end of its chain (a scene can't use a class_name as a node
-## type). It must be a node class, native or global, and <Actor> must not be a class
-## already (except the actor's own script, for force).
+## type). It must be a node class, native or global, that does not inherit from
+## <Actor> (a script can't extend itself), and <Actor> must not be a class already
+## (except the actor's own script, for force).
 ##
 ## The actor goes in its directory (see DogSettings.actor_dir). When both its scene
 ## and its script are there, the actor is kept: nothing is checked against the
@@ -49,6 +50,7 @@ const KEPT_CHANGE := (
 const NATIVE_CLASS_EXISTS := "class '%s' already exists in Godot: name the actor something else."
 const GLOBAL_CLASS_EXISTS := "class '%s' already exists in %s: name the actor something else."
 const NOT_A_NODE_CLASS := "'%s' is not a node class."
+const INHERITS_ACTOR := "'%s' inherits from %s, the class of this actor."
 const COULD_NOT_CREATE := "could not create '%s' (error %d)."
 const COULD_NOT_WRITE := "could not write '%s' (error %d)."
 
@@ -162,10 +164,14 @@ static func _existing_error(result: Result, options: Options) -> String:
 	return ""
 
 
-## Why the actor's class can't be created, or "": result.actor_class must not be a
-## class yet (unless it is the actor's own script) and options.base must be a node
-## class. Fills result.native_type.
+## Why the actor's class can't be created, or "": options.base must not inherit from
+## result.actor_class (checked first: the actor's own script would pass the next
+## checks), result.actor_class must not be a class yet (unless it is the actor's own
+## script) and options.base must be a node class. Fills result.native_type.
 static func _class_error(result: Result, options: Options) -> String:
+	var base := DogNames.to_pascal(options.base)
+	if not base.is_empty() and result.actor_class in DogClasses.chain(base):
+		return INHERITS_ACTOR % [base, result.actor_class]
 	if ClassDB.class_exists(result.actor_class):
 		return NATIVE_CLASS_EXISTS % result.actor_class
 	var owner_path := DogClasses.global_path(result.actor_class)

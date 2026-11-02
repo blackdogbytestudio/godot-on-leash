@@ -182,6 +182,31 @@ func test_run_with_an_extends_that_is_not_a_node_class() -> void:
 	assert_false(DirAccess.dir_exists_absolute(ROOT))
 
 
+func test_run_with_an_extends_that_inherits_from_the_actor() -> void:
+	# fixture_knight in test/doubles/actor is the FixtureKnight fixture: the errors
+	# come before anything is written, so the fixture is never touched.
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "test/doubles")
+	var fixture := FileAccess.get_file_as_string("res://test/doubles/actor/fixture_knight.gd")
+	var cases := {
+		"FixtureKnight": "FixtureKnight",
+		"fixture_paladin": "FixturePaladin",
+	}
+	for token in cases:
+		var result := _run("fixture_knight --folder actor -f --extends " + token)
+		var message := DogActorGenerator.INHERITS_ACTOR % [cases[token], "FixtureKnight"]
+		assert_eq(result, [FAILED, ["Dog: actor: " + message]], token)
+	var after := FileAccess.get_file_as_string("res://test/doubles/actor/fixture_knight.gd")
+	assert_eq(after, fixture)
+	assert_false(FileAccess.file_exists("res://test/doubles/actor/fixture_knight.tscn"))
+
+
+func test_run_with_an_extends_that_does_not_inherit_from_the_actor() -> void:
+	var result := _run("knight --extends FixturePaladin")
+	assert_eq(result[0], OK)
+	var expected := "class_name Knight\nextends FixturePaladin\n"
+	assert_eq(_read(ROOT.path_join("knight/knight.gd")), expected)
+
+
 func test_run_with_an_actor_that_is_already_a_class() -> void:
 	var native := _run("area_2d")
 	assert_eq(native, [FAILED, ["Dog: actor: " + DogActorGenerator.NATIVE_CLASS_EXISTS % "Area2D"]])
