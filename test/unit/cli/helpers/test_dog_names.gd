@@ -1,7 +1,7 @@
 # gdstyle:ignore-file=quality/max-public-methods
 extends GutTest
-## DogNames: the snake_case rule for actor and component names, and the
-## snake_case -> PascalCase conversion used for class names.
+## DogNames: the snake_case rule for actor names and folders, the class-name rule
+## (snake_case, PascalCase or hybrid) and the conversion of class names to PascalCase.
 
 
 func test_is_valid_name_accepts_digit_parts_and_rejects_bad_shapes() -> void:
@@ -9,6 +9,47 @@ func test_is_valid_name_accepts_digit_parts_and_rejects_bad_shapes() -> void:
 		assert_true(DogNames.is_valid_name(ok), ok)
 	for bad in ["", "Player", "_player", "player_", "a__b", "2d", "a-b", "a b", "a/b", "a\n"]:
 		assert_false(DogNames.is_valid_name(bad), bad)
+
+
+func test_is_valid_class_token_accepts_snake_pascal_and_hybrid() -> void:
+	var good := [
+		"area_2d",
+		"Area2D",
+		"CPUParticles2D",
+		"CPU_particles_2d",
+		"WallClimb",
+		"node_3d",
+		"a",
+		"A1",
+		"dog_Jump_2D",
+	]
+	for ok in good:
+		assert_true(DogNames.is_valid_class_token(ok), ok)
+
+
+func test_is_valid_class_token_rejects_bad_shapes() -> void:
+	var bad := ["", "_Area", "Area_", "Area__2D", "2D", "Area-2D", "Area 2D", "a/b", "a.b", "A\n"]
+	for token in bad:
+		assert_false(DogNames.is_valid_class_token(token), token)
+
+
+func test_is_valid_name_stays_snake_case_only() -> void:
+	for token in ["Area2D", "CPU_particles_2d"]:
+		assert_true(DogNames.is_valid_class_token(token), token)
+		assert_false(DogNames.is_valid_name(token), token)
+
+
+func test_to_pascal_of_snake_pascal_and_hybrid_class_names() -> void:
+	var cases := {
+		"area_2d": "Area2D",
+		"node_3d": "Node3D",
+		"CPUParticles2D": "CPUParticles2D",
+		"CPU_particles_2d": "CPUParticles2D",
+		"GPU_particles_2d": "GPUParticles2D",
+		"WallClimb": "WallClimb",
+	}
+	for token in cases:
+		assert_eq(DogNames.to_pascal(token), cases[token], token)
 
 
 func test_to_pascal_capitalizes_each_part() -> void:
