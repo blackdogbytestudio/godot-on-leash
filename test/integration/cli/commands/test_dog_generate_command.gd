@@ -67,12 +67,14 @@ func _write(path: String, text: String) -> void:
 	file.close()
 
 
-## Writes res://scene_templates/<template>/: a Node2D root with the template's
-## script and, with `child_script`, a child node using it.
+## Writes res://scene_templates/<Template>/ (the folder and its files named after
+## `template` in PascalCase): a Node2D root with the template's script and, with
+## `child_script`, a child node using it.
 func _template(template: String, child_script := "") -> void:
-	var dir := PROJECT_TEMPLATES.path_join(template)
+	var pascal := DogNames.to_pascal(template)
+	var dir := PROJECT_TEMPLATES.path_join(pascal)
 	_templates.append(dir)
-	var own := dir.path_join(template + ".gd")
+	var own := dir.path_join(pascal + ".gd")
 	_write(own, "extends Node2D\n# %s\n" % template)
 	var text := "[gd_scene format=3]\n\n"
 	text += "[ext_resource type=\"Script\" path=\"%s\" id=\"1_s\"]\n" % own
@@ -82,7 +84,7 @@ func _template(template: String, child_script := "") -> void:
 	if not child_script.is_empty():
 		text += "\n[node name=\"Child\" type=\"Node\" parent=\".\"]\n"
 		text += "script = ExtResource(\"2_c\")\n"
-	_write(dir.path_join(template + ".tscn"), text)
+	_write(dir.path_join(pascal + ".tscn"), text)
 
 
 func _remove(path: String) -> void:
@@ -154,15 +156,15 @@ func test_run_binds_everything_in_the_scene_without_a_list() -> void:
 
 func test_run_with_a_custom_template_and_extends_actor() -> void:
 	_template("gen_cmd_plain")
-	var line := "ranger fsm idle walk --template gen_cmd_plain --extends-actor area --prefix="
-	var result := _run(line + " --bind dog_move")
+	var line := "ranger fsm idle walk --template gen_cmd_plain --extends-actor area_2d"
+	var result := _run(line + " --bind move")
 	assert_eq(result[0], OK)
 	var paths := _paths("ranger")
 	var script := _read(paths[1])
 	assert_true(script.begins_with("class_name Ranger\nextends Area2D\n# gen_cmd_plain\n"))
 	assert_string_contains(_read(paths[0]), "[node name=\"Ranger\" type=\"Area2D\"]")
 	assert_string_contains(script, "_dog_fsm.init(idle_state)")
-	assert_string_contains(script, "$DogMove2D", "--prefix= applies to --bind too")
+	assert_string_contains(script, "$DogMove2D")
 
 
 func test_run_with_extends_state() -> void:
@@ -222,7 +224,7 @@ func test_run_on_an_existing_actor_rejects_what_would_change_it() -> void:
 	var before := _read(SCRIPT)
 	var cases := {
 		"knight --template character_body_2d": "template 'character_body_2d'",
-		"knight --extends-actor Area2D --no-fix": "--extends",
+		"knight --extends-actor Area2D": "--extends",
 	}
 	for line in cases:
 		var expected := "Dog: actor: " + DogActorGenerator.KEPT_CHANGE % cases[line]
@@ -256,7 +258,7 @@ func test_errors_found_before_writing_write_nothing() -> void:
 		"knight --bind nope": "Dog: bind: " + DogBindGenerator.UNKNOWN_CLASS % "dog_nope_2d",
 		"knight --bind fsm --suffix=":
 		"Dog: bind: " + DogBindGenerator.MACHINE_COMPONENT % "dog_fsm",
-		"knight --extends-actor RefCounted --no-fix":
+		"knight --extends-actor RefCounted":
 		"Dog: actor: " + DogActorGenerator.NOT_A_NODE_CLASS % "RefCounted",
 		"area_2d": "Dog: actor: " + DogActorGenerator.NATIVE_CLASS_EXISTS % "Area2D",
 	}

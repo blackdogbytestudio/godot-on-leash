@@ -15,9 +15,9 @@ extends DogCommand
 ##     --initial, -f or -u.
 ##   bind (always): the components of --bind (comma separated), -u. It never gets
 ##     -f, which would rewrite what state wrote.
-## --folder goes to every step; --prefix / --suffix / --no-fix go to the steps that
-## name classes with them (--extends-actor and --bind). A flag that no step would use
-## is an error, and so is --extends, which could mean either class.
+## --folder goes to every step; --prefix / --suffix / --no-fix go only to bind. A
+## flag that no step would use is an error, and so is --extends, which could mean
+## either class.
 
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
@@ -26,9 +26,7 @@ const AMBIGUOUS_EXTENDS := "'--extends' is ambiguous here: use --extends-actor o
 const EMPTY_BIND := "--bind needs components, separated by commas."
 const EMPTY_VALUE := "%s needs a value."
 const NEEDS_TYPE := "%s needs a machine type and states to apply to."
-const FIX_WITHOUT_TARGET := (
-	"--prefix, --suffix and --no-fix need --bind or --extends-actor to apply to."
-)
+const FIX_WITHOUT_TARGET := "--prefix, --suffix and --no-fix need --bind to apply to."
 const STOPPED := "stopped at %s; already written: %s"
 
 
@@ -117,8 +115,8 @@ static func _build_parser() -> DogOptParse:
 	parser.add("--extends", "", "rejected: use --extends-actor or --extends-state")
 	parser.add("--folder", "", "actor directory in full, e.g. characters/enemies/slime")
 	parser.add("--initial", "", "state the machine starts in")
-	parser.add("--prefix", "", "put before --extends-actor and --bind")
-	parser.add("--suffix", "", "put after --extends-actor and --bind")
+	parser.add("--prefix", "", "put before every --bind entry")
+	parser.add("--suffix", "", "put after every --bind entry")
 	parser.add("--no-fix", false, "no prefix and no suffix: full class names")
 	parser.add(["--force", "-f"], false, "recreate the actor and the states")
 	parser.add(["--update", "-u"], false, "update the states and the bound API")
@@ -155,8 +153,8 @@ static func _read_flags(parser: DogOptParse) -> String:
 	return _unused_flag_error(parser)
 
 
-## The state flags without a type, and the fix flags without --bind or
-## --extends-actor (or given with --no-fix and --prefix / --suffix both), or "".
+## The state flags without a type, and the fix flags without --bind (or given with
+## --no-fix and --prefix / --suffix both), or "".
 static func _unused_flag_error(parser: DogOptParse) -> String:
 	if String(parser.get_value("type")).is_empty():
 		for flag in ["--initial", "--extends-state"]:
@@ -165,10 +163,7 @@ static func _unused_flag_error(parser: DogOptParse) -> String:
 	var fix := DogFix.from_parser(parser)
 	if not fix.error.is_empty():
 		return fix.error
-	var targets := ["--bind", "--extends-actor"].filter(
-		func(flag: String) -> bool: return parser.get_value_or_null(flag) != null
-	)
-	if fix.given and targets.is_empty():
+	if fix.given and parser.get_value_or_null("--bind") == null:
 		return FIX_WITHOUT_TARGET
 	return ""
 
@@ -202,7 +197,6 @@ static func _actor_args(parser: DogOptParse) -> PackedStringArray:
 		args.append(template)
 	if parser.get_value_or_null("--extends-actor") != null:
 		args.append("--extends=" + String(parser.get_value("--extends-actor")))
-		args.append_array(_fix_args(parser))
 	args.append_array(_folder_args(parser))
 	if parser.get_value("--force"):
 		args.append("-f")

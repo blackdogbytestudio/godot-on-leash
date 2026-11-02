@@ -78,16 +78,14 @@ func test_parse_fix_flags_go_only_to_the_steps_that_use_them() -> void:
 	assert_eq(to_bind.error, "")
 	assert_eq(to_bind.actor.extends_class, "")
 
-	var to_actor := _request("knight --extends-actor area --prefix=")
-	assert_eq(to_actor.error, "")
-	assert_eq(to_actor.actor.extends_class, "Area2D")
-	assert_eq(to_actor.bind.components, [], "bind stays in the automatic mode")
+	var to_actor := _request("knight --extends-actor area_2d --prefix=")
+	assert_eq(to_actor.error, DogGenerateCommand.FIX_WITHOUT_TARGET, "the actor takes none")
 
 
 func test_parse_extends_actor_keeps_a_pascal_case_name() -> void:
-	var request := _request("knight --extends-actor CPUParticles2D --no-fix --bind move")
+	var request := _request("knight --extends-actor CPUParticles2D --bind move")
 	assert_eq(request.actor.extends_class, "CPUParticles2D")
-	assert_eq(request.bind.components, ["move"])
+	assert_eq(request.bind.components, ["dog_move_2d"])
 
 
 func test_parse_template_extends_state_and_folder() -> void:
@@ -117,7 +115,7 @@ func test_parse_update_goes_to_state_and_bind_never_to_actor() -> void:
 
 
 func test_options_for_copies_each_step() -> void:
-	var line := "knight hpda alive --bind move --extends-actor area --prefix= -u"
+	var line := "knight hpda alive --bind move --extends-actor area_2d --prefix= -u"
 	var options := DogGenerateCommand.options_for(_request(line))
 	assert_eq(options.actor.actor, "knight")
 	assert_eq(options.actor.base, "Area2D")
@@ -183,7 +181,7 @@ func test_parse_empty_bind_is_an_error() -> void:
 
 func test_parse_errors_of_the_steps_name_the_step() -> void:
 	_assert_error("Knight", "actor", DogNames.INVALID_ACTOR % "Knight")
-	_assert_error("knight --template Body", "actor", DogActorGenerator.INVALID_TEMPLATE % "Body")
+	_assert_error("knight --template Bo-dy", "actor", DogActorGenerator.INVALID_TEMPLATE % "Bo-dy")
 	_assert_error("knight --extends-actor=", "actor", DogActorCommand.EMPTY_EXTENDS)
 	_assert_error("knight nope alive", "state", DogStateCommand.UNKNOWN_TYPE % "nope")
 	_assert_error("knight hpda", "state", DogStateTree.NO_STATES)

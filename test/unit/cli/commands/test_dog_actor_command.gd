@@ -3,7 +3,7 @@ extends GutTest
 ## DogActorCommand metadata, parse_request and the run paths that stop before
 ## generating: no files involved.
 
-const FIX_KEYS := [DogSettings.PREFIX, DogSettings.SUFFIX]
+const FIX_KEYS := [DogSettings.PREFIX, DogSettings.SUFFIX]  # dog / 2d: must not apply
 
 var _command: DogActorCommand
 var _saved := {}
@@ -35,8 +35,7 @@ func _request(line: String) -> DogActorCommand.Request:
 func test_command_name_description_and_usage() -> void:
 	assert_eq(_command.command_name(), "actor")
 	assert_ne(_command.description(), "")
-	var usage := "actor <actor> [template] [--extends class]"
-	usage += " [--prefix p] [--suffix s | --no-fix] [--folder path] [-f]"
+	var usage := "actor <actor> [template] [--extends class] [--folder path] [-f]"
 	assert_eq(_command.usage(), usage)
 
 
@@ -50,8 +49,14 @@ func test_parse_reads_only_the_actor() -> void:
 	assert_eq(request.template, "")
 	assert_eq(request.folder, "")
 	assert_eq(request.extends_class, "")
-	assert_false(request.extends_fixed)
 	assert_false(request.force)
+
+
+func test_parse_reads_a_template_in_any_class_format() -> void:
+	for template in ["character_body_2d", "CharacterBody2D", "Character_body_2d"]:
+		var request := _request("slime " + template)
+		assert_eq(request.error, "", template)
+		assert_eq(request.template, template, "the generator turns it into PascalCase")
 
 
 func test_parse_reads_template_folder_and_force() -> void:
@@ -64,49 +69,47 @@ func test_parse_reads_template_folder_and_force() -> void:
 
 
 func test_options_for_copies_the_request() -> void:
-	var line := "slime area_2d --extends move --folder a/b -f"
+	var line := "slime area_2d --extends dog_move_2d --folder a/b -f"
 	var options := DogActorCommand.options_for(_request(line))
 	assert_eq(options.actor, "slime")
 	assert_eq(options.template, "area_2d")
 	assert_eq(options.folder, "a/b")
 	assert_eq(options.base, "DogMove2D")
-	assert_true(options.base_fixed)
 	assert_true(options.force)
 
 
 # --- --extends ----------------------------------------------------------------
 
 
-func test_parse_extends_gets_the_prefix_and_suffix_in_pascal_case() -> void:
-	var request := _request("hero --extends move")
-	assert_eq(request.error, "")
-	assert_eq(request.extends_class, "DogMove2D")
-	assert_true(request.extends_fixed)
+func test_parse_extends_takes_snake_pascal_and_hybrid_as_typed() -> void:
+	var cases := {
+		"area_2d": "Area2D",
+		"Area2D": "Area2D",
+		"CPUParticles2D": "CPUParticles2D",
+		"CPU_particles_2d": "CPUParticles2D",
+		"move": "Move",
+	}
+	for token in cases:
+		var request := _request("hero --extends " + token)
+		assert_eq(request.error, "", token)
+		assert_eq(request.extends_class, cases[token], token)
 
 
-func test_parse_extends_with_fix_flags() -> void:
-	assert_eq(_request("hero --extends area --prefix=").extends_class, "Area2D")
-	assert_eq(_request("hero --extends body --prefix fx --suffix 3d").extends_class, "FxBody3D")
-	var full := _request("hero --extends area_2d --no-fix")
-	assert_eq(full.extends_class, "Area2D")
-	assert_false(full.extends_fixed)
+func test_parse_extends_ignores_the_prefix_and_suffix_settings() -> void:
+	# The settings are dog / 2d: they belong to bind only.
+	assert_eq(_request("hero --extends move").extends_class, "Move")
 
 
-func test_parse_extends_keeps_a_pascal_case_name_with_no_fix() -> void:
-	# The way to give a class that has no snake_case spelling.
-	var request := _request("hero --extends CPUParticles2D --no-fix")
-	assert_eq(request.error, "")
-	assert_eq(request.extends_class, "CPUParticles2D")
+func test_parse_fix_flags_are_unknown_options() -> void:
+	for flag in ["--prefix=dog", "--suffix=2d", "--no-fix"]:
+		var request := _request("hero --extends Area2D " + flag)
+		assert_eq(request.error, DogActorCommand.UNKNOWN_OPTION % flag, flag)
 
 
-func test_parse_fix_flags_without_extends_are_an_error() -> void:
-	for line in ["hero --prefix dog", "hero --suffix=", "hero --no-fix"]:
-		assert_eq(_request(line).error, DogActorCommand.FIX_WITHOUT_EXTENDS, line)
-
-
-func test_parse_no_fix_with_prefix_or_suffix_is_an_error() -> void:
-	var request := _request("hero --extends area --no-fix --prefix=")
-	assert_eq(request.error, DogFix.NO_FIX_AND_FIX)
+func test_parse_extends_with_a_bad_class_name_is_an_error() -> void:
+	for token in ["area-2d", "_Area", "2d", "a__b"]:
+		var request := _request("hero --extends=" + token)
+		assert_eq(request.error, DogNames.INVALID_CLASS % token, token)
 
 
 func test_parse_empty_extends_is_an_error() -> void:
@@ -119,7 +122,8 @@ func test_parse_requires_the_actor() -> void:
 
 func test_parse_rejects_bad_names() -> void:
 	assert_eq(_request("Hero").error, DogNames.INVALID_ACTOR % "Hero")
-	assert_eq(_request("hero Body").error, DogActorGenerator.INVALID_TEMPLATE % "Body")
+	assert_eq(_request("hero Bo-dy").error, DogActorGenerator.INVALID_TEMPLATE % "Bo-dy")
+	assert_eq(_request("hero body__2d").error, DogActorGenerator.INVALID_TEMPLATE % "body__2d")
 	assert_eq(_request("hero --folder ../x").error, DogNames.INVALID_FOLDER % "../x")
 
 
