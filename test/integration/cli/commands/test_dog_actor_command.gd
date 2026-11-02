@@ -5,7 +5,6 @@ extends GutTest
 const ROOT_DIR := "scenes/tmp/actor_cmd_test"
 const ROOT := "res://" + ROOT_DIR
 const PROJECT_TEMPLATE := "res://scene_templates/CharacterBody2D"
-
 ## The FixtureOwn class (res://test/doubles/own/fixture_own.gd) is the script of an
 ## actor named fixture_own in test/doubles/own: -f rewrites it with the same text
 ## and writes its scene next to it, so the test puts the fixture back afterwards.

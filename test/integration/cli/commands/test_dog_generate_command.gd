@@ -12,7 +12,6 @@ const SCENE := DIR + "/knight.tscn"
 const SCRIPT := DIR + "/knight.gd"
 const STATES := DIR + "/states"
 const FSM := "res://addons/leash/components/machines/dog_fsm.gd"
-
 ## The FixtureOwn class (res://test/doubles/own/fixture_own.gd) is the script of an
 ## actor named fixture_own in test/doubles/own: -f rewrites it with the same text
 ## and writes its scene next to it, so the test puts the fixture back afterwards.
