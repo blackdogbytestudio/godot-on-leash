@@ -166,13 +166,15 @@ static func check(options: Options) -> String:
 	return error
 
 
-## Why `base` can't be the class the root states extend, or "": in PascalCase
-## (`enemy_state` and `EnemyState` are the same) it must be a native or a global
-## class. "" means no base, which is fine.
+## Why `base` can't be the class the root states extend, or "": a class name as typed
+## (see DogNames.to_pascal: `enemy_state` and `EnemyState` are the same), it must be
+## a native or a global class. "" means no base, which is fine.
 static func base_error(base: String) -> String:
-	if base.is_empty() or DogClasses.exists(_pascal(base)):
+	if base.is_empty():
 		return ""
-	return NOT_A_CLASS % _pascal(base)
+	if not DogNames.is_valid_class_token(base):
+		return DogNames.INVALID_CLASS % base
+	return "" if DogClasses.exists(_pascal(base)) else NOT_A_CLASS % _pascal(base)
 
 
 ## True only for `<root>/<actor dir>/states`: inside `root`, no `..`, with at

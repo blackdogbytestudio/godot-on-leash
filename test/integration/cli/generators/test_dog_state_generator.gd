@@ -224,7 +224,7 @@ func test_generate_skips_existing_and_force_rewrites() -> void:
 func test_generate_extends_suppresses_actor_base() -> void:
 	_scene("slime", { "DogHPDA": "DogHPDA" }, "enemies/slime")
 	var result := _generate(PackedStringArray([
-		"slime", "hpda", "--extends", "hero_alive_state",
+		"slime", "hpda", "--base", "hero_alive_state",
 		"--folder", "enemies/slime", "jump",
 	]))
 	var dir := _states("enemies/slime")
@@ -238,7 +238,7 @@ func test_generate_extends_suppresses_actor_base() -> void:
 func test_generate_extends_only_applies_to_root_states() -> void:
 	_scene("slime", { "DogHPDA": "DogHPDA" }, "enemies/slime")
 	_generate(PackedStringArray([
-		"slime", "hpda", "--extends", "hero_alive_state",
+		"slime", "hpda", "--base", "hero_alive_state",
 		"--folder", "enemies/slime", "jump", ".air", "..land", "walk",
 	]))
 	var dir := _states("enemies/slime")
@@ -254,7 +254,7 @@ func test_generate_extends_only_applies_to_root_states() -> void:
 func test_generate_extends_in_pascal_case_or_a_state_of_the_addon() -> void:
 	_scene("slime", { "DogHPDA": "DogHPDA" })
 	for base in ["HeroAliveState", "DogHPDAState", "dog_state"]:
-		var args := PackedStringArray(["slime", "hpda", "-f", "--extends", base, "jump"])
+		var args := PackedStringArray(["slime", "hpda", "-f", "--base", base, "jump"])
 		var result := _generate(args)
 		assert_eq(result.error, "", base)
 		var text := _text(_states("slime").path_join("slime_jump_state.gd"))
@@ -264,7 +264,7 @@ func test_generate_extends_in_pascal_case_or_a_state_of_the_addon() -> void:
 func test_generate_extends_a_missing_class_is_an_error_and_writes_nothing() -> void:
 	_scene("slime", { "DogHPDA": "DogHPDA" })
 	for base in ["enemy_state", "EnemyState"]:
-		var result := _generate(PackedStringArray(["slime", "hpda", "--extends", base, "jump"]))
+		var result := _generate(PackedStringArray(["slime", "hpda", "--base", base, "jump"]))
 		assert_eq(result.error, DogStateGenerator.NOT_A_CLASS % "EnemyState", base)
 		assert_eq(result.written, [])
 	assert_false(DirAccess.dir_exists_absolute(_states("slime")))

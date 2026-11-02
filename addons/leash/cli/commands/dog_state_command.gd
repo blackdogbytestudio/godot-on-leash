@@ -1,15 +1,16 @@
 @tool
 class_name DogStateCommand
 extends DogCommand
-## state <actor> <type> <tree...> [--folder f] [--extends State] [--initial state] [-f | -u]
+## state <actor> <type> <tree...> [--folder f] [--base class] [--initial state] [-f | -u]
 ## The states' host is always the actor's class (actor in PascalCase). When the
 ## root of <actor>.tscn has no machine of <type>, a node named after the machine
 ## class (DogHPDA, ...) is added to the scene; a machine of another type is an error.
 ## --folder is the actor's directory, written in full from the explicit_folder
 ## setting (--folder characters/enemies/slime); without it the actor is looked for
 ## under the implicit_folder setting. The states go in its `states` folder.
-## --extends is the class the root states extend instead of the actor's base state:
-## a native or a project class, in snake_case or PascalCase (enemy_state, EnemyState).
+## --base is the class the root states extend instead of the actor's base state:
+## a native or a project class. Class names accept snake_case, PascalCase (literal)
+## and hybrid: enemy_state, EnemyState, Enemy_state.
 
 const FLAT_TYPES: PackedStringArray = ["fsm", "pda"]
 const TREE_TYPES: PackedStringArray = ["hfsm", "hpda"]
@@ -32,7 +33,7 @@ func description() -> String:
 func usage() -> String:
 	return (
 		"state <actor> <fsm|pda|hfsm|hpda> <tree...>"
-		+ " [--folder path] [--extends State]"
+		+ " [--folder path] [--base class]"
 		+ " [--initial state] [-f | -u]"
 	)
 
@@ -80,7 +81,7 @@ static func options_for(request: Request) -> DogStateGenerator.Options:
 	options.actor = request.actor
 	options.type = request.type
 	options.folder = request.folder
-	options.base = request.extends_state
+	options.base = request.base
 	options.tree = request.tree
 	options.mode = request.mode
 	options.initial = request.initial
@@ -111,7 +112,11 @@ static func _build_parser() -> DogOptParse:
 		"",
 		"actor directory in full, e.g. characters/enemies/slime (states go inside it)",
 	)
-	parser.add("--extends", "", "existing class the root states inherit from")
+	parser.add(
+		"--base",
+		"",
+		"existing class the root states inherit from: snake_case, PascalCase or hybrid",
+	)
 	parser.add(
 		"--initial",
 		"",
@@ -151,14 +156,14 @@ static func _read_arguments(parser: DogOptParse, request: Request) -> String:
 	return ""
 
 
-## --folder, --extends, --initial and the -f / -u mode.
+## --folder, --base, --initial and the -f / -u mode.
 static func _read_options(parser: DogOptParse, request: Request) -> String:
 	request.folder = parser.get_value("--folder")
 	var error := DogNames.folder_error(request.folder)
 	if not error.is_empty():
 		return error
 
-	request.extends_state = parser.get_value("--extends")
+	request.base = parser.get_value("--base")
 	request.initial = parser.get_value("--initial")
 	if not request.initial.is_empty() and not DogStateTree.is_valid_name(request.initial):
 		return INVALID_INITIAL % request.initial
@@ -184,7 +189,7 @@ class Request:
 	var actor: String = ""
 	var type: String = ""
 	var folder: String = ""
-	var extends_state: String = ""
+	var base: String = ""
 	var initial: String = ""
 	var mode: DogScriptMerge.Mode = DogScriptMerge.Mode.ADD
 	var tree: DogStateTree

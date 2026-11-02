@@ -28,14 +28,19 @@ func test_parse_accepts_hpda() -> void:
 	assert_eq(request.tree.nodes.size(), 3)
 
 
-func test_parse_reads_folder_and_extends() -> void:
+func test_parse_reads_folder_and_base() -> void:
 	var request := _request(PackedStringArray([
 		"slime", "hpda", "--folder", "characters/enemies/slime",
-		"--extends", "hero_alive_state", "jump",
+		"--base", "hero_alive_state", "jump",
 	]))
 	assert_eq(request.error, "")
 	assert_eq(request.folder, "characters/enemies/slime")
-	assert_eq(request.extends_state, "hero_alive_state")
+	assert_eq(request.base, "hero_alive_state")
+
+
+func test_parse_extends_is_an_unknown_option() -> void:
+	var args := PackedStringArray(["slime", "hpda", "--extends", "hero_alive_state", "jump"])
+	assert_eq(_request(args).error, DogStateCommand.UNKNOWN_OPTION % "--extends")
 
 
 func test_parse_rejects_host_option() -> void:
@@ -137,7 +142,7 @@ func test_run_reports_unknown_type() -> void:
 
 func test_options_for_copies_the_request() -> void:
 	var request := _request(PackedStringArray([
-		"slime", "hpda", "--folder", "characters/enemies/slime", "--extends", "hero_alive_state",
+		"slime", "hpda", "--folder", "characters/enemies/slime", "--base", "hero_alive_state",
 		"--initial", "jump", "-u", "jump",
 	]))
 	var options := Command.options_for(request)

@@ -11,7 +11,7 @@ extends DogCommand
 ## are the same:
 ##   actor: [template] from --template, --extends from --extends-actor, -f. It never
 ##     gets -u: an existing actor is kept.
-##   state (only with a type and a tree): the tree, --extends from --extends-state,
+##   state (only with a type and a tree): the tree, --base from --extends-state,
 ##     --initial, -f or -u.
 ##   bind (always): the components of --bind (comma separated), -u. It never gets
 ##     -f, which would rewrite what state wrote.
@@ -111,7 +111,7 @@ static func _build_parser() -> DogOptParse:
 	parser.add("--bind", "", "components to add and bind, separated by commas")
 	parser.add("--template", "", "scene template of a new actor")
 	parser.add("--extends-actor", "", "node class a new actor extends (as actor --extends)")
-	parser.add("--extends-state", "", "class the root states extend (as state --extends)")
+	parser.add("--extends-state", "", "class the root states extend (as state --base)")
 	parser.add("--extends", "", "rejected: use --extends-actor or --extends-state")
 	parser.add("--folder", "", "actor directory in full, e.g. characters/enemies/slime")
 	parser.add("--initial", "", "state the machine starts in")
@@ -207,7 +207,7 @@ static func _state_args(parser: DogOptParse) -> PackedStringArray:
 	var args := PackedStringArray([parser.get_value("actor"), parser.get_value("type")])
 	args.append_array(PackedStringArray(parser.unused))
 	if parser.get_value_or_null("--extends-state") != null:
-		args.append("--extends=" + String(parser.get_value("--extends-state")))
+		args.append("--base=" + String(parser.get_value("--extends-state")))
 	if parser.get_value_or_null("--initial") != null:
 		args.append("--initial=" + String(parser.get_value("--initial")))
 	args.append_array(_folder_args(parser))
