@@ -128,7 +128,7 @@ func test_run_prints_validation_errors() -> void:
 func test_run_with_an_extends_that_is_not_a_class_writes_nothing() -> void:
 	var scene := _scene("slime")
 	var before := FileAccess.get_file_as_string(scene)
-	var result := _run(PackedStringArray(["slime", "hpda", "--extends", "enemy_state", "alive"]))
+	var result := _run(PackedStringArray(["slime", "hpda", "--base", "enemy_state", "alive"]))
 	var expected := "Dog: state: " + DogStateGenerator.NOT_A_CLASS % "EnemyState"
 	assert_eq(result, [FAILED, [expected]])
 	assert_false(DirAccess.dir_exists_absolute(_states("slime")))

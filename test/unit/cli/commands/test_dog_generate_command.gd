@@ -93,7 +93,7 @@ func test_parse_template_extends_state_and_folder() -> void:
 	var request := _request(line + " --folder enemies/knight")
 	assert_eq(request.error, "")
 	assert_eq(request.actor.template, "area_2d")
-	assert_eq(request.state.extends_state, "hero_state")
+	assert_eq(request.state.base, "hero_state")
 	for folder in [request.actor.folder, request.state.folder, request.bind.folder]:
 		assert_eq(folder, "enemies/knight")
 

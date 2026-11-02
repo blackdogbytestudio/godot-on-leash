@@ -45,6 +45,16 @@ func test_base_error_accepts_any_existing_class_or_none() -> void:
 		assert_eq(Generator.base_error(base), "", base)
 
 
+func test_base_error_accepts_snake_pascal_and_hybrid() -> void:
+	for base in ["hero_alive_state", "HeroAliveState", "Hero_alive_state", "ref_counted"]:
+		assert_eq(Generator.base_error(base), "", base)
+
+
+func test_base_error_rejects_a_bad_class_name() -> void:
+	for base in ["hero-state", "_Hero", "hero__state"]:
+		assert_eq(Generator.base_error(base), DogNames.INVALID_CLASS % base, base)
+
+
 func test_base_error_rejects_a_class_that_does_not_exist() -> void:
 	assert_eq(Generator.base_error("enemy_state"), Generator.NOT_A_CLASS % "EnemyState")
 	assert_eq(Generator.base_error("EnemyState"), Generator.NOT_A_CLASS % "EnemyState")
