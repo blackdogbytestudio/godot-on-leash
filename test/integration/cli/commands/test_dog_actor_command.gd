@@ -4,7 +4,7 @@ extends GutTest
 
 const ROOT_DIR := "scenes/tmp/actor_cmd_test"
 const ROOT := "res://" + ROOT_DIR
-const PROJECT_TEMPLATE := "res://scene_templates/character_body_2d"
+const PROJECT_TEMPLATE := "res://scene_templates/CharacterBody2D"
 const KEYS := [
 	DogSettings.IMPLICIT_FOLDER,
 	DogSettings.EXPLICIT_FOLDER,
@@ -78,13 +78,13 @@ func test_run_creates_the_actor_from_the_default_template() -> void:
 
 
 func test_run_uses_the_project_template_first() -> void:
-	var own := PROJECT_TEMPLATE.path_join("character_body_2d.gd")
+	var own := PROJECT_TEMPLATE.path_join("CharacterBody2D.gd")
 	_write(own, "extends CharacterBody2D\n# project\n")
 	var scene := "[gd_scene load_steps=2 format=3]\n\n"
 	scene += "[ext_resource type=\"Script\" path=\"%s\" id=\"1_t\"]\n\n" % own
 	scene += "[node name=\"CharacterBody2D\" type=\"CharacterBody2D\"]\n"
 	scene += "script = ExtResource(\"1_t\")\n"
-	_write(PROJECT_TEMPLATE.path_join("character_body_2d.tscn"), scene)
+	_write(PROJECT_TEMPLATE.path_join("CharacterBody2D.tscn"), scene)
 
 	assert_eq(_run("knight character_body_2d")[0], OK)
 	var expected := "class_name Knight\nextends CharacterBody2D\n# project\n"
@@ -119,12 +119,12 @@ func test_run_with_force_recreates_the_actor() -> void:
 func test_run_with_a_missing_template_prints_the_error() -> void:
 	var result := _run("knight actor_cmd_none")
 	assert_eq(result[0], FAILED)
-	assert_string_contains(result[1][0], "Dog: actor: template 'actor_cmd_none' not found in")
+	assert_string_contains(result[1][0], "Dog: actor: template 'ActorCmdNone' not found in")
 	assert_false(DirAccess.dir_exists_absolute(ROOT))
 
 
 func test_run_with_bad_names_prints_the_error() -> void:
-	for line in ["Knight", "knight Body", "knight --folder X"]:
+	for line in ["Knight", "knight Bo-dy", "knight --folder X"]:
 		var result := _run(line)
 		assert_eq(result[0], ERR_INVALID_PARAMETER, line)
 		assert_string_contains(result[1][0], "Dog: actor: ")
@@ -147,8 +147,8 @@ func test_run_on_a_complete_actor_rejects_what_would_change_it() -> void:
 	_write(ROOT.path_join("knight/knight.gd"), "my script")
 	var cases := {
 		"knight character_body_2d": "template 'character_body_2d'",
-		"knight --extends Area2D --no-fix": "--extends",
-		"knight --extends area --prefix=": "--extends",
+		"knight --extends Area2D": "--extends",
+		"knight --extends area_2d": "--extends",
 	}
 	for line in cases:
 		var result := _run(line)
@@ -157,34 +157,26 @@ func test_run_on_a_complete_actor_rejects_what_would_change_it() -> void:
 	assert_eq(_read(ROOT.path_join("knight/knight.gd")), "my script")
 
 
-func test_run_with_extends_and_the_settings() -> void:
-	# move -> dog_move_2d -> DogMove2D, whose native base is Node.
-	var result := _run("knight --extends move")
-	assert_eq(result[0], OK)
-	assert_eq(_read(ROOT.path_join("knight/knight.gd")), "class_name Knight\nextends DogMove2D\n")
-	var scene := _read(ROOT.path_join("knight/knight.tscn"))
-	assert_string_contains(scene, "[node name=\"Knight\" type=\"Node\"]")
-
-
-func test_run_with_extends_and_an_empty_prefix() -> void:
-	assert_eq(_run("knight --extends area --prefix=")[0], OK)
-	assert_eq(_read(ROOT.path_join("knight/knight.gd")), "class_name Knight\nextends Area2D\n")
-
-
-func test_run_with_a_pascal_case_extends_and_no_fix() -> void:
-	var result := _run("knight --extends CPUParticles2D --no-fix")
-	assert_eq(result[0], OK)
-	var expected := "class_name Knight\nextends CPUParticles2D\n"
-	assert_eq(_read(ROOT.path_join("knight/knight.gd")), expected)
-	var scene := _read(ROOT.path_join("knight/knight.tscn"))
-	assert_string_contains(scene, "[node name=\"Knight\" type=\"CPUParticles2D\"]")
+func test_run_with_extends_in_snake_pascal_and_hybrid() -> void:
+	var cases := {
+		"knight --extends dog_move_2d": ["DogMove2D", "Node"],
+		"knight --extends CPUParticles2D": ["CPUParticles2D", "CPUParticles2D"],
+		"knight --extends CPU_particles_2d": ["CPUParticles2D", "CPUParticles2D"],
+	}
+	for line in cases:
+		var result := _run(line + " -f")
+		assert_eq(result[0], OK, line)
+		var expected := "class_name Knight\nextends %s\n" % cases[line][0]
+		assert_eq(_read(ROOT.path_join("knight/knight.gd")), expected, line)
+		var scene := _read(ROOT.path_join("knight/knight.tscn"))
+		var root := "[node name=\"Knight\" type=\"%s\"]" % cases[line][1]
+		assert_string_contains(scene, root, line)
 
 
 func test_run_with_an_extends_that_is_not_a_node_class() -> void:
-	var fixed := _run("knight --extends area")
-	var message := DogActorGenerator.NOT_A_NODE_CLASS % "DogArea2D" + DogActorGenerator.FIX_HINT
-	assert_eq(fixed, [FAILED, ["Dog: actor: " + message]])
-	var full := _run("knight --extends RefCounted --no-fix")
+	var short := _run("knight --extends area")
+	assert_eq(short, [FAILED, ["Dog: actor: " + DogActorGenerator.NOT_A_NODE_CLASS % "Area"]])
+	var full := _run("knight --extends RefCounted")
 	var plain := "Dog: actor: " + DogActorGenerator.NOT_A_NODE_CLASS % "RefCounted"
 	assert_eq(full, [FAILED, [plain]])
 	assert_false(DirAccess.dir_exists_absolute(ROOT))
@@ -199,8 +191,9 @@ func test_run_with_an_actor_that_is_already_a_class() -> void:
 	assert_false(DirAccess.dir_exists_absolute(ROOT))
 
 
-func test_run_with_fix_flags_and_no_extends() -> void:
-	var result := _run("knight --prefix=")
-	var expected := "Dog: actor: " + DogActorCommand.FIX_WITHOUT_EXTENDS
-	assert_eq(result, [ERR_INVALID_PARAMETER, [expected]])
+func test_run_with_a_removed_fix_flag_is_an_unknown_option() -> void:
+	for flag in ["--prefix", "--suffix", "--no-fix"]:
+		var result := _run("knight --extends Area2D " + flag)
+		var expected := "Dog: actor: " + DogActorCommand.UNKNOWN_OPTION % flag
+		assert_eq(result, [ERR_INVALID_PARAMETER, [expected]], flag)
 	assert_false(DirAccess.dir_exists_absolute(ROOT))

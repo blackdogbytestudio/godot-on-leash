@@ -5,7 +5,9 @@ exclude = [
 	".godot",
 	"addons",
 	"addons/leash/cli/third_party",
+	"addons/leash/scene_templates",
 	"addons/leash/script_templates",
+	"scene_templates",
 	"script_templates",
 ]
 include = ["addons/leash"]

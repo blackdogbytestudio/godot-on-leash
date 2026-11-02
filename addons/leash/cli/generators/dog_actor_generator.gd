@@ -4,8 +4,10 @@ extends RefCounted
 ## Creates an actor from a scene template: a copy of the template's scene and script
 ## (never an instance of them), renamed after the actor.
 ##
-## A template is a folder `<template>/` holding `<template>.tscn` and `<template>.gd`,
-## the root of the scene using that script. It is looked for in TEMPLATE_ROOTS, in
+## A template is a PascalCase folder `<Template>/` holding `<Template>.tscn` and
+## `<Template>.gd`, the root of the scene using that script. It is named like any
+## class name: snake_case, PascalCase (literal) or hybrid (character_body_2d,
+## CharacterBody2D), and looked for by its PascalCase name in TEMPLATE_ROOTS, in
 ## order, so the project's folder wins over the addon's. Both files are read as text;
 ## nothing but the actor is copied into the project.
 ##
@@ -14,10 +16,11 @@ extends RefCounted
 ## to the actor's script, without uid: Godot writes the new uids when it saves them.
 ## The rest of both texts is kept as is. A template script needs an `extends` line.
 ##
-## `base` changes the class the actor extends: the script's `extends` names it, and
-## the root of the scene gets the native type at the end of its chain (a scene can't
-## use a class_name as a node type). It must be a node class, native or global, and
-## <Actor> must not be a class already (except the actor's own script, for force).
+## `base` changes the class the actor extends, a class name as typed (see
+## DogNames.to_pascal): the script's `extends` names it, and the root of the scene gets
+## the native type at the end of its chain (a scene can't use a class_name as a node
+## type). It must be a node class, native or global, and <Actor> must not be a class
+## already (except the actor's own script, for force).
 ##
 ## The actor goes in its directory (see DogSettings.actor_dir). When both its scene
 ## and its script are there, the actor is kept: nothing is checked against the
@@ -25,13 +28,15 @@ extends RefCounted
 ## an error. When only one of them is there, it is an error. Force recreates both
 ## from the template.
 
-const DEFAULT_TEMPLATE := "character_body_2d"
+const DEFAULT_TEMPLATE := "CharacterBody2D"
 const TEMPLATE_ROOTS: PackedStringArray = [
 	"res://scene_templates",
 	"res://addons/leash/scene_templates",
 ]
 # Error messages
-const INVALID_TEMPLATE := "'%s' is not a valid template name (use snake_case)."
+const INVALID_TEMPLATE := (
+	"'%s' is not a valid template name (snake_case or PascalCase, e.g. CharacterBody2D)."
+)
 const TEMPLATE_NOT_FOUND := "template '%s' not found in %s."
 const TEMPLATE_FILE_MISSING := "template '%s' has no %s."
 const TEMPLATE_EDIT_FAILED := "%s: %s"
@@ -44,10 +49,6 @@ const KEPT_CHANGE := (
 const NATIVE_CLASS_EXISTS := "class '%s' already exists in Godot: name the actor something else."
 const GLOBAL_CLASS_EXISTS := "class '%s' already exists in %s: name the actor something else."
 const NOT_A_NODE_CLASS := "'%s' is not a node class."
-const FIX_HINT := (
-	" The prefix and suffix were added to the name you gave:"
-	+ " --prefix= / --suffix= / --no-fix change that."
-)
 const COULD_NOT_CREATE := "could not create '%s' (error %d)."
 const COULD_NOT_WRITE := "could not write '%s' (error %d)."
 
@@ -73,6 +74,7 @@ static func build(options: Options) -> Result:
 	result.error = _input_error(options, template)
 	if not result.error.is_empty():
 		return result
+	template = DogNames.to_pascal(template)
 
 	var dir := DogSettings.actor_dir(options.actor, options.folder)
 	result.scene_path = dir.path_join(options.actor + ".tscn")
@@ -91,19 +93,21 @@ static func build(options: Options) -> Result:
 	if not result.error.is_empty():
 		return result
 
-	result.error = _render_scene(result, options.base)
+	var base := DogNames.to_pascal(options.base)
+	result.error = _render_scene(result, base)
 	if not result.error.is_empty():
 		return result
-	result.error = _render_script(result, options.base)
+	result.error = _render_script(result, base)
 	return result
 
 
-## Why `base` can't be extended by an actor, or "": it must be a node class, native
-## or global. With `fixed`, the error says the prefix and suffix were added to it.
-static func base_error(base: String, fixed := false) -> String:
-	if DogClasses.is_node(base):
-		return ""
-	return NOT_A_NODE_CLASS % base + (FIX_HINT if fixed else "")
+## Why `base` (a class name as typed, see DogNames.to_pascal) can't be extended by an
+## actor, or "": it must be a node class, native or global.
+static func base_error(base: String) -> String:
+	if not DogNames.is_valid_class_token(base):
+		return DogNames.INVALID_CLASS % base
+	var pascal := DogNames.to_pascal(base)
+	return "" if DogClasses.is_node(pascal) else NOT_A_NODE_CLASS % pascal
 
 
 ## Why the actor, the folder, the template or the folder settings can't be used,
@@ -112,7 +116,7 @@ static func _input_error(options: Options, template: String) -> String:
 	var error := DogNames.actor_error(options.actor)
 	if error.is_empty():
 		error = DogNames.folder_error(options.folder)
-	if error.is_empty() and not DogNames.is_valid_name(template):
+	if error.is_empty() and not DogNames.is_valid_class_token(template):
 		error = INVALID_TEMPLATE % template
 	if error.is_empty():
 		error = DogSettings.error()
@@ -120,7 +124,7 @@ static func _input_error(options: Options, template: String) -> String:
 
 
 ## Fills result.template_scene and template_script from the first template root
-## that has a `template` folder. Returns an error, or "".
+## that has a `template` folder (`template` in PascalCase). Returns an error, or "".
 static func _find_template(result: Result, template: String) -> String:
 	var searched: Array[String] = []
 	for root in TEMPLATE_ROOTS:
@@ -170,9 +174,9 @@ static func _class_error(result: Result, options: Options) -> String:
 
 	if options.base.is_empty():
 		return ""
-	var error := base_error(options.base, options.base_fixed)
+	var error := base_error(options.base)
 	if error.is_empty():
-		result.native_type = DogClasses.native_base(options.base)
+		result.native_type = DogClasses.native_base(DogNames.to_pascal(options.base))
 	return error
 
 
@@ -246,15 +250,13 @@ static func _write_all(result: Result) -> String:
 
 
 ## What to create. `template` "" means DEFAULT_TEMPLATE; `force` overwrites an
-## existing scene and script. `base` is the class the actor extends, in PascalCase
-## ("" = the template's), and `base_fixed` says the prefix or the suffix was added
-## to it (for the error message).
+## existing scene and script. `base` is the class the actor extends ("" = the
+## template's). Both are class names as typed (see DogNames.to_pascal).
 class Options:
 	var actor := ""
 	var template := ""
 	var folder := ""
 	var base := ""
-	var base_fixed := false
 	var force := false
 
 
