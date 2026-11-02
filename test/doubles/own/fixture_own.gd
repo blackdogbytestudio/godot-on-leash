@@ -1,0 +1,2 @@
+class_name FixtureOwn
+extends CharacterBody2D

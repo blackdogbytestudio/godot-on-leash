@@ -5,6 +5,12 @@ extends GutTest
 const ROOT_DIR := "scenes/tmp/actor_cmd_test"
 const ROOT := "res://" + ROOT_DIR
 const PROJECT_TEMPLATE := "res://scene_templates/CharacterBody2D"
+
+## The FixtureOwn class (res://test/doubles/own/fixture_own.gd) is the script of an
+## actor named fixture_own in test/doubles/own: -f rewrites it with the same text
+## and writes its scene next to it, so the test puts the fixture back afterwards.
+const OWN_SCRIPT := "res://test/doubles/own/fixture_own.gd"
+const OWN_SCENE := "res://test/doubles/own/fixture_own.tscn"
 const KEYS := [
 	DogSettings.IMPLICIT_FOLDER,
 	DogSettings.EXPLICIT_FOLDER,
@@ -216,6 +222,17 @@ func test_run_with_an_abstract_extends() -> void:
 		var message := "Dog: actor: " + DogActorGenerator.ABSTRACT_BASE % cases[line]
 		assert_eq(_run(line), [FAILED, [message]], line)
 	assert_false(DirAccess.dir_exists_absolute(ROOT))
+
+
+func test_run_with_force_on_the_actor_own_class() -> void:
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "test/doubles")
+	var fixture := FileAccess.get_file_as_string(OWN_SCRIPT)
+	var result := _run("fixture_own --folder own -f")
+	_write(OWN_SCRIPT, fixture)
+	DirAccess.remove_absolute(OWN_SCENE)
+	assert_eq(result, [OK, ["created " + OWN_SCENE, "created " + OWN_SCRIPT]])
+	var expected := "class_name FixtureOwn\nextends CharacterBody2D\n"
+	assert_eq(FileAccess.get_file_as_string(OWN_SCRIPT), expected)
 
 
 func test_run_with_an_actor_that_is_already_a_class() -> void:

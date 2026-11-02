@@ -12,6 +12,12 @@ const SCENE := DIR + "/knight.tscn"
 const SCRIPT := DIR + "/knight.gd"
 const STATES := DIR + "/states"
 const FSM := "res://addons/leash/components/machines/dog_fsm.gd"
+
+## The FixtureOwn class (res://test/doubles/own/fixture_own.gd) is the script of an
+## actor named fixture_own in test/doubles/own: -f rewrites it with the same text
+## and writes its scene next to it, so the test puts the fixture back afterwards.
+const OWN_SCRIPT := "res://test/doubles/own/fixture_own.gd"
+const OWN_SCENE := "res://test/doubles/own/fixture_own.tscn"
 const KEYS := [
 	DogSettings.IMPLICIT_FOLDER,
 	DogSettings.EXPLICIT_FOLDER,
@@ -289,6 +295,16 @@ func test_an_extends_that_does_not_inherit_from_the_actor_is_generated() -> void
 	var result := _run("knight --extends FixtureSquire --bind move")
 	assert_eq(result[0], OK)
 	assert_true(_read(SCRIPT).begins_with("class_name Knight\nextends FixtureSquire\n"))
+
+
+func test_run_with_force_on_the_actor_own_class() -> void:
+	ProjectSettings.set_setting(DogSettings.EXPLICIT_FOLDER, "test/doubles")
+	var fixture := FileAccess.get_file_as_string(OWN_SCRIPT)
+	var result := _run("fixture_own --folder own -f")
+	_write(OWN_SCRIPT, fixture)
+	DirAccess.remove_absolute(OWN_SCENE)
+	assert_eq(result[0], OK)
+	assert_eq(result[1].slice(0, 2), ["created " + OWN_SCENE, "created " + OWN_SCRIPT])
 
 
 func test_a_step_that_fails_after_a_write_stops_the_run() -> void:
