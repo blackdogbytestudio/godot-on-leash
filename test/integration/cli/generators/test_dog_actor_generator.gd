@@ -556,8 +556,24 @@ func test_a_base_with_a_bad_class_name_is_an_error() -> void:
 	_assert_nothing_written("knight")
 
 
+func test_an_abstract_base_is_an_error() -> void:
+	# CanvasItem is a node class Godot can't create; FixtureCanvasItem extends it.
+	for base in ["CanvasItem", "FixtureCanvasItem"]:
+		var result := DogActorGenerator.generate(_based("knight", base))
+		assert_eq(result.error, DogActorGenerator.ABSTRACT_BASE % base, base)
+	_assert_nothing_written("knight")
+
+
+func test_a_base_on_a_node_godot_can_create_is_fine() -> void:
+	for base in ["Node2D", "FixtureSquire"]:
+		var result := DogActorGenerator.build(_based("knight", base))
+		assert_eq(result.error, "", base)
+
+
 func test_base_error_is_a_static_check() -> void:
 	assert_eq(DogActorGenerator.base_error("Area2D"), "")
 	assert_eq(DogActorGenerator.base_error("DogMove2D"), "")
 	var expected := DogActorGenerator.NOT_A_NODE_CLASS % "DogState"
 	assert_eq(DogActorGenerator.base_error("DogState"), expected)
+	var abstract := DogActorGenerator.ABSTRACT_BASE % "CanvasItem"
+	assert_eq(DogActorGenerator.base_error("canvas_item"), abstract)

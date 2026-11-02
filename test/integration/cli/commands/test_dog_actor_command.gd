@@ -207,6 +207,17 @@ func test_run_with_an_extends_that_does_not_inherit_from_the_actor() -> void:
 	assert_eq(_read(ROOT.path_join("knight/knight.gd")), expected)
 
 
+func test_run_with_an_abstract_extends() -> void:
+	var cases := {
+		"knight --extends CanvasItem": "CanvasItem",
+		"knight --extends fixture_canvas_item": "FixtureCanvasItem",
+	}
+	for line in cases:
+		var message := "Dog: actor: " + DogActorGenerator.ABSTRACT_BASE % cases[line]
+		assert_eq(_run(line), [FAILED, [message]], line)
+	assert_false(DirAccess.dir_exists_absolute(ROOT))
+
+
 func test_run_with_an_actor_that_is_already_a_class() -> void:
 	var native := _run("area_2d")
 	assert_eq(native, [FAILED, ["Dog: actor: " + DogActorGenerator.NATIVE_CLASS_EXISTS % "Area2D"]])

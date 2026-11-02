@@ -19,7 +19,8 @@ extends RefCounted
 ## `base` changes the class the actor extends, a class name as typed (see
 ## DogNames.to_pascal): the script's `extends` names it, and the root of the scene gets
 ## the native type at the end of its chain (a scene can't use a class_name as a node
-## type). It must be a node class, native or global, that does not inherit from
+## type). It must be a node class, native or global, whose native class Godot can
+## create (not an abstract one like CanvasItem) and that does not inherit from
 ## <Actor> (a script can't extend itself), and <Actor> must not be a class already
 ## (except the actor's own script, for force).
 ##
@@ -51,6 +52,7 @@ const NATIVE_CLASS_EXISTS := "class '%s' already exists in Godot: name the actor
 const GLOBAL_CLASS_EXISTS := "class '%s' already exists in %s: name the actor something else."
 const NOT_A_NODE_CLASS := "'%s' is not a node class."
 const INHERITS_ACTOR := "'%s' inherits from %s, the class of this actor."
+const ABSTRACT_BASE := "'%s' is abstract: it can't be the root node."
 const COULD_NOT_CREATE := "could not create '%s' (error %d)."
 const COULD_NOT_WRITE := "could not write '%s' (error %d)."
 
@@ -104,12 +106,17 @@ static func build(options: Options) -> Result:
 
 
 ## Why `base` (a class name as typed, see DogNames.to_pascal) can't be extended by an
-## actor, or "": it must be a node class, native or global.
+## actor, or "": it must be a node class, native or global, and the native class at
+## the end of its chain must be one Godot can create (ClassDB.can_instantiate).
 static func base_error(base: String) -> String:
 	if not DogNames.is_valid_class_token(base):
 		return DogNames.INVALID_CLASS % base
 	var pascal := DogNames.to_pascal(base)
-	return "" if DogClasses.is_node(pascal) else NOT_A_NODE_CLASS % pascal
+	if not DogClasses.is_node(pascal):
+		return NOT_A_NODE_CLASS % pascal
+	if not ClassDB.can_instantiate(DogClasses.native_base(pascal)):
+		return ABSTRACT_BASE % pascal
+	return ""
 
 
 ## Why the actor, the folder, the template or the folder settings can't be used,
