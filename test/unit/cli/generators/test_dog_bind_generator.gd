@@ -21,14 +21,14 @@ func _host(components: Dictionary) -> Node:
 	return host
 
 
-## plan() with the snake_case class of every classed child, in child order,
+## plan() with the class of every classed child, in child order,
 ## unless `names` is given.
 func _plan(host: Node, names: Array = []) -> Dictionary:
 	if names.is_empty():
 		for child in host.get_children():
 			var script := child.get_script() as Script
 			if script != null and not String(script.get_global_name()).is_empty():
-				names.append(String(script.get_global_name()).to_snake_case())
+				names.append(String(script.get_global_name()))
 	return DogBindGenerator.plan(host, names)
 
 
@@ -130,7 +130,7 @@ func test_plan_two_children_of_the_same_class_is_an_error() -> void:
 
 func test_plan_only_takes_the_listed_components() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
-	var p := _plan(host, ["fixture_dash"])
+	var p := _plan(host, ["FixtureDash"])
 	assert_eq(p.error, "")
 	assert_eq(_names(p.blocks, "var"), ["_fixture_dash"])
 	assert_does_not_have(_names(p.blocks, "func"), "jump")
@@ -138,7 +138,7 @@ func test_plan_only_takes_the_listed_components() -> void:
 
 func test_plan_follows_the_order_of_the_list_not_of_the_scene() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
-	var p := _plan(host, ["fixture_dash", "fixture_jump_2d"])
+	var p := _plan(host, ["FixtureDash", "FixtureJump2D"])
 	var vars: Array = []
 	for block in p.blocks:
 		if block["kind"] == "var":
@@ -148,43 +148,43 @@ func test_plan_follows_the_order_of_the_list_not_of_the_scene() -> void:
 
 func test_plan_a_repeated_component_is_taken_once() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT })
-	var p := _plan(host, ["fixture_jump_2d", "fixture_jump_2d"])
+	var p := _plan(host, ["FixtureJump2D", "FixtureJump2D"])
 	assert_eq(p.error, "")
 	assert_eq(_names(p.blocks, "var"), ["_fixture_jump_2d"])
 
 
 func test_plan_a_class_that_is_not_a_child_is_an_error_listing_the_children() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT })
-	var p := _plan(host, ["fixture_dash"])
-	assert_string_contains(p.error, "fixture_dash")
+	var p := _plan(host, ["FixtureDash"])
+	assert_string_contains(p.error, "FixtureDash")
 	assert_string_contains(p.error, "not a child")
-	assert_string_contains(p.error, "fixture_jump_2d")
+	assert_string_contains(p.error, "FixtureJump2D")
 
 
 func test_plan_naming_a_machine_is_an_error_pointing_to_state() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT, "Brain": FSM_SCRIPT })
-	var p := _plan(host, ["dog_fsm"])
-	assert_string_contains(p.error, "dog_fsm")
+	var p := _plan(host, ["DogFSM"])
+	assert_string_contains(p.error, "DogFSM")
 	assert_string_contains(p.error, "state command")
 	assert_eq(p.blocks, [])
 
 
 func test_plan_naming_a_machine_that_is_not_a_child_is_still_a_machine_error() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT })
-	var p := _plan(host, ["dog_hpda"])
+	var p := _plan(host, ["DogHPDA"])
 	assert_string_contains(p.error, "state command")
 
 
 func test_plan_a_name_that_matches_no_class_is_an_error() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT })
-	var p := _plan(host, ["fixture_nothing"])
-	assert_string_contains(p.error, "fixture_nothing")
+	var p := _plan(host, ["FixtureNothing"])
+	assert_string_contains(p.error, "FixtureNothing")
 	assert_string_contains(p.error, "no class")
 
 
 func test_plan_a_failing_component_stops_everything() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT })
-	var p := _plan(host, ["fixture_jump_2d", "fixture_dash"])
+	var p := _plan(host, ["FixtureJump2D", "FixtureDash"])
 	assert_ne(p.error, "")
 	assert_eq(p.blocks, [])
 
@@ -208,9 +208,9 @@ func test_plan_never_forwards_property_accessors() -> void:
 # --- candidates --------------------------------------------------------------
 
 
-func test_candidates_are_the_snake_case_classes_of_the_children_sorted() -> void:
+func test_candidates_are_the_classes_of_the_children_sorted() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT, "Dash": DASH_SCRIPT })
-	assert_eq(DogBindGenerator.candidates(host), ["fixture_dash", "fixture_jump_2d"])
+	assert_eq(DogBindGenerator.candidates(host), ["FixtureDash", "FixtureJump2D"])
 
 
 func test_candidates_skip_children_without_a_class() -> void:
@@ -218,9 +218,9 @@ func test_candidates_skip_children_without_a_class() -> void:
 	var bare: Node = Node.new()
 	bare.name = "Bare"
 	host.add_child(bare)
-	assert_eq(DogBindGenerator.candidates(host), ["fixture_jump_2d"])
+	assert_eq(DogBindGenerator.candidates(host), ["FixtureJump2D"])
 
 
 func test_candidates_skip_state_machines() -> void:
 	var host := _host({ "Jump": JUMP_SCRIPT, "Brain": FSM_SCRIPT })
-	assert_eq(DogBindGenerator.candidates(host), ["fixture_jump_2d"])
+	assert_eq(DogBindGenerator.candidates(host), ["FixtureJump2D"])

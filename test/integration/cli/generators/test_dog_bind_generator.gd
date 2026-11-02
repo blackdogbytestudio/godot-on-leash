@@ -8,7 +8,7 @@ const ROOT_DIR := "test/doubles/bind/scenes"
 const ROOT := "res://" + ROOT_DIR
 const TMP_DIR := "scenes/tmp/bind_test"
 const TMP := "res://" + TMP_DIR
-const BOTH := ["fixture_jump_2d", "fixture_dash"]
+const BOTH := ["FixtureJump2D", "FixtureDash"]
 const KEYS := [DogSettings.IMPLICIT_FOLDER, DogSettings.EXPLICIT_FOLDER]
 const FSM_SCRIPT := "res://addons/leash/components/machines/dog_fsm.gd"
 const ACTOR_GD := "extends CharacterBody2D\n\n\nfunc _ready() -> void:\n\tpass\n"
@@ -271,21 +271,21 @@ func test_build_without_components_and_nothing_to_bind_is_a_warning() -> void:
 
 func test_build_naming_a_machine_is_an_error_and_writes_nothing() -> void:
 	_use_tmp(_with_machine())
-	var r := DogBindGenerator.generate(_options("actor", ["dog_fsm"]))
+	var r := DogBindGenerator.generate(_options("actor", ["DogFSM"]))
 	assert_string_contains(r.error, "state command")
 	assert_eq(r.source, "")
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
 func test_build_binds_the_whole_scene_whatever_is_listed() -> void:
-	var r := DogBindGenerator.build(_options("actor", ["fixture_dash"]))
+	var r := DogBindGenerator.build(_options("actor", ["FixtureDash"]))
 	assert_eq(r.error, "")
 	assert_string_contains(r.source, "func dash() -> void:")
 	assert_string_contains(r.source, "func jump() -> void:")
 
 
 func test_build_adds_a_listed_component_the_scene_does_not_have() -> void:
-	var r := DogBindGenerator.build(_options("actor", ["fixture_dash"]))
+	var r := DogBindGenerator.build(_options("actor", ["FixtureDash"]))
 	assert_eq(r.error, "")
 	assert_eq(r.scene_source, r.scene_original)
 

@@ -2,9 +2,9 @@
 class_name DogBindGenerator
 extends RefCounted
 ## Fills the root script of a scene with an API that forwards to its components
-## (direct children of the root, found by their class_name in snake_case:
-## `dog_jump_2d` -> DogJump2D): one `@onready` reference per component, a forwarding
-## func per public method, and a re-declared + connected signal per public signal.
+## (direct children of the root, found by their class_name: DogJump2D, or any class
+## of the project): one `@onready` reference per component, a forwarding func per
+## public method, and a re-declared + connected signal per public signal.
 ##
 ## It always binds every direct child of the root that has a class and is not a state
 ## machine. The classes listed in `components` are added to the scene first when it
@@ -110,8 +110,8 @@ static func _plan_components(host: Node, listed: Array, scene_path: String) -> D
 	return { "planned": planned, "added": added, "error": "" }
 
 
-## Builds the blocks for the named components (snake_case class names, in the
-## order given; repeats are taken once). Returns {blocks, warnings, error}: any
+## Builds the blocks for the named components (class names, in the order given;
+## repeats are taken once). Returns {blocks, warnings, error}: any
 ## name that is not exactly one child of `host` is an error and nothing is planned.
 ## A member already provided by an earlier component is skipped with a warning, so
 ## the generated script still compiles.
@@ -137,9 +137,8 @@ static func plan(host: Node, components: Array) -> Dictionary:
 	return { "blocks": blocks, "warnings": warnings, "error": "" }
 
 
-## snake_case class names of the direct children of `host` that have a script with
-## a class_name and are not state machines, sorted: what can be named in
-## `components`.
+## The class names of the direct children of `host` that have a script with a
+## class_name and are not state machines, sorted: what can be named in `components`.
 static func candidates(host: Node) -> Array:
 	var names := _bindable(host)
 	names.sort()
@@ -346,8 +345,8 @@ static func _scene_input_error(actor: String, folder: String) -> String:
 	return error
 
 
-## {snake_case class name: [child nodes]} for the direct children of `host`, in
-## child order. Children without a script, or without a class_name, can't be named.
+## {class name: [child nodes]} for the direct children of `host`, in child order.
+## Children without a script, or without a class_name, can't be named.
 static func _children_by_class(host: Node) -> Dictionary:
 	var result := {}
 	for child in host.get_children():
@@ -357,19 +356,17 @@ static func _children_by_class(host: Node) -> Dictionary:
 		var class_name_text := String(script.get_global_name())
 		if class_name_text.is_empty():
 			continue
-		var key := class_name_text.to_snake_case()
-		if not result.has(key):
-			result[key] = []
-		result[key].append(child)
+		if not result.has(class_name_text):
+			result[class_name_text] = []
+		result[class_name_text].append(child)
 	return result
 
 
-## The script of the project class named `snake_name`, or null when none matches.
-static func class_script(snake_name: String) -> Script:
-	for entry in ProjectSettings.get_global_class_list():
-		if String(entry["class"]).to_snake_case() == snake_name:
-			return load(String(entry["path"])) as Script
-	return null
+## The script of the project class named `class_text` (exactly, in PascalCase), or
+## null when there is none.
+static func class_script(class_text: String) -> Script:
+	var path := DogClasses.global_path(class_text)
+	return null if path.is_empty() else load(path) as Script
 
 
 ## Adds a direct child of the root to the scene text `source` for the class of
@@ -441,9 +438,10 @@ static func _scene_error(message: String) -> Dictionary:
 	return { "path": "", "error": message }
 
 
-## What to generate. `components` are snake_case class names (prefix / suffix
-## already applied) to add to the scene when it does not have them; everything in the
-## scene is bound either way. With `write` false, build runs but nothing is written.
+## What to generate. `components` are final class names (DogJump2D, FixtureDash: the
+## command already applied the prefix and suffix and made them PascalCase) to add to
+## the scene when it does not have them; everything in the scene is bound either way.
+## With `write` false, build runs but nothing is written.
 class Options:
 	var actor := ""
 	var components: Array = []

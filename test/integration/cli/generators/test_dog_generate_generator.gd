@@ -60,7 +60,7 @@ func _remove(path: String) -> void:
 
 
 func test_build_checks_every_step_and_writes_nothing() -> void:
-	var result := DogGenerateGenerator.build(_options("knight", "alive", ["dog_move_2d"]))
+	var result := DogGenerateGenerator.build(_options("knight", "alive", ["DogMove2D"]))
 	assert_eq(result.error, "")
 	assert_eq(result.actor.script_path, ROOT.path_join("knight/knight.gd"))
 	assert_null(result.state, "state build needs the scene")
@@ -79,13 +79,13 @@ func test_build_names_the_step_that_fails() -> void:
 	var state := DogGenerateGenerator.build(state_options)
 	assert_eq([state.step, state.error], ["state", DogStateGenerator.NOT_A_CLASS % "EnemyState"])
 
-	var bind := DogGenerateGenerator.build(_options("knight", "", ["dog_hpda"]))
-	assert_eq([bind.step, bind.error], ["bind", DogBindGenerator.MACHINE_COMPONENT % "dog_hpda"])
+	var bind := DogGenerateGenerator.build(_options("knight", "", ["DogHPDA"]))
+	assert_eq([bind.step, bind.error], ["bind", DogBindGenerator.MACHINE_COMPONENT % "DogHPDA"])
 	assert_false(DirAccess.dir_exists_absolute(ROOT))
 
 
 func test_generate_runs_the_steps_and_lists_what_it_wrote() -> void:
-	var result := DogGenerateGenerator.generate(_options("knight", "alive", ["dog_move_2d"]))
+	var result := DogGenerateGenerator.generate(_options("knight", "alive", ["DogMove2D"]))
 	assert_eq(result.error, "")
 	var dir := ROOT.path_join("knight")
 	var expected: Array[String] = [
@@ -105,8 +105,8 @@ func test_generate_runs_the_steps_and_lists_what_it_wrote() -> void:
 
 func test_listed_error_checks_the_components_without_a_scene() -> void:
 	assert_eq(DogBindGenerator.listed_error([]), "")
-	assert_eq(DogBindGenerator.listed_error(["dog_move_2d", "fixture_jump_2d"]), "")
-	var unknown := DogBindGenerator.UNKNOWN_CLASS % "dog_nope"
-	assert_eq(DogBindGenerator.listed_error(["dog_move_2d", "dog_nope"]), unknown)
-	var machine := DogBindGenerator.MACHINE_COMPONENT % "dog_fsm"
-	assert_eq(DogBindGenerator.listed_error(["dog_fsm"]), machine)
+	assert_eq(DogBindGenerator.listed_error(["DogMove2D", "FixtureJump2D"]), "")
+	var unknown := DogBindGenerator.UNKNOWN_CLASS % "DogNope"
+	assert_eq(DogBindGenerator.listed_error(["DogMove2D", "DogNope"]), unknown)
+	var machine := DogBindGenerator.MACHINE_COMPONENT % "DogFSM"
+	assert_eq(DogBindGenerator.listed_error(["DogFSM"]), machine)

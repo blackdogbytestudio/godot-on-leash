@@ -104,7 +104,7 @@ func test_parse_unknown_option_is_an_error() -> void:
 func test_parse_components_are_the_tokens_after_the_actor() -> void:
 	var r := DogBindCommand.parse_request(_args("player --no-fix dog_jump_2d dog_move_2d"))
 	assert_eq(r.error, "")
-	assert_eq(r.components, ["dog_jump_2d", "dog_move_2d"])
+	assert_eq(r.components, ["DogJump2D", "DogMove2D"])
 
 
 func test_parse_without_components_is_not_a_parse_error() -> void:
@@ -118,54 +118,54 @@ func test_parse_prefix_and_suffix_wrap_every_component() -> void:
 		_args("player --prefix dog --suffix 2d jump gravity move")
 	)
 	assert_eq(r.error, "")
-	assert_eq(r.components, ["dog_jump_2d", "dog_gravity_2d", "dog_move_2d"])
+	assert_eq(r.components, ["DogJump2D", "DogGravity2D", "DogMove2D"])
 
 
 func test_parse_prefix_alone_and_suffix_alone() -> void:
 	assert_eq(
 		DogBindCommand.parse_request(_args("player --prefix fx jump")).components,
-		["fx_jump_2d"],
+		["FxJump2D"],
 	)
 	assert_eq(
 		DogBindCommand.parse_request(_args("player --suffix 3d jump")).components,
-		["dog_jump_3d"],
+		["DogJump3D"],
 	)
 
 
 func test_parse_prefix_and_suffix_tolerate_a_stray_underscore() -> void:
 	var r := DogBindCommand.parse_request(_args("player --prefix dog_ --suffix _2d jump"))
-	assert_eq(r.components, ["dog_jump_2d"])
+	assert_eq(r.components, ["DogJump2D"])
 	ProjectSettings.set_setting(DogSettings.PREFIX, "dog_")
 	ProjectSettings.set_setting(DogSettings.SUFFIX, "_2d")
-	assert_eq(DogBindCommand.parse_request(_args("player jump")).components, ["dog_jump_2d"])
+	assert_eq(DogBindCommand.parse_request(_args("player jump")).components, ["DogJump2D"])
 
 
 func test_parse_prefix_is_not_deduplicated() -> void:
 	var r := DogBindCommand.parse_request(_args("player dog_jump_2d"))
-	assert_eq(r.components, ["dog_dog_jump_2d_2d"])
+	assert_eq(r.components, ["DogDogJump2D2D"])
 
 
 func test_parse_without_flags_uses_the_settings() -> void:
 	var r := DogBindCommand.parse_request(_args("player jump move"))
 	assert_eq(r.error, "")
-	assert_eq(r.components, ["dog_jump_2d", "dog_move_2d"])
+	assert_eq(r.components, ["DogJump2D", "DogMove2D"])
 
 
 func test_parse_uses_a_changed_setting() -> void:
 	ProjectSettings.set_setting(DogSettings.PREFIX, "my")
 	ProjectSettings.set_setting(DogSettings.SUFFIX, "")
-	assert_eq(DogBindCommand.parse_request(_args("player jump")).components, ["my_jump"])
+	assert_eq(DogBindCommand.parse_request(_args("player jump")).components, ["MyJump"])
 
 
 func test_parse_empty_prefix_or_suffix_drops_only_that_side() -> void:
-	assert_eq(DogBindCommand.parse_request(_args("player --prefix= jump")).components, ["jump_2d"])
-	assert_eq(DogBindCommand.parse_request(_args("player --suffix= jump")).components, ["dog_jump"])
+	assert_eq(DogBindCommand.parse_request(_args("player --prefix= jump")).components, ["Jump2D"])
+	assert_eq(DogBindCommand.parse_request(_args("player --suffix= jump")).components, ["DogJump"])
 
 
 func test_parse_no_fix_drops_prefix_and_suffix() -> void:
 	var r := DogBindCommand.parse_request(_args("player --no-fix jump dog_move_2d"))
 	assert_eq(r.error, "")
-	assert_eq(r.components, ["jump", "dog_move_2d"])
+	assert_eq(r.components, ["Jump", "DogMove2D"])
 
 
 func test_parse_fix_flags_without_components_are_an_error() -> void:
@@ -183,10 +183,28 @@ func test_parse_no_fix_with_prefix_or_suffix_is_an_error() -> void:
 
 
 func test_parse_invalid_component_is_an_error() -> void:
-	var r := DogBindCommand.parse_request(_args("player DogJump2D"))
-	assert_string_contains(r.error, "DogJump2D")
-	r = DogBindCommand.parse_request(_args("player --prefix Dog jump"))
-	assert_string_contains(r.error, "Dog_jump")
+	var r := DogBindCommand.parse_request(_args("player Wall-Climb"))
+	assert_eq(r.error, DogBindCommand.INVALID_COMPONENT % "Wall-Climb")
+	r = DogBindCommand.parse_request(_args("player --prefix=a-b jump"))
+	assert_eq(r.error, DogBindCommand.INVALID_COMPONENT % "a-b_jump_2d")
+
+
+func test_parse_a_component_with_an_upper_case_letter_is_literal() -> void:
+	var r := DogBindCommand.parse_request(_args("player move FixtureWallClimb DogJump2D"))
+	assert_eq(r.error, "")
+	assert_eq(r.components, ["DogMove2D", "FixtureWallClimb", "DogJump2D"])
+
+
+func test_parse_a_hybrid_component_is_literal_and_made_pascal() -> void:
+	var r := DogBindCommand.parse_request(_args("player CPU_particles_2d Fixture_wall_climb"))
+	assert_eq(r.components, ["CPUParticles2D", "FixtureWallClimb"])
+
+
+func test_parse_fix_flags_apply_only_to_lower_case_components() -> void:
+	var r := DogBindCommand.parse_request(_args("player --prefix fx --suffix 3d jump DogMove2D"))
+	assert_eq(r.components, ["FxJump3D", "DogMove2D"])
+	var full := DogBindCommand.parse_request(_args("player --no-fix fixture_dash FixtureDash"))
+	assert_eq(full.components, ["FixtureDash", "FixtureDash"])
 
 
 # --- options_for -------------------------------------------------------------
@@ -198,6 +216,6 @@ func test_options_for_copies_the_request() -> void:
 	)
 	var options := DogBindCommand.options_for(request)
 	assert_eq(options.actor, "player")
-	assert_eq(options.components, ["dog_jump_2d"])
+	assert_eq(options.components, ["DogJump2D"])
 	assert_eq(options.folder, "characters/enemies/slime")
 	assert_eq(options.mode, DogScriptMerge.Mode.FORCE)

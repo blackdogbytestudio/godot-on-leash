@@ -104,7 +104,7 @@ func test_run_without_components_binds_every_component() -> void:
 
 
 func test_run_naming_a_machine_fails_pointing_to_state_and_writes_nothing() -> void:
-	var code := _command.run(_args("actor --no-fix dog_fsm"))
+	var code := _command.run(_args("actor DogFSM"))
 	assert_eq(code, FAILED)
 	assert_string_contains(_lines[0], "state command")
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
@@ -142,7 +142,7 @@ func test_run_unknown_component_fails_early_and_writes_nothing() -> void:
 func test_run_full_name_without_no_fix_gets_the_settings_and_fails_early() -> void:
 	var code := _command.run(_args("actor fixture_jump_2d"))
 	assert_eq(code, FAILED)
-	assert_string_contains(_lines[0], "dog_fixture_jump_2d_2d")
+	assert_string_contains(_lines[0], "DogFixtureJump2D2D")
 	assert_eq(_read(TMP + "/actor/actor.gd"), ACTOR_GD)
 
 
@@ -151,6 +151,31 @@ func test_run_short_names_with_the_prefix_setting() -> void:
 	var code := _command.run(_args("actor jump"))
 	assert_eq(code, OK)
 	assert_has(_lines, "add func jump")
+
+
+func test_run_mixes_dog_components_and_project_classes() -> void:
+	# move gets the prefix and suffix (DogMove2D); the PascalCase names are literal.
+	var code := _command.run(_args("actor move FixtureWallClimb FixtureJump2D"))
+	assert_eq(code, OK)
+	assert_has(_lines, "add node DogMove2D")
+	assert_has(_lines, "add node FixtureWallClimb")
+	assert_false(_lines.has("add node FixtureJump2D"), "already in the scene")
+	var script := _read(TMP + "/actor/actor.gd")
+	assert_string_contains(script, "@onready var _fixture_wall_climb: FixtureWallClimb")
+	assert_string_contains(script, "func climb() -> void:")
+	assert_string_contains(script, "@onready var _dog_move_2d: DogMove2D")
+
+
+func test_run_a_hybrid_component_is_literal() -> void:
+	var code := _command.run(_args("actor Fixture_wall_climb"))
+	assert_eq(code, OK)
+	assert_has(_lines, "add node FixtureWallClimb")
+
+
+func test_run_a_snake_case_component_still_gets_the_prefix_and_suffix() -> void:
+	var code := _command.run(_args("actor --prefix fixture --suffix= wall_climb"))
+	assert_eq(code, OK)
+	assert_has(_lines, "add node FixtureWallClimb")
 
 
 func test_run_missing_scene_fails_with_the_generator_message() -> void:
