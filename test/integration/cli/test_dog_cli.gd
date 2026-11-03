@@ -4,7 +4,7 @@ extends GutTest
 ## checked apart: running both in one line is the job of `generate`.
 
 ## Every command the addon ships. Update it when a command is added or removed.
-const COMMAND_NAMES := ["actor", "bind", "generate", "help", "init", "state"]
+const COMMAND_NAMES := ["actor", "bind", "destroy", "generate", "help", "init", "state"]
 const COMMANDS := "res://addons/leash/cli/commands"
 const ROOT_DIR := "scenes/tmp/dog_cli_e2e"
 const ROOT := "res://" + ROOT_DIR
