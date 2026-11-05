@@ -13,13 +13,14 @@ extends DogCommand
 ## CPU_particles_2d -> CPUParticles2D), so `move jump WallClimb` mixes Dog
 ## components with a class of the project. A listed class of the project that is not
 ## a child yet is added to the scene as a node named after the class; the automatic
-## mode never adds nodes.
+## mode never adds nodes, and warns about each child whose script has no class_name.
 ## --prefix / --suffix replace a setting (empty, as in --prefix=, drops that side)
 ## and --no-fix drops both, for full names (--no-fix dog_jump_2d); all three apply to
 ## the lower case names and need a list.
 ## --folder is the actor's directory, written in full from the explicit_folder
 ## setting (--folder characters/enemies/slime); without it the actor is looked for
 ## under the implicit_folder setting.
+
 
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."

@@ -15,6 +15,10 @@ extends RefCounted
 ## DogSettings.actor_dir), with a script already attached to the root node (create
 ## it in Godot first, so `extends` is right). Members starting with `_` are
 ## internal and never forwarded.
+##
+## Without a list of components (the automatic mode) it warns about each direct child
+## whose script has no class_name: it can't be named, so it is left out. A child without
+## a script is a plain node, not a component, and gets no warning.
 
 # Error messages
 const COULD_NOT_WRITE := "could not write %s"
@@ -35,6 +39,7 @@ const REPEATED_COMPONENT := "more than one %s under %s: %s. A component class mu
 const SCENE_NOT_FOUND := "no scene at %s (use --folder if the actor lives somewhere else)."
 const NOTHING_TO_BIND := "no components in %s: nothing to bind."
 const MEMBER_SKIPPED := "%s %s of %s was skipped: %s already provides it"
+const CHILD_SKIPPED := "child %s was skipped: %s has no class_name"
 
 
 ## build + write: the scene first, then the host script, each one only when it
@@ -90,12 +95,15 @@ static func build(options: Options) -> Result:
 
 
 ## Everything build does with the live host: adds the listed components the scene
-## does not have, then plans the blocks of every component in the scene. Returns
-## {planned, added, error}.
+## does not have (or, without a list, warns about the children without a class_name),
+## then plans the blocks of every component in the scene. Returns {planned, added,
+## error}.
 static func _plan_components(host: Node, listed: Array, scene_path: String) -> Dictionary:
 	var warnings: Array = []
 	var added := { "source": "", "report": [], "error": "" }
-	if not listed.is_empty():
+	if listed.is_empty():
+		warnings.append_array(_skipped_children(host))
+	else:
 		added = _add_missing(host, listed, scene_path)
 		if not String(added["error"]).is_empty():
 			return { "error": added["error"] }
@@ -303,6 +311,18 @@ static func _component_error(host: Node, children: Dictionary, component_name: S
 			node_names.append(str(node.name))
 		return REPEATED_COMPONENT % [component_name, host.name, ", ".join(node_names)]
 	return ""
+
+
+## One warning per direct child of `host` whose script has no class_name, in child
+## order. Children without a script say nothing.
+static func _skipped_children(host: Node) -> Array:
+	var warnings: Array = []
+	for child in host.get_children():
+		var script := child.get_script() as Script
+		if script == null or not String(script.get_global_name()).is_empty():
+			continue
+		warnings.append(CHILD_SKIPPED % [str(child.name), script.resource_path.get_file()])
+	return warnings
 
 
 ## Adds the reference, signals and forwarding funcs of `child` to `blocks`.
