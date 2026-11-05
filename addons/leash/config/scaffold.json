@@ -1,40 +1,57 @@
 {
   "assets": {
-    "sprites": {
-      "characters": {
-        "player": {},
-        "enemies": {}
-      },
-      "environment": {
-        "tilesets": {}
-      },
-      "ui": {},
-      "fx": {},
-      "placeholders": {}
-    },
-    "sfx": {
-      "characters": {},
-      "ui": {},
-      "environment": {}
-    },
-    "music": {},
-    "fonts": {}
+	"sprites": {
+	  "characters": {
+		"player": {},
+		"enemies": {},
+		"npcs": {}
+	  },
+	  "environment": {
+		"tilesets": {}
+	  },
+	  "ui": {},
+	  "fx": {}
+	},
+	"sfx": {
+	  "characters": {},
+	  "ui": {},
+	  "environment": {}
+	},
+	"music": {},
+	"fonts": {}
   },
   "scenes": {
-    "characters": {
-      "player": {},
-      "enemies": {}
-    },
-    "levels": {
-      "tilemaps": {}
-    },
-    "objects": {},
-    "ui": {},
-    "placeholders": {}
+	"characters": {
+	  "player": {},
+	  "enemies": {},
+	  "npcs": {}
+	},
+	"levels": {
+	  "tilemaps": {}
+	},
+	"objects": {},
+	"ui": {
+	  "hud": {},
+	  "menus": {}
+	},
+	"fx": {}
   },
   "scripts": {
-    "autoloads": {},
-    "globals": {}
+	"autoloads": {},
+	"globals": {}
   },
-  "components": {}
+  "components": {},
+  "resources": {
+	"tilesets": {},
+	"themes": {},
+	"materials": {},
+	"shaders": {},
+	"spriteframes": {}
+  },
+  "data": {},
+  "localization": {},
+  "test": {
+	"unit": {},
+	"integration": {}
+  }
 }
