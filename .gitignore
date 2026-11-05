@@ -19,6 +19,7 @@ mono_crash.*.json
 
 # Dog-specific ignores
 /builds
+tmp/
 /addons/*
 !/addons/leash/
 !/addons/gut/
