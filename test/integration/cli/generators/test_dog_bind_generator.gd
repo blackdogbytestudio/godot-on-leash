@@ -27,6 +27,17 @@ script = ExtResource("2")
 [node name="Dash" type="Node" parent="."]
 script = ExtResource("3")
 """
+const LEGACY_TSCN := """[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/tmp/bind_test/actor/actor.gd" id="1"]
+[ext_resource type="Script" path="res://test/doubles/bind/no_class.gd" id="2"]
+
+[node name="Actor" type="CharacterBody2D"]
+script = ExtResource("1")
+
+[node name="Legacy" type="Node" parent="."]
+script = ExtResource("2")
+"""
 
 var _saved := {}
 
@@ -245,10 +256,29 @@ func test_build_without_components_binds_every_component_in_child_order() -> voi
 	var auto := DogBindGenerator.build(_options("actor", []))
 	var explicit := DogBindGenerator.build(_options("actor", BOTH))
 	assert_eq(auto.error, "")
-	assert_eq(auto.warnings, [])
 	assert_string_contains(auto.source, "func jump() -> void:")
 	assert_string_contains(auto.source, "func dash() -> void:")
 	assert_eq(auto.source, explicit.source)
+
+
+func test_build_without_components_warns_about_a_child_without_class_name() -> void:
+	var r := DogBindGenerator.build(_options("actor", []))
+	assert_eq(r.error, "")
+	assert_eq(r.warnings, ["child Legacy was skipped: no_class.gd has no class_name"])
+
+
+func test_build_without_components_warns_about_a_skipped_child_before_nothing_to_bind() -> void:
+	_use_tmp(LEGACY_TSCN)
+	var r := DogBindGenerator.build(_options("actor", []))
+	assert_eq(r.error, "")
+	assert_eq(r.warnings.size(), 2)
+	assert_eq(r.warnings[0], "child Legacy was skipped: no_class.gd has no class_name")
+	assert_string_contains(r.warnings[1], "nothing to bind")
+
+
+func test_build_with_components_does_not_warn_about_skipped_children() -> void:
+	var r := DogBindGenerator.build(_options("actor", BOTH))
+	assert_eq(r.warnings, [])
 
 
 func test_build_without_components_skips_the_state_machines() -> void:
