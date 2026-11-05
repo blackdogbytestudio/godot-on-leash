@@ -21,7 +21,6 @@ extends DogCommand
 ## setting (--folder characters/enemies/slime); without it the actor is looked for
 ## under the implicit_folder setting.
 
-
 # Error messages
 const MISSING_ARGUMENT := "missing <%s>."
 const UNKNOWN_OPTION := "unknown option '%s'."

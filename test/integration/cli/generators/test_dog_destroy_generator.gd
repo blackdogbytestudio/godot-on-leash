@@ -103,8 +103,8 @@ func test_files_deletes_only_those_and_leaves_the_rest() -> void:
 	var result := DogDestroyGenerator.generate(_options("knight"))
 	assert_eq(result.error, "")
 	assert_eq(result.deleted, result.paths)
-	for name in ["knight.tscn", "knight.gd", "knight.gd.uid"]:
-		assert_false(_exists(dir.path_join(name)), name)
+	for file_name in ["knight.tscn", "knight.gd", "knight.gd.uid"]:
+		assert_false(_exists(dir.path_join(file_name)), name)
 	assert_true(_exists(dir.path_join("knight.png")))
 	assert_true(_exists(dir.path_join("states/knight_idle_state.gd")))
 

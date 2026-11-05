@@ -18,7 +18,11 @@ extends RefCounted
 ## left as they are, and Godot reports what is missing the next time it loads them. No
 ## node is removed from any scene, and tests are not touched.
 
-enum Mode { FILES, STATES, ALL }
+enum Mode {
+	FILES,
+	STATES,
+	ALL,
+}
 
 # Error messages
 const DIR_NOT_FOUND := (
