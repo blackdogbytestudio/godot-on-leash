@@ -82,13 +82,13 @@ The host is passed explicitly into `enter(host)`, `exit(host)`, and
 
 ```gdscript
 func _ready() -> void:
-    fsm.init(idle_state)
+	fsm.init(idle_state)
 
 func _physics_process(delta: float) -> void:
-    fsm.update(delta)
+	fsm.update(delta)
 
 func _on_hitbox_area_entered(_area: Area2D) -> void:
-    fsm.force(hurt_state)
+	fsm.force(hurt_state)
 ```
 
 ## Installation
@@ -156,12 +156,12 @@ res://
 │   ├── sprites/
 │   │   ├── characters/
 │   │   │   ├── player/
-│   │   │   └── enemies/
+│   │   │   ├── enemies/
+│   │   │   └── npcs/
 │   │   ├── environment/
 │   │   │   └── tilesets/
 │   │   ├── ui/
-│   │   ├── fx/
-│   │   └── placeholders/
+│   │   └── fx/
 │   ├── sfx/
 │   │   ├── characters/
 │   │   ├── ui/
@@ -171,16 +171,30 @@ res://
 ├── scenes/
 │   ├── characters/
 │   │   ├── player/
-│   │   └── enemies/
+│   │   ├── enemies/
+│   │   └── npcs/
 │   ├── levels/
 │   │   └── tilemaps/
 │   ├── objects/
 │   ├── ui/
-│   └── placeholders/
+│   │   ├── hud/
+│   │   └── menus/
+│   └── fx/
 ├── scripts/
 │   ├── autoloads/
 │   └── globals/
-└── components/
+├── components/
+├── resources/
+│   ├── tilesets/
+│   ├── themes/
+│   ├── materials/
+│   ├── shaders/
+│   └── spriteframes/
+├── data/
+├── localization/
+└── test/
+	├── unit/
+	└── integration/
 ```
 
 The scaffold is fixed: it doesn't follow the folder settings above, so if
