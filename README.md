@@ -105,6 +105,9 @@ Enabling the plugin creates nothing in your project; only `init` does.
 The plugin's bottom panel runs generator commands. Type `help` in the
 panel to list them.
 
+`help <command>` shows the options of one. A flag that a command does not
+use is an error, never silently ignored.
+
 ### Where actors live
 
 Every generator looks for an actor in one place, so its scene, script and
@@ -145,17 +148,80 @@ templates out. It prints one line per item, `create <path>` or
 `exist <path>`, and a warning when GUT is not installed
 (`addons/gut/plugin.cfg`).
 
+The folders it creates:
+
+```
+res://
+├── assets/
+│   ├── sprites/
+│   │   ├── characters/
+│   │   │   ├── player/
+│   │   │   └── enemies/
+│   │   ├── environment/
+│   │   │   └── tilesets/
+│   │   ├── ui/
+│   │   ├── fx/
+│   │   └── placeholders/
+│   ├── sfx/
+│   │   ├── characters/
+│   │   ├── ui/
+│   │   └── environment/
+│   ├── music/
+│   └── fonts/
+├── scenes/
+│   ├── characters/
+│   │   ├── player/
+│   │   └── enemies/
+│   ├── levels/
+│   │   └── tilemaps/
+│   ├── objects/
+│   ├── ui/
+│   └── placeholders/
+├── scripts/
+│   ├── autoloads/
+│   └── globals/
+└── components/
+```
+
 The scaffold is fixed: it doesn't follow the folder settings above, so if
 you change them, adjusting the folders is up to you. The generators read
 templates from `res://script_templates` first and fall back to the addon's
 own.
+
+### actor
+
+Creates an actor: its scene and its script.
+
+```
+actor <actor> [template] [--extends class] [--folder path] [-f]
+```
+
+`actor player` creates `res://scenes/characters/player/player.tscn` and
+`player.gd`. Both are a copy of a scene template, never an instance of it:
+the root is renamed after the actor and the script gets `class_name Player`.
+
+A template is a PascalCase folder holding `<Template>.tscn` and
+`<Template>.gd`. It is looked up in `res://scene_templates` first and then
+in the addon's (`CharacterBody2D` is the default), so copying a folder to
+`res://scene_templates` is how you make your own.
+
+`--extends` makes the actor extend another class instead of the template's:
+the script extends it and the root of the scene gets its native type
+(`--extends Area2D`, `--extends CPUParticles2D`).
+
+The command prints `created <path>` for each file. An actor whose scene and
+script both exist is kept (`kept <path>`), and asking to change it with a
+template or `--extends` is an error: `-f` recreates both from the template.
+Only one of the two files existing is also an error. There is no `-u`:
+nothing in a copy can be updated.
 
 ### state
 
 Creates actor state scripts from the script templates.
 
 ```
-state <actor> <fsm|pda|hfsm|hpda> <tree...> [--folder path] [--extends State] [--initial state] [-f | -u]
+state <actor> <fsm|pda|hfsm|hpda> <tree...> [--folder path] [--base class]
+  [--initial state] [-f | -u]
 ```
 
 The tree uses dots to express depth — `alive .grounded ..idle ..run dead`
@@ -203,40 +269,122 @@ and member; run `bind` again afterwards if you use it).
 The states are typed to the actor's class, the actor in PascalCase
 (`skinny_man` → `SkinnyMan`, `character_body_2d` → `CharacterBody2D`); for
 states shared by several actors, run `state` on the parent actor.
-`--extends State` makes the root states inherit that state
-instead of the actor base and skips generating the actor base, e.g.
-`state slime hpda --extends enemy_alive_state --folder characters/enemies/slime jump`.
-
-## Project Structure (addon)
+`--base Class` makes the root states inherit that class (a class of the
+project, or a native one, that inherits from RefCounted) instead of the
+actor base, and skips generating the actor base:
 
 ```
-addons/leash/
-  components/
-    dog_component.gd          # base for all components
-    facades/
-      dog_facade.gd            # base for all facades
-      2d/character/
-        dog_character_facade_2d.gd
-        dog_platformer_facade_2d.gd
-    machines/
-      dog_machine.gd  dog_fsm.gd  dog_hfsm.gd  dog_pda.gd  dog_hpda.gd
-    2d/character/
-      dog_move_2d.gd  dog_jump_2d.gd  dog_gravity_2d.gd  dog_character_2d.gd
-  states/
-    dog_state.gd  dog_fsm_state.gd  dog_hfsm_state.gd
-    dog_pda_state.gd  dog_h_pda_state.gd
-  cli/                         # editor CLI behind the bottom panel
-    dog_cli.gd  dog_command.gd  dog_panel.gd
-    commands/                  # one file per command (state, bind, help, ...)
-    generators/                # build + write the files a command produces
-    helpers/                   # pure helpers: script merge, render, names, state tree
-    third_party/               # vendored code (optparse from GUT)
-  config/
-    dog_settings.gd            # the leash/ project settings
-    scaffold.json              # the folders init creates
-  script_templates/            # the templates init copies to res://script_templates
-  plugin.cfg  plugin.gd  LICENSE
+state slime hpda --base EnemyAliveState jump
 ```
+
+### bind
+
+Fills the actor's script with an API that forwards to its components.
+
+```
+bind <actor> [component...] [--prefix p] [--suffix s | --no-fix]
+  [--folder path] [-f | -u]
+```
+
+The script has to be attached to the root of `<actor>.tscn` (`actor` does
+it). The components are the direct children of the root that have a
+`class_name`; state machines are left to `state`. For each one, `bind`
+writes an `@onready` reference, a forwarding func per public method and a
+re-declared, connected signal per public signal. Members that start with
+`_` are internal and never forwarded, and one that an earlier component
+already provides is skipped with a warning.
+
+Without a list it binds every such child, never adds nodes, and warns about
+each child whose script has no `class_name`. With a list it binds only
+those classes and adds to the scene the ones of your project that are not
+there yet, as a node named after the class: `bind player jump WallClimb`.
+
+It only adds what is missing. `-u` also rewrites generated funcs whose text
+changed, and `-f` keeps the header and rewrites everything below it. It
+prints `updated <path>` or `kept <path>` for the scene and the script.
+
+### generate
+
+Runs `actor`, `state` and `bind` on one actor, in that order.
+
+```
+generate <actor> [<fsm|pda|hfsm|hpda> <tree...>] [--bind a,b] [--template t]
+  [--extends class] [--base class] [--folder path] [--initial state]
+  [--prefix p] [--suffix s | --no-fix] [-f | -u]
+```
+
+```
+generate player hpda alive .grounded ..idle ..run dead --bind platformer_facade
+```
+
+Each step gets the flags that apply to it and reads them as the command of
+that name would, so the checks and the messages are the same:
+
+- `actor` gets the template, `--extends` and `-f`, never `-u`: an existing
+  actor is kept.
+- `state` runs only with a type and a tree, and gets the tree, `--base`,
+  `--initial`, `-f` and `-u`.
+- `bind` always runs. It gets the components of `--bind` (comma separated),
+  the prefix and suffix flags and `-u`, never `-f`, which would rewrite
+  what `state` wrote.
+- `--folder` goes to every step.
+
+A flag that no step would use is an error (`--initial` without a tree,
+`--prefix` without `--bind`). A failure in the middle undoes nothing: the
+error lists what was already written.
+
+### destroy
+
+Deletes an actor, at three levels.
+
+```
+destroy <actor> [--folder path] [-r | -f]
+```
+
+- `destroy player` deletes `player.tscn`, `player.gd` and its `.gd.uid`,
+  wherever the actor is.
+- `-r` also deletes the `states/` folder, and the actor's directory when
+  nothing else is left in it (what is left is reported as `kept`).
+- `-f` deletes the directory with everything in it. It includes `-r`.
+
+`-r` and `-f` delete folders, so the directory has to be named after the
+actor (`--folder characters/enemies/slime` for `slime`). Anything else is
+an error and nothing is deleted, which keeps a shared folder like
+`enemies` safe. There is no confirmation and no trash: each path is printed
+as it is deleted. Tests and the scenes that instance the actor are not
+touched.
+
+### Class names
+
+Every class a command takes (the template, `--extends`, `--base`, the
+`bind` components) is written in one of three formats:
+
+- snake_case: `character_body_2d`
+- PascalCase, taken as typed: `CharacterBody2D`, `WallClimb`
+- hybrid: `CPU_particles_2d` is `CPUParticles2D`
+
+Acronyms (`CPU`, `FSM`) only exist in PascalCase or hybrid; snake_case
+turns them into `Cpu`. In `bind`, an all lower case name gets the prefix
+and suffix around it (`jump` is `dog_jump_2d`, so `DogJump2D`), and a name
+with any upper case letter is taken as typed. The two settings are
+`leash/generators/prefix` (`dog`) and `leash/generators/suffix` (`2d`).
+`--prefix` and `--suffix` replace one for a single run (`--prefix=` drops
+that side) and `--no-fix` drops both: `--no-fix dog_jump_2d`.
+
+## Running without the editor
+
+The generators run from a terminal too, for scripts and CI:
+
+```
+godot --headless --import
+godot --headless -s res://addons/leash/cli/leash_cmdln.gd -- bind player jump
+```
+
+`--import` runs once after a fresh checkout, to build the class cache the
+commands need. Everything after `--` is the command line (`help` when
+there is none). The output goes to stdout, and the exit code is 0 when the
+command succeeded and 1 when it failed. Without the editor, nothing
+reloads the scenes and scripts that are open there.
 
 ## License
 
