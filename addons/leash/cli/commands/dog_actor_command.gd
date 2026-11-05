@@ -42,6 +42,10 @@ func usage() -> String:
 	return "actor <actor> [template] [--extends class] [--folder path] [-f]"
 
 
+func options_help() -> Array[String]:
+	return option_lines(_build_parser())
+
+
 func run(args: PackedStringArray) -> Error:
 	var request := parse_request(args)
 	if not request.error.is_empty():

@@ -21,3 +21,24 @@ func test_print_line_emits_printed() -> void:
 	watch_signals(command)
 	command.print_line("hi")
 	assert_signal_emitted_with_parameters(command, "printed", ["hi"])
+
+
+func test_options_help_is_empty_by_default() -> void:
+	assert_eq(DogCommand.new().options_help(), [])
+
+
+func test_option_lines_align_positionals_first_then_options() -> void:
+	var parser := DogOptParse.new()
+	parser.add_positional_required("actor", "", "actor name")
+	parser.add_positional("template", "", "scene template")
+	parser.add(["--force", "-f"], false, "recreate")
+	parser.add("--folder", "", "directory")
+	assert_eq(
+		DogCommand.option_lines(parser),
+		[
+			"    <actor>      actor name",
+			"    [template]   scene template",
+			"    --force, -f  recreate",
+			"    --folder     directory",
+		],
+	)

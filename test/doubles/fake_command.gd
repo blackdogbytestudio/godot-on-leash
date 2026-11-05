@@ -7,12 +7,14 @@ var received := PackedStringArray()
 var _name: String
 var _description: String
 var _usage: String
+var _options: Array[String]
 
 
-func _init(name_: String, description_ := "", usage_ := "") -> void:
+func _init(name_: String, description_ := "", usage_ := "", options_: Array[String] = []) -> void:
 	_name = name_
 	_description = description_
 	_usage = usage_
+	_options = options_
 
 
 func command_name() -> String:
@@ -25,6 +27,10 @@ func description() -> String:
 
 func usage() -> String:
 	return _usage
+
+
+func options_help() -> Array[String]:
+	return _options
 
 
 func run(args: PackedStringArray) -> Error:
