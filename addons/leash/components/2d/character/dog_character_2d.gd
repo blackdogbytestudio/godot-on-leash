@@ -10,4 +10,4 @@ var host: CharacterBody2D:
 
 ## Overrides [method DogComponent._host_type] with [CharacterBody2D].
 func _host_type() -> CharacterBody2D:
-	return owner
+	return owner as CharacterBody2D

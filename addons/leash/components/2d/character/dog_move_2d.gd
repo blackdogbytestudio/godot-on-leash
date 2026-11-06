@@ -1,3 +1,4 @@
+@tool
 class_name DogMove2D
 extends DogCharacter2D
 ## Movement logic for a [CharacterBody2D].

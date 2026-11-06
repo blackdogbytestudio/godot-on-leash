@@ -5,4 +5,4 @@ extends DogFacade
 
 
 func _host_type() -> CharacterBody2D:
-	return owner
+	return owner as CharacterBody2D

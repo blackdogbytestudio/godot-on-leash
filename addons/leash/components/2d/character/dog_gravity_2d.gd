@@ -1,3 +1,4 @@
+@tool
 class_name DogGravity2D
 extends DogCharacter2D
 ## Gravity logic for a [CharacterBody2D].
