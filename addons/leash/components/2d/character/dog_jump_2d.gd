@@ -1,3 +1,4 @@
+@tool
 class_name DogJump2D
 extends DogCharacter2D
 ## Jump logic for a [CharacterBody2D].

@@ -7,14 +7,21 @@ extends Node
 ## for its host. The host has to be of a type other than null.
 ## [br][br]
 ## It is expected that subclasses override [method _host_type] with a strict type,
-## allowing the framework to validate the host structure automatically.
+## allowing the framework to validate the host structure automatically. Cast with
+## [code]as[/code], so a host of another type gives null (and the warning), and
+## add [code]@tool[/code]: the editor only shows the warning for tool scripts,
+## and [code]@tool[/code] is not inherited.
 ##
 ## [codeblock]
+## @tool
+## class_name MyComponent
+## extends DogComponent
+##
 ## var host: CharacterBody2D:
 ##     get: return _host_type()
 ##
 ## func _host_type() -> CharacterBody2D:
-##     return owner
+##     return owner as CharacterBody2D
 ## [/codeblock]
 ##
 ## [b]Note:[/b] A component is meant to be unique on its host, you can have
