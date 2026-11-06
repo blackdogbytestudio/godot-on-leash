@@ -43,8 +43,10 @@ func has_buffered_jump() -> bool:
 	return _jump_buffer_timer > 0.0
 
 
+## Pushes away from the wall: `wall_normal.x` picks the side of the horizontal force,
+## and the vertical force applies as is (a wall's normal has no vertical part).
 func wall_jump(wall_normal: Vector2) -> void:
-	host.velocity = wall_normal * wall_jump_force
+	host.velocity = Vector2(wall_normal.x * wall_jump_force.x, wall_jump_force.y)
 	_jump_buffer_timer = 0.0
 
 
