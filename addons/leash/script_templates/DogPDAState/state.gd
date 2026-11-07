@@ -18,6 +18,11 @@ func _update(host: CUSTOM_HOST, delta: float) -> DogState:
 	return null
 
 
+# Handle this state's events first; super() hands the rest to the parent state.
+func _on_event(host: CUSTOM_HOST, event: StringName, data: Variant) -> DogState:
+	return super(host, event, data)
+
+
 func _pause(host: CUSTOM_HOST) -> void:
 	pass
 

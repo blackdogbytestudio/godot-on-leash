@@ -17,6 +17,10 @@ func update(host: Node, delta: float) -> DogState:
 	return _update(host as CUSTOM_HOST, delta)
 
 
+func on_event(host: Node, event: StringName, data: Variant) -> DogState:
+	return _on_event(host as CUSTOM_HOST, event, data)
+
+
 func _enter(host: CUSTOM_HOST) -> void:
 	pass
 
@@ -26,4 +30,8 @@ func _exit(host: CUSTOM_HOST) -> void:
 
 
 func _update(host: CUSTOM_HOST, delta: float) -> DogState:
+	return null
+
+
+func _on_event(host: CUSTOM_HOST, event: StringName, data: Variant) -> DogState:
 	return null
