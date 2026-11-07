@@ -69,8 +69,7 @@ The host is passed explicitly into `enter(host)`, `exit(host)`, and
 `update(host, delta)`.
 
 - **`DogFSM`** — flat state machine. States return the next `DogState`
-  from `update()` to transition; `force()` transitions from the outside;
-  `lock()`/`unlock()` blocks transitions when needed (e.g. mid-animation).
+  from `update()` to transition.
 - **`DogHFSM`** — hierarchical FSM. State hierarchy is just GDScript
   inheritance — call `super()` first in `update()` so parent states can
   intercept transitions before child logic runs.
@@ -86,10 +85,28 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	fsm.update(delta)
-
-func _on_hitbox_area_entered(_area: Area2D) -> void:
-	fsm.force(hurt_state)
 ```
+
+Everything else reaches the states as events: `send(event, data)` hands
+them to the active state's `on_event()`, which returns the next state or
+null to ignore it. With the hierarchy, a parent handles an event once for
+all its children, and the data goes to the next state before it is
+entered:
+
+```gdscript
+# PlayerAliveState
+func _on_event(host: Player, event: StringName, data: Variant) -> DogState:
+	if event == &"hurt":
+		host.hurt_state.hit = data
+		return host.hurt_state
+	return null
+```
+
+A state that `update()` returns while it is already active is ignored, so a
+parent can return `idle_state` every frame on the floor. A state returned
+from an event is always entered, even the active one: a second hit restarts
+the hurt state. Every change emits `transitioned(from, to)`, for animation,
+sound or debugging.
 
 ### The actor script
 

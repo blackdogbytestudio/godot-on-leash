@@ -205,6 +205,16 @@ func test_generate_replaces_every_placeholder() -> void:
 	assert_false(text.contains("# Replace '"))
 
 
+func test_generate_gives_every_state_the_event_hook() -> void:
+	_scene("enemy")
+	_generate(PackedStringArray(["enemy", "hpda", "alive", ".grounded"]))
+	var base := _text(_states("enemy").path_join("enemy_state.gd"))
+	var child := _text(_states("enemy").path_join("enemy_grounded_state.gd"))
+	assert_string_contains(base, "return _on_event(host as Enemy, event, data)")
+	assert_string_contains(child, "func _on_event(host: Enemy, event: StringName, data: Variant)")
+	assert_string_contains(child, "return super(host, event, data)")
+
+
 func test_generate_skips_existing_and_force_rewrites() -> void:
 	_scene("player")
 	var args := PackedStringArray(["player", "hpda", "alive", ".grounded", "..run"])
