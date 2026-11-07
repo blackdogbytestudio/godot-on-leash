@@ -1,6 +1,6 @@
 extends GutTest
 ## DogPDA: only DogPDAStates go on the stack; anything else is an error and the
-## stack stays as it was.
+## stack stays as it was. Events replace the top; push and pop emit transitioned.
 
 const NOT_A_PDA_STATE := "Dog: DogPDA needs a DogPDAState, got %s."
 

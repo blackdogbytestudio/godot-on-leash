@@ -42,11 +42,13 @@ func init(state: DogState) -> void:
 func push(state: DogPDAState) -> void:
 	if not _is_pda_state(state):
 		return
-	if _current != null:
-		(_current as DogPDAState).pause(host)
+	var previous := _current
+	if previous != null:
+		(previous as DogPDAState).pause(host)
 	_stack.push_back(state)
 	_current = state
 	_current.enter(host)
+	transitioned.emit(previous, _current)
 
 
 ## Pop the top state. Top is exited, the one below resumes.
@@ -54,10 +56,12 @@ func pop() -> void:
 	if _stack.size() <= 1:
 		push_warning("Dog: cannot pop the last state.")
 		return
-	_current.exit(host)
+	var previous := _current
+	previous.exit(host)
 	_stack.pop_back()
 	_current = _stack.back()
 	(_current as DogPDAState).resume(host)
+	transitioned.emit(previous, _current)
 
 
 ## The state below the top, without popping.
@@ -72,15 +76,16 @@ func depth() -> int:
 	return _stack.size()
 
 
-func _transition(next: DogState) -> void:
-	if next == null:
+## Replaces the top of the stack: the states below stay paused.
+func _change(next: DogState) -> void:
+	if not _is_pda_state(next):
 		return
-	if _current.get_script() == next.get_script():
-		return
-	_current.exit(host)
+	var previous := _current
+	previous.exit(host)
 	_stack[_stack.size() - 1] = next as DogPDAState
 	_current = next
 	_current.enter(host)
+	transitioned.emit(previous, _current)
 
 
 ## Whether `state` can live on the stack; push_error when it can't.
