@@ -91,6 +91,16 @@ func _on_hitbox_area_entered(_area: Area2D) -> void:
 	fsm.force(hurt_state)
 ```
 
+### The actor script
+
+The script on an actor's root (`player.gd`) is the actor's API, not a place
+for logic. `actor`, `state` and `bind` write it: the references to the
+components, the functions and signals that forward to them, the states and
+the machine. The behavior lives in the components, each testable on its
+own, and in the states that compose the actor. `-u` refreshes what the
+generators wrote and keeps anything else, but `-f` rewrites the script
+below its header, so logic written there is lost.
+
 ## Installation
 
 1. Copy `addons/leash/` into your project's `addons/` folder.
