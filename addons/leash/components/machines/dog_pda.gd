@@ -24,16 +24,24 @@ extends DogMachine
 ##   pda.pop()
 ## [/codeblock]
 
+# Error messages
+const NOT_A_PDA_STATE := "Dog: %s needs a DogPDAState, got %s."
+
 var _stack: Array[DogPDAState] = []
 
 
-## Push the initial state onto the stack.
+## Push the initial state onto the stack. A state that is not a DogPDAState is an
+## error, and nothing is pushed.
 func init(state: DogState) -> void:
-	push(state as DogPDAState)
+	if not _is_pda_state(state):
+		return
+	push(state)
 
 
 ## Push a new state on top. Current state is paused, not exited.
 func push(state: DogPDAState) -> void:
+	if not _is_pda_state(state):
+		return
 	if _current != null:
 		(_current as DogPDAState).pause(host)
 	_stack.push_back(state)
@@ -73,3 +81,12 @@ func _transition(next: DogState) -> void:
 	_stack[_stack.size() - 1] = next as DogPDAState
 	_current = next
 	_current.enter(host)
+
+
+## Whether `state` can live on the stack; push_error when it can't.
+func _is_pda_state(state: DogState) -> bool:
+	if state is DogPDAState:
+		return true
+	var got := "null" if state == null else str(state.get_script().get_global_name())
+	push_error(NOT_A_PDA_STATE % [get_script().get_global_name(), got])
+	return false
