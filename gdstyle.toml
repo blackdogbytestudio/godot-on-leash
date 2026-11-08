@@ -1,4 +1,4 @@
-# Godot On Leash: follows official style guide of GDScript.
+# Leash: follows official style guide of GDScript.
 max_line_length = 100
 
 exclude = [
