@@ -79,6 +79,26 @@ static func connect_block(var_name: String, signal_name: String) -> Dictionary:
 	}
 
 
+## The line, inside `_ready`, that turns a host signal into an event of the
+## machine: no data without arguments, the argument with one, an Array with more.
+static func event_block(machine_var: String, info: Dictionary) -> Dictionary:
+	var signal_name := String(info["name"])
+	var args: Array = info.get("args", [])
+	var names := _arg_names(args)
+	var call := "%s.send(&\"%s\")" % [machine_var, signal_name]
+	if names.size() == 1:
+		call = "%s.send(&\"%s\", %s)" % [machine_var, signal_name, names[0]]
+	elif names.size() > 1:
+		call = "%s.send(&\"%s\", [%s])" % [machine_var, signal_name, ", ".join(names)]
+	var params := ", ".join(_params(args, []))
+	return {
+		"kind": "ready_line",
+		"name": signal_name + " event",
+		"match": "%s.connect(func(" % signal_name,
+		"text": "\t%s.connect(func(%s) -> void: %s)" % [signal_name, params, call],
+	}
+
+
 ## `name: Type` for each argument, with `= default` on the last ones.
 static func _params(args: Array, defaults: Array) -> PackedStringArray:
 	var first_default := args.size() - defaults.size()
