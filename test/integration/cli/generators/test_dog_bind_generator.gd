@@ -286,8 +286,30 @@ func test_build_without_components_skips_the_state_machines() -> void:
 	var r := DogBindGenerator.build(_options("actor", []))
 	assert_eq(r.error, "")
 	assert_string_contains(r.source, "_fixture_jump_2d")
-	assert_false(r.source.contains("DogFSM"))
+	assert_false(r.source.contains("func init("))
+	assert_false(r.source.contains("func send("))
 	assert_eq(_compile(r.source), OK)
+
+
+func test_build_with_a_machine_turns_every_signal_into_an_event() -> void:
+	_use_tmp(_with_machine())
+	var r := DogBindGenerator.build(_options("actor", BOTH))
+	assert_eq(r.error, "")
+	assert_string_contains(r.source, "@onready var _dog_fsm: DogFSM = $Brain\n")
+	assert_string_contains(
+		r.source,
+		"\tlanded.connect(func(speed: float) -> void: _dog_fsm.send(&\"landed\", speed))\n",
+	)
+	assert_string_contains(
+		r.source,
+		"\tdashed.connect(func() -> void: _dog_fsm.send(&\"dashed\"))\n",
+	)
+	assert_eq(_compile(r.source), OK)
+
+
+func test_build_without_a_machine_sends_no_events() -> void:
+	var r := DogBindGenerator.build(_options("actor", BOTH))
+	assert_false(r.source.contains(".send("))
 
 
 func test_build_without_components_and_nothing_to_bind_is_a_warning() -> void:

@@ -200,3 +200,36 @@ func test_connect_block_forwards_the_signal_with_emit() -> void:
 	assert_eq(b.kind, "ready_line")
 	assert_eq(b.name, "_dog_jump_2d.landed")
 	assert_eq(b.text, "\t_dog_jump_2d.landed.connect(landed.emit)")
+
+
+func test_event_block_without_args_sends_no_data() -> void:
+	var b := DogScriptRender.event_block("_dog_fsm", { "name": "died", "args": [] })
+	assert_eq(b.kind, "ready_line")
+	assert_eq(b.name, "died event")
+	assert_eq(b.match, "died.connect(func(")
+	assert_eq(b.text, "\tdied.connect(func() -> void: _dog_fsm.send(&\"died\"))")
+
+
+func test_event_block_with_one_arg_sends_it_as_the_data() -> void:
+	var info := { "name": "landed", "args": [_info(TYPE_FLOAT, "", 0, 0, "", "speed")] }
+	assert_eq(
+		DogScriptRender.event_block("_dog_fsm", info).text,
+		"\tlanded.connect(func(speed: float) -> void: _dog_fsm.send(&\"landed\", speed))",
+	)
+
+
+func test_event_block_with_more_args_sends_them_in_an_array() -> void:
+	var info := {
+		"name": "hit",
+		"args": [
+			_info(TYPE_INT, "", 0, 0, "", "damage"),
+			_info(TYPE_VECTOR2, "", 0, 0, "", "direction"),
+		],
+	}
+	assert_eq(
+		DogScriptRender.event_block("_dog_fsm", info).text,
+		(
+			"\thit.connect(func(damage: int, direction: Vector2) -> void: "
+			+ "_dog_fsm.send(&\"hit\", [damage, direction]))"
+		),
+	)

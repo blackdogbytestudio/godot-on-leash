@@ -335,6 +335,17 @@ re-declared, connected signal per public signal. Members that start with
 `_` are internal and never forwarded, and one that an earlier component
 already provides is skipped with a warning.
 
+When the actor has a state machine, every forwarded signal also becomes an
+event of the machine, named after the signal, one line each in `_ready`:
+
+```gdscript
+hurt.connect(func(hit: DogHit) -> void: _dog_hfsm.send(&"hurt", hit))
+```
+
+A signal without arguments sends no data, one with several sends them in
+an Array. Run `bind` again after `state` adds a machine (`generate` runs
+them in that order).
+
 Without a list it binds every such child, never adds nodes, and warns about
 each child whose script has no `class_name`. With a list it binds only
 those classes and adds to the scene the ones of your project that are not

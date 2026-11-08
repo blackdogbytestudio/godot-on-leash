@@ -16,6 +16,11 @@ extends RefCounted
 ## it in Godot first, so `extends` is right). Members starting with `_` are
 ## internal and never forwarded.
 ##
+## When the scene has a state machine, each forwarded signal also becomes an event
+## of the machine: `landed.connect(func(speed: float) -> void: _dog_fsm.send(&"landed",
+## speed))` in `_ready`, so the states get it in on_event(). Run bind again after
+## state adds a machine.
+##
 ## Without a list of components (the automatic mode) it warns about each direct child
 ## whose script has no class_name: it can't be named, so it is left out. A child without
 ## a script is a plain node, not a component, and gets no warning.
@@ -130,6 +135,7 @@ static func plan(host: Node, components: Array) -> Dictionary:
 	var taken := {}
 
 	var children := _children_by_class(host)
+	var machine_ref := _machine_ref(host)
 	for component in components:
 		var component_name := String(component)
 		if taken.has(component_name):
@@ -140,8 +146,11 @@ static func plan(host: Node, components: Array) -> Dictionary:
 		if not error.is_empty():
 			return { "blocks": [], "warnings": [], "error": error }
 		var child: Node = children[component_name][0]
-		_plan_component(child, owners, blocks, warnings)
+		_plan_component(child, owners, blocks, warnings, machine_ref.get("name", ""))
 
+	# The event lines use the machine: its reference goes in when there is one.
+	if not machine_ref.is_empty() and not owners.is_empty():
+		blocks.append(machine_ref)
 	return { "blocks": blocks, "warnings": warnings, "error": "" }
 
 
@@ -325,12 +334,14 @@ static func _skipped_children(host: Node) -> Array:
 	return warnings
 
 
-## Adds the reference, signals and forwarding funcs of `child` to `blocks`.
+## Adds the reference, signals and forwarding funcs of `child` to `blocks`, and an
+## event line per signal when there is a machine (`machine_var` not empty).
 static func _plan_component(
 	child: Node,
 	owners: Dictionary,
 	blocks: Array,
 	warnings: Array,
+	machine_var: String,
 ) -> void:
 	var script := child.get_script() as Script
 	var class_text := String(script.get_global_name())
@@ -345,6 +356,8 @@ static func _plan_component(
 			continue
 		blocks.append(DogScriptRender.signal_block(info))
 		blocks.append(DogScriptRender.connect_block(var_name, signal_name))
+		if not machine_var.is_empty():
+			blocks.append(DogScriptRender.event_block(machine_var, info))
 
 	for method in script.get_script_method_list():
 		if (int(method["flags"]) & METHOD_FLAG_STATIC) != 0:
@@ -400,6 +413,21 @@ static func add_class_node(source: String, script: Script) -> Dictionary:
 		uid = ResourceUID.id_to_text(uid_id)
 	var node_name := String(script.get_global_name())
 	return DogSceneEdit.add_node(source, node_name, script.get_instance_base_type(), path, uid)
+
+
+## The `@onready` reference block of the first direct child of `host` that is a
+## state machine with a class_name (state keeps it to one per actor), or {} when
+## there is none. Its "name" is the variable the event lines use.
+static func _machine_ref(host: Node) -> Dictionary:
+	for child in host.get_children():
+		var script := child.get_script() as Script
+		if script == null or String(script.get_global_name()).is_empty():
+			continue
+		if is_machine(script):
+			var machine_class := String(script.get_global_name())
+			var machine_var := DogScriptRender.var_name(machine_class, str(child.name))
+			return DogScriptRender.ref_block(machine_var, machine_class, str(child.name))
+	return {}
 
 
 ## Whether `script` is DogMachine or extends it, directly or not.
