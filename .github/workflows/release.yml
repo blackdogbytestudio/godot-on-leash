@@ -1,0 +1,23 @@
+name: Release
+
+# Pushing a tag vX.Y.Z publishes the GitHub Release vX.Y.Z with the zip of
+# addons/leash (see .gitattributes). The tag must match plugin.cfg.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git archive --format=zip -o "leash-$GITHUB_REF_NAME.zip" HEAD
+          gh release create "$GITHUB_REF_NAME" "leash-$GITHUB_REF_NAME.zip" --generate-notes
