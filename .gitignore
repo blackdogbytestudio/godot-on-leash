@@ -17,7 +17,7 @@ export_credentials.cfg
 data_*/
 mono_crash.*.json
 
-# Dog-specific ignores
+# Leash-specific ignores
 /builds
 tmp/
 /addons/*

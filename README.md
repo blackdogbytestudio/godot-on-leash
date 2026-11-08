@@ -1,4 +1,4 @@
-# Godot On Leash
+# Leash
 
 > Convention over configuration, Rails-style, for Godot.
 
@@ -7,10 +7,10 @@ for fast prototyping that scales into full games. Inspired by Ruby on
 Rails: follow the conventions and the generators write the boilerplate for
 you.
 
-Godot On Leash is the leash. The `Dog*` classes (components, facades, state
-machines) are the dogs. That's why the code says `DogComponent` and not
-`LeashComponent`: you hold the leash, and everything you attach to it is a
-dog.
+The framework is the leash, and the `Dog*` classes (components, facades,
+state machines) are the dogs. That's why the code says `DogComponent` and
+not `LeashComponent`: you hold the leash, and everything you attach to it
+is a dog.
 
 > **Status:** Still in early experimentation and likely to have bugs. Good
 > for testing ideas and prototypes — not yet validated for a full game.
@@ -19,8 +19,8 @@ dog.
 
 Godot gives you total freedom — which is great, until your `Player.gd`
 turns into a 500-line file mixing movement, state, input, and everything
-else. Godot On Leash takes its inspiration straight from Rails and its idea
-of **convention over configuration**: follow the structure and it handles
+else. Leash takes its inspiration straight from Rails and its idea of
+**convention over configuration**: follow the structure and it handles
 the plumbing (component wiring, state transitions, project scaffolding), so
 you focus on the game.
 
@@ -30,9 +30,9 @@ isn't something you type: the [generators](#generators) create it for you.
 Like `rails generate`, one command gives you the files in the right place,
 already wired the way the framework expects.
 
-It's "dumb by design." Godot On Leash doesn't guard against every possible
-misuse — if you attach the wrong component to the wrong host, it fails
-loudly and predictably instead of silently working around it.
+It's "dumb by design." Leash doesn't guard against every possible misuse —
+if you attach the wrong component to the wrong host, it fails loudly and
+predictably instead of silently working around it.
 
 ## Core Concepts
 
@@ -81,10 +81,10 @@ The host is passed explicitly into `enter(host)`, `exit(host)`, and
 
 ```gdscript
 func _ready() -> void:
-	fsm.init(idle_state)
+ fsm.init(idle_state)
 
 func _physics_process(delta: float) -> void:
-	fsm.update(delta)
+ fsm.update(delta)
 ```
 
 Everything else reaches the states as events: `send(event, data)` hands
@@ -96,10 +96,10 @@ entered:
 ```gdscript
 # PlayerAliveState
 func _on_event(host: Player, event: StringName, data: Variant) -> DogState:
-	if event == &"hurt":
-		host.hurt_state.hit = data
-		return host.hurt_state
-	return null
+ if event == &"hurt":
+  host.hurt_state.hit = data
+  return host.hurt_state
+ return null
 ```
 
 A state that `update()` returns while it is already active is ignored, so a
@@ -121,7 +121,7 @@ below its header, so logic written there is lost.
 ## Installation
 
 1. Copy `addons/leash/` into your project's `addons/` folder.
-2. Enable **Godot On Leash** under **Project → Project Settings → Plugins**.
+2. Enable **Leash** under **Project → Project Settings → Plugins**.
 3. Run `init` in the **Leash** bottom panel to create the project folders
    and the script templates (see [init](#init)).
 
@@ -220,8 +220,8 @@ res://
 ├── data/
 ├── localization/
 └── test/
-	├── unit/
-	└── integration/
+ ├── unit/
+ └── integration/
 ```
 
 The scaffold is fixed: it doesn't follow the folder settings above, so if
